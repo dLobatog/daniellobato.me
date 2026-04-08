@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Tuning: a programming pearl in Ruby — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Technology">Technology</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">⛪</span>
+    <h1>Code Tuning: a programming pearl in Ruby</h1>
+  </header>
+
+  <p>After a few weeks at CERN of not much blogging, I have been mostly flat hunting at one of the most expensive cities in the world. Of course the real estate market is accordingly crazy. This means I spend a big chunk of my spare time on the trolley, which is okay because I borrowed one of the best programming books ever at CERN's library, Programming Pearls. I like to read whichever column I feel like reading instead of reading it from cover to cover, and I stumbled upon "Code Tuning" today.</p>
+
+  <p>Being the practical guy I am, I thought that would make a good reading choice on my way back to help me focus on details. And hell it did. I would like to go over a very well known algorithm, Sequential Search, and introduce some cool twists that Jon Bentley shows on the book.</p>
+
+  <p>Given an array, a sequential search simply looks for a certain element of the array iterating over it. Easy right? A simple sequential search in ruby would be something like:</p>
+
+<pre><code class="language-ruby">def sequential_search(array, solution)
+  array.each_with_index do |element, index|
+    return index if element == solution
+  end
+end</code></pre>
+
+  <p>Can we do better? I thought not, but there are ways to improve this dramatically. Let's benchmark for 1M, 10M and 50M elements.</p>
+
+<pre><code>Sequential search 1M  =   0.130000   0.000000   0.130000 (  0.103411)
+Sequential search 10M =   1.280000   0.000000   1.280000 (  1.036352)
+Sequential search 50M =   5.200000   0.000000   5.200000 (  5.208325)</code></pre>
+
+  <p>It seems that it takes around ~<strong>103 (ns) * n</strong> on the worst case, I calculated this by dividing the benchmark for 1M by the number of elements, I ran all benchmarks for the last item of the array. Fairly normal, this will be the baseline for further improvements.</p>
+
+  <p>How can we slim down this loop a little bit? Easy, stop performing more tests than necessary. On an ideal version of a sequential search you should only test for the elements to be equal to the desired element. In reality every time this block executes itself, <code>array.each</code> is checking that we haven't gotten to the end of the array.</p>
+
+<pre><code class="language-ruby">def sequential_search(array, solution)
+  array[array.length] = solution
+  index = 0
+  while true
+    break if array[index] == solution
+    index += 1
+  end
+
+  if index == array.length
+    -1
+  else
+    index
+  end
+end</code></pre>
+
+  <p>Benchmarks for 1M, 10M and 50M.</p>
+
+<pre><code>Sequential search 1M  =   0.060000   0.000000   0.060000 (  0.045325)
+Sequential search 10M =   0.700000   0.000000   0.700000 (  0.453618)
+Sequential search 50M =   2.260000   0.000000   2.260000 (  2.268034)</code></pre>
+
+  <p>Bentley dropped the run for a speedup of ~5%. It looks like tests are more computationally expensive in Ruby so now it runs in ~<strong>45 (ns) * n</strong>. This is a crazy good improvement of about <strong>55%</strong> and still it looks pretty readable.</p>
+
+  <p>It looks like our bottom line (tests) cannot be improved, as you will always have to check against every element in the array until you get to it. Now what. Incrementing the index in every loop is an addition that shouldn't cost much, but we can do better.</p>
+
+  <p><a href="http://en.wikipedia.org/wiki/Loop_unwinding">Loop unwinding</a>/unrolling as I prefer to call it is the answer. I am not very positive that Ruby's 1.9.2 default interpreter unrolls loops. And we're going to find it right away, because if it doesn't the reduction will be very sharp.</p>
+
+<pre><code class="language-ruby">def sequential_search(array, solution)
+  array[array.length] = solution
+  index               = 0
+
+  while true
+    break if array[index    ] == solution
+    break if array[index + 1] == solution
+    break if array[index + 2] == solution
+    break if array[index + 3] == solution
+    break if array[index + 4] == solution
+    break if array[index + 5] == solution
+    break if array[index + 6] == solution
+    break if array[index + 7] == solution
+
+    index += 8
+  end
+
+  if index == array.length
+    -1
+  else
+    index
+  end
+end</code></pre>
+
+  <p>Benchmarks for 1M, 10M and 50M.</p>
+
+<pre><code>Sequential search 1M  =   0.070000   0.000000   0.070000 (  0.041043)
+Sequential search 10M =   0.670000   0.000000   0.670000 (  0.419199)
+Sequential search 50M =   2.100000   0.000000   2.100000 (  2.105880)</code></pre>
+
+  <p>It went from ~45 (ns) * n to <strong>~41 (ns) * n</strong>. A slight improvement of <strong>9%</strong>. I'm a bit disappointed after checking the book and seeing that reducing the overhead of incrementing the iterator led to a reduction of 56%. What puzzles me even more is that his argument is that loop unrolling can help to avoid pipeline stalls, reduce branches, and increase instruction-level parallelism.</p>
+
+  <p>Why is this clearly happening on Bentley's benchmarks in C and if it's happening, it doesn't yield the same results for my Ruby implementation? No idea, so instead of keeping this private I'm going to share it so you guys can wander about it. I'll just leave a quote of <a href="http://en.wikipedia.org/wiki/Donald_Knuth">Don Knuth</a>:</p>
+
+  <blockquote>
+    <p>Premature optimization is the root of much programming evil; it can compromise the correctness, functionality and maintainability of programs. Save concern for efficiency for when it matters.</p>
+  </blockquote>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

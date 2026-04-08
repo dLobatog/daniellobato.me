@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Attentive Are GATs? (GAT v2) — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">&#x1F387;</span>
+    <h1>How Attentive Are GATs? (GAT v2)</h1>
+  </header>
+
+  <p><a href="https://arxiv.org/pdf/2105.14491.pdf">Read the paper</a></p>
+
+  <h2>Key Ideas</h2>
+  <ul>
+    <li>Rank of attention in GATv1 is unconditional on the query node.</li>
+    <li>Because of this, some graph problems cannot be expressed by GAT.</li>
+  </ul>
+
+  <h2>Introduction</h2>
+  <ul>
+    <li>Proof that GAT doesn't compute a dynamic type of attention. It's only static.
+      <ul>
+        <li>Static means for any query node, the attention is monotonic with respect to its neighbors.</li>
+      </ul>
+    </li>
+  </ul>
+  <figure>
+    <figcaption>Illustration showing that static attention assigns the same ranking of neighbors regardless of the query node.</figcaption>
+  </figure>
+
+  <h2>Preliminaries</h2>
+  <p>Generic GNN layer:</p>
+  <figure>
+    <figcaption>Generic GNN layer equation: aggregate neighbor representations, apply transformation.</figcaption>
+  </figure>
+
+  <p>GAT attention scoring:</p>
+  <figure>
+    <figcaption>GAT attention scoring function: $e_{ij} = \text{LeakyReLU}(\vec{a}^T [Wh_i \| Wh_j])$</figcaption>
+  </figure>
+
+  <p>GAT attention function:</p>
+  <figure>
+    <figcaption>GAT attention coefficients via softmax normalization over the neighborhood.</figcaption>
+  </figure>
+
+  <p>GAT layer:</p>
+  <figure>
+    <figcaption>Full GAT layer: $h_i' = \sigma(\sum_{j \in N(i)} \alpha_{ij} W h_j)$</figcaption>
+  </figure>
+
+  <h2>Static vs Dynamic &amp; Limited Expressivity of GAT</h2>
+
+  <h3>Static Attention</h3>
+  <ul>
+    <li>Family of functions computing scoring for a set of key vectors and query vectors. For every $f$ there's always a highest scoring key.</li>
+    <li>This is limiting because regardless of the query, every function has a key that's always selected.</li>
+    <li>BUT different keys have different relevance to different queries in real problems. How to express this?</li>
+  </ul>
+
+  <h3>Dynamic Attention</h3>
+  <ul>
+    <li>Every key has different scoring based on the query node. Notice dynamic attention families will have strict subsets of static attention.</li>
+  </ul>
+
+  <h2>Need for a New Scoring Function</h2>
+  <figure>
+    <figcaption>Analysis showing that in GATv1, there exists a $j_{\max}$ such that $a_2(Wh_j)$ is maximal for all $j \in V$.</figcaption>
+  </figure>
+  <ul>
+    <li>There exists a $j_{\max}$ so that $a_2(Wh_j)$ is maximal for all $j \in V$.</li>
+    <li>In that case, due to the monotonicity of LeakyReLU, for every query node $i$, the node $j_{\max}$ is leading to the maximal value of the distribution.</li>
+    <li>To avoid this, we can apply the learned attention layer <em>after</em> applying the LeakyReLU non-linearity.</li>
+  </ul>
+  <figure>
+    <figcaption>GATv2 scoring function: $e_{ij} = \vec{a}^T \text{LeakyReLU}(W_l h_i + W_r h_j)$ &mdash; applying attention after the non-linearity enables dynamic attention.</figcaption>
+  </figure>
+
+  <h2>Evaluation</h2>
+  <ul>
+    <li>Certain problems, like the dictionary lookup problem, cannot be learned with static attention (proven in the appendix of the paper).</li>
+  </ul>
+  <figure>
+    <figcaption>Example graph problem that cannot be solved by GATv1's static attention but can be solved by GATv2's dynamic attention.</figcaption>
+  </figure>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

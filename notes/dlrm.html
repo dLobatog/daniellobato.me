@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DLRM — Deep Learning Recommendation Model — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">📮</span>
+    <h1>DLRM &mdash; Deep Learning Recommendation Model</h1>
+  </header>
+  <p><a href="https://arxiv.org/pdf/1906.00091.pdf">Paper link</a></p>
+
+  <h2>Key ideas</h2>
+  <ul>
+    <li>Personalization systems are used for tasks like CTR prediction and rankings. Two perspectives contributed to the current design of models for personalization and recommendation:
+      <ul>
+        <li>Content-filtering, where users selected their preferred categories and were matched on their preferences.</li>
+        <li>Collaborative filtering, where recs are based on past behaviors.</li>
+        <li>Neighborhood methods that group users/products in a latent space were also deployed.</li>
+        <li>Predictive models.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Design and Architecture</h2>
+  <ul>
+    <li><strong>Embeddings:</strong> they map each category to a dense representation in an abstract space. They can map categorical features to a dense representation.</li>
+    <li><strong>Matrix factorization:</strong>
+      <ul>
+        <li>$i$-th product: $w_i$, $j$-th user: $v_j$, $m$ and $n$ denote total number of products and users, $r_{ij}$ is the rating of the $i$-th product by the $j$-th user.</li>
+      </ul>
+    </li>
+  </ul>
+  <figure>
+    <figcaption>Matrix factorization formula diagram.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Factorization machine:</strong>
+      <ul>
+        <li>Prediction function $\phi \rightarrow T$, from input datapoint $x \in \mathbb{R}$, to target label $y \in T$.</li>
+      </ul>
+    </li>
+    <li><strong>Multilayer perceptron:</strong>
+      <ul>
+        <li>Series of fully connected layers and activation function.</li>
+      </ul>
+    </li>
+    <li>Users and products are described by many continuous and categorical features. Categorical features are represented by embeddings. Continuous features are transformed by an MLP to yield a dense representation of the same length as the embedding layer.</li>
+    <li>Second-order interactions &mdash; dot product of all vectors. Concatenate with the original processed dense features and post-process with output MLP, fed into sigmoid function to give a probability.</li>
+  </ul>
+
+  <h2>Parallelism</h2>
+  <ul>
+    <li>Embeddings contribute the majority of the parameters, with several tables requiring an excess of multiple GBs of memory.</li>
+    <li>MLP parameters are smaller in memory and translate into sizeable amounts of compute.</li>
+    <li>Data-parallelism is preferred for MLPs.</li>
+  </ul>
+  <figure>
+    <figcaption>Diagram showing data parallelism strategy for DLRM with embedding tables and MLP layers.</figcaption>
+  </figure>
+  <figure>
+    <figcaption>DLRM full architecture diagram showing embedding lookups, MLP bottom/top, and interaction layer.</figcaption>
+  </figure>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Powerful Are Graph Neural Networks (GIN) — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">&#x1F94D;</span>
+    <h1>How Powerful Are Graph Neural Networks (GIN)</h1>
+  </header>
+
+  <p><a href="https://arxiv.org/pdf/1810.00826.pdf">Read the paper</a></p>
+
+  <h2>Key Points</h2>
+  <ul>
+    <li>Framework for analyzing expressiveness and discriminative power of GNNs.</li>
+    <li>The Weisfeiler-Lehman (WL) Isomorphism test is NP-complete. We need to iteratively update a node's feature vector by aggregating the neighborhood's feature vectors.</li>
+    <li>Set of node's neighborhood feature vectors: multiset with possibly repeating elements.</li>
+    <li>GNNs proven to be <strong>at most</strong> as powerful as the WL-test in distinguishing graph structures.</li>
+    <li>Conditions for the above established in the paper.</li>
+    <li>GIN: Graph Isomorphism Network shows representative power is equal to the WL-test.</li>
+  </ul>
+
+  <h2>Building Powerful GNNs</h2>
+  <figure>
+    <figcaption>Diagram showing the WL-test iterative relabeling process for graph isomorphism detection.</figcaption>
+  </figure>
+  <ul>
+    <li>To study the representational power of a GNN, we analyze when a GNN maps two nodes to the same location in the embedding space.
+      <ul>
+        <li>Intuitively, a maximally powerful GNN maps two nodes to the same location only if they have identical subtree structures with identical features on the corresponding nodes.</li>
+      </ul>
+    </li>
+    <li>A maximally powerful GNN would never map two different neighborhoods to the same representation!</li>
+  </ul>
+  <figure>
+    <figcaption>Illustration of how different neighborhood structures must map to different embeddings in a maximally powerful GNN.</figcaption>
+  </figure>
+
+  <h2>GIN (Graph Isomorphism Network)</h2>
+  <p><strong>UPDATE step:</strong></p>
+  <figure>
+    <figcaption>GIN update rule: $h_v^{(k)} = \text{MLP}^{(k)}\left((1+\epsilon^{(k)}) \cdot h_v^{(k-1)} + \sum_{u \in N(v)} h_u^{(k-1)}\right)$</figcaption>
+  </figure>
+
+  <h3>Analysis of Different Aggregators</h3>
+  <figure>
+    <figcaption>Comparison of sum, mean, and max aggregators: sum captures the full multiset, mean captures the proportion/distribution of elements, and max ignores multiplicities.</figcaption>
+  </figure>
+  <ul>
+    <li>Notice <strong>sum</strong> captures the full multiset, <strong>mean</strong> captures the proportion/distribution of elements of a given type, and the <strong>max</strong> aggregator ignores multiplicities.</li>
+  </ul>
+  <figure>
+    <figcaption>Venn diagram showing the hierarchy of distinguishing power: sum &gt; mean &gt; max for multiset discrimination.</figcaption>
+  </figure>
+  <p>Hence the GIN is maximally powerful when it can distinguish multisets, using <strong>"SUM"</strong> as the READOUT step in the previous equation.</p>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

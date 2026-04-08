@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AGL: A Scalable System for Industrial-purpose Graph Machine Learning — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">🔑</span>
+    <h1>AGL: A Scalable System for Industrial-purpose Graph Machine Learning</h1>
+  </header>
+  <p><a href="http://www.vldb.org/pvldb/vol13/p3125-zhang.pdf">Paper link</a></p>
+
+  <h2>Key ideas</h2>
+  <ul>
+    <li>GNNs are inherently difficult to train in parallel because of the edge dependencies.</li>
+    <li>Alternatives are storing the whole graph in memory (very expensive) or use third party storage (very slow).</li>
+    <li>Instead: generate K-hop neighborhood, information complete subgraph for each node.</li>
+    <li>Merge values of in-edge neighbors, propagate to out-edge via MapReduce.</li>
+    <li>2-layer GNN training with 2B nodes and 100B edges in 14h.</li>
+  </ul>
+
+  <h2>Introduction</h2>
+  <ul>
+    <li>Heterogeneous graph in Ant Financial based on message passing, merging and propagation.</li>
+    <li>Computing each node's K-hop embeddings based on message passing:
+      <ul>
+        <li>Merging neighbors from in-edges and propagating merged information to neighbors along out-edges.</li>
+      </ul>
+    </li>
+    <li>Each K-hop neighborhood is a subgraph.</li>
+  </ul>
+
+  <h2>System</h2>
+  <figure>
+    <figcaption>AGL system architecture diagram showing GraphFlat, GraphTrainer, and GraphInfer components.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>GraphFlat</strong> is an efficient and distributed generator, based on message passing for generating K-hop neighborhoods.
+      <ul>
+        <li>These neighborhoods are flattened into protobuf strings.</li>
+      </ul>
+    </li>
+    <li><strong>GraphTrainer</strong> leverages many techniques, such as pipeline, pruning, and edge-partition, to eliminate the overhead on I/O and optimize the floating point calculations.</li>
+    <li><strong>GraphInfer</strong>, a distributed inference module that splits K layer GNN models into K slices, and applies the message passing K times based on MapReduce.</li>
+    <li>GraphInfer maximally utilizes the embedding of each node because all the intermediate embedding at the k-th layer will be propagated to next round of message passing. This significantly boosts the inference tasks.</li>
+    <li>We can divide an industrial-scale graph into massive tiny K-hop neighborhoods w.r.t. their target nodes in advance, and load one or a batch of them rather than the entire graph into memory in the training phase.</li>
+  </ul>
+  <figure>
+    <figcaption>GraphFlat message passing and K-hop neighborhood generation diagram.</figcaption>
+  </figure>
+  <figure>
+    <figcaption>GraphTrainer pipeline and optimization diagram.</figcaption>
+  </figure>
+  <figure>
+    <figcaption>GraphInfer distributed inference with MapReduce diagram.</figcaption>
+  </figure>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

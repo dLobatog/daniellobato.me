@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HashGNN: Min-Hashing &amp; Locality Sensitive Hashing — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">&#x1F31D;</span>
+    <h1>HashGNN: Min-Hashing &amp; Locality Sensitive Hashing</h1>
+  </header>
+
+  <p><em>Easier to understand when sections are read in this order: min-hashing &rarr; locality sensitive min hashing &rarr; HashGNN</em></p>
+
+  <h2><a href="https://arxiv.org/pdf/2003.01917.pdf">HashGNN</a> (<a href="https://fosdem.org/2023/schedule/event/graph_hashgnn/attachments/slides/5992/export/events/attachments/graph_hashgnn/slides/5992/HashGNN_FOSDEM_slides.pdf">Presentation</a>)</h2>
+
+  <p>Contrary to what the name suggests, HashGNN is <strong>not a supervised neural learning model. It is in fact an unsupervised algorithm.</strong> Its name comes from the fact that the algorithm design is inspired by that of graph neural networks, in that it does message passing interleaved with transformations on each node. But instead of doing neural transformations like most GNNs, its transformations are done by locality sensitive min-hashing. Since the hash functions used are randomly chosen independent of the input data, there is <strong>no need for training</strong>.</p>
+  <ul>
+    <li>It can <strong>also be part of NN models</strong>, read below!</li>
+  </ul>
+  <figure>
+    <figcaption>HashGNN architecture overview: message passing with locality sensitive hashing instead of neural transformations.</figcaption>
+  </figure>
+
+  <ul>
+    <li>Graph Encoder: 2 layer GCN (flexible choice).</li>
+    <li>Hash Layers: Generate binary hash codes for nodes in $G$.
+      <ul><li>$z_i = \tanh(W^T u_i + b)$ &mdash; intermediate representation of size $K$.</li></ul>
+    </li>
+    <li>To enforce the embedding to be binary, we use $\tanh$, which returns values from -1 to 1, then simply each value is converted to 1 if value &ge; 0; or 0 if value &lt; 0.</li>
+    <li>We can interpret:
+      <ul>
+        <li>$P(A_{ij}|h_i,h_j) = \sigma(\text{dist}(h_i, h_j))$ if $A_{ij}=1$</li>
+        <li>$P(A_{ij}|h_i,h_j) = 1 - \sigma(\text{dist}(h_i, h_j))$ if $A_{ij}=0$</li>
+        <li>($\sigma$ = sigmoid function)</li>
+        <li>(here be dragons: step function in NN &rarr; non-differentiable &rarr; STE, read more below)</li>
+      </ul>
+    </li>
+    <li>The relationship between Hamming distance and inner product for binary hash codes:
+      <ul>
+        <li>Hamming distance = number of bits that differ between two hash codes.</li>
+        <li>Inner product = number of bits that are the same between two hash codes.</li>
+        <li>The Hamming distance is a measure of dissimilarity; the inner product is a measure of similarity.</li>
+      </ul>
+    </li>
+    <li>The smaller the Hamming distance, the larger $P(1|h_i, h_j)$!</li>
+  </ul>
+
+  <h3>Cross-Entropy Loss</h3>
+  $$L_{\text{cross}} = \sum_{A_{ij}} A_{ij} \cdot \log(\sigma(\text{inner}(h_i,h_j))) + (1 - A_{ij}) \cdot \log(1 - \sigma(\text{inner}(h_i,h_j)))$$
+  <p>By minimizing this loss, we obtain binary hash codes that share similar values between linked nodes, so the network topological information is stored in the Hamming space.</p>
+
+  <h3>Ranking-Preserving Loss</h3>
+  $$L_{\text{rank}} = \sum_{(v_i,v_j,v_m)} \max(0, -\sigma(\text{inner}(h_i,h_j)) + \sigma(\text{inner}(h_i,h_m)) + \alpha)$$
+  <p>Where $\alpha$ is the margin parameter to control difference between similar and dissimilar hash codes (fixed to 0.2 by trial and error). Minimizing this will mean binary hash codes for neighbors of $v_i$ will be in a smaller radius near $v_i$, vs non-connected nodes.</p>
+
+  <h3>End-to-End Loss</h3>
+  <p>$L = L_{\text{cross}} + \lambda L_{\text{rank}}$, where $\lambda$ is a parameter to balance between entropy and ranking loss.</p>
+
+  <h3>Inference</h3>
+  <ul>
+    <li>Forward pass &rarr; binary hash <strong>h</strong>, embedding <strong>z</strong> for each node.</li>
+    <li>Based on a given query vector, get either Hamming Space Retrieval <strong>(using h only)</strong> or Hierarchical Search (use <strong>h</strong> for sourcing, then <strong>z</strong> for ranking).</li>
+  </ul>
+  <p>Since the final loss function is non-smoothing, the gradient is 0, so STE (Straight-Through Estimator) is used to approximate the gradient.</p>
+
+  <h3>Experimental Results</h3>
+  <ul>
+    <li>IMDB (HashGNN + logistic regression)</li>
+  </ul>
+
+  <h3>Why HashGNN?</h3>
+  <ul>
+    <li>Can generate high quality node embeddings</li>
+    <li>Can encode the heterogeneity of a graph</li>
+    <li>A lot faster than neural models</li>
+    <li>Simpler than neural models and does not require training</li>
+    <li>Does not require GPU</li>
+    <li>Scales very well with increased CPU concurrency</li>
+    <li>Does not require node feature input</li>
+    <li>Has inductive capabilities</li>
+  </ul>
+
+  <hr>
+
+  <h2><a href="https://towardsdatascience.com/understanding-locality-sensitive-hashing-49f6d1f6134">Locality Sensitive Min-Hashing</a></h2>
+  <p>The basic idea behind LSH is that <strong>sets with a high Jaccard similarity are more likely to have many hash values in common than sets with a low Jaccard similarity</strong>. Therefore, if we can find a way to group sets with similar hash values together, we can identify sets that are likely to have a high Jaccard similarity.</p>
+  <p>In LSH, the data is <strong>first transformed into a set of binary signatures using the min-hashing</strong> technique. Min-hashing is a method of estimating the Jaccard similarity between two sets (i.e., the size of their intersection divided by the size of their union) by hashing the sets and comparing the resulting hashes.</p>
+  <p>LSH <strong>then applies multiple hash functions to the signatures, and groups the signatures that collide on at least one hash function into the same bucket.</strong> The probability of two similar signatures colliding on at least one hash function is high, while the probability of two dissimilar signatures colliding is low. This makes it possible to quickly prune the search space by only considering candidates in the same buckets as the query signature.</p>
+  <p>LSH can be used with various distance metrics, such as Euclidean distance, cosine similarity, or Jaccard distance. The choice of distance metric depends on the type of data and the specific application.</p>
+  <p>Overall, LSH is a powerful technique for approximate nearest neighbor search, allowing us to efficiently search large datasets for comparable items with high accuracy. It has many practical applications, such as image search, recommendation systems, and natural language processing.</p>
+
+  <h3>Min-Hashing</h3>
+  <p>Min-hashing is a technique used to <strong>estimate the Jaccard similarity</strong> between two sets, which is defined as the <strong>size of their intersection divided by the size of their union</strong>. It is a useful tool in information retrieval and data mining, where it is often used for clustering, indexing, and nearest neighbor search.</p>
+  <p>Here is a step-by-step explanation of how min-hashing works:</p>
+
+  <h4>1. Convert the sets into binary vectors</h4>
+  <p>Given two sets A and B, we can represent them as binary vectors of length N, where N is the total number of items. Each entry in the vector corresponds to an item, and is set to 1 if the item is present in the set, and 0 otherwise. For example, if N = 7 and A = {1, 2, 4, 5, 6}, and B = {2, 3, 5, 7}:</p>
+  <pre><code>A = [1, 0, 1, 0, 1, 1, 0]
+B = [0, 1, 1, 0, 1, 0, 1]</code></pre>
+
+  <h4>2. Generate k hash functions</h4>
+  <p>We randomly select k hash functions, each of which maps a binary vector to a single integer between 1 and N. One common approach is to use hash functions of the form <code>h(x) = (a * x + b) % p</code>, where a and b are random parameters, and p is a large prime number:</p>
+  <pre><code>h1(x) = (2x + 1) % 7
+h2(x) = (3x + 2) % 7
+h3(x) = (5x + 3) % 7</code></pre>
+
+  <h4>3. Compute the min-hash signature</h4>
+  <p>For each hash function, we compute the minimum hash value for each set. This gives us a signature of length k for each set:</p>
+  <pre><code>h1(1) = (2*1 + 1) % 7 = 3
+h1(2) = (2*2 + 1) % 7 = 5
+h1(4) = (2*4 + 1) % 7 = 2  &lt;-- minhash for A using h1 is 2
+h1(5) = (2*5 + 1) % 7 = 4
+h1(6) = (2*6 + 1) % 7 = 6
+
+# Min-hash signatures:
+# Set A: [2, 0, 0]
+# Set B: [0, 1, 0]</code></pre>
+
+  <h4>4. Estimate the Jaccard similarity</h4>
+  <p>To estimate the Jaccard similarity between sets A and B, we compare their min-hash signatures, and count the number of times the corresponding entries are equal:</p>
+  <pre><code>J(A, B) = (1/k) * (number of matching entries in s(A) and s(B))</code></pre>
+  <pre><code>signature1 = {2,0,0}
+signature2 = {0,1,0}
+intersection = signature1.intersection(signature2)
+union = signature1.union(signature2)
+jaccard_similarity = len(intersection) / len(union)
+
+signature1 = [2,0,0]
+signature2 = [0,1,0]
+num_hashes = 3
+num_matches = sum(1 for i in range(num_hashes) if signature1[i] == signature2[i])
+estimated_similarity = num_matches / num_hashes
+
+print('Jaccard similarity:', jaccard_similarity,
+      'Estimated similarity:', estimated_similarity)
+# > Jaccard similarity: 0.333 Estimated similarity: 0.333</code></pre>
+
+  <hr>
+
+  <p>The intuition behind min-hashing is that, <strong>by hashing the items in a set and taking the minimum hash value, we are effectively selecting a "representative" item that captures the essence of the set.</strong> By comparing the min-hash signatures of two sets, we can estimate their Jaccard similarity with high probability, even if we don't know the exact contents of the sets. <strong>This makes min-hashing a useful tool for dealing with large, high-dimensional datasets where traditional similarity measures are computationally infeasible.</strong></p>
+
+  <pre><code>import random
+
+# Define the sets to be compared
+set1 = {1, 2, 3, 4, 5}
+set2 = {3, 4, 5, 6, 7}
+
+# Define the number of hash functions to use
+num_hashes = 100
+
+# Generate random hash functions
+hash_funcs = []
+for i in range(num_hashes):
+    a = random.randint(1, 100)
+    b = random.randint(1, 100)
+    hash_funcs.append(lambda x: (a*x + b) % 100000000)
+
+# Define a function to create a min-hash signature for a set
+def min_hash_signature(s):
+    signature = [float('inf')] * num_hashes
+    for element in s:
+        for i, hash_func in enumerate(hash_funcs):
+            hash_val = hash_func(element)
+            signature[i] = min(signature[i], hash_val)
+    return signature
+
+# Create min-hash signatures for the sets
+signature1 = min_hash_signature(set1)
+signature2 = min_hash_signature(set2)
+
+# Estimate Jaccard similarity as the fraction of matching min-hash values
+num_matches = sum(1 for i in range(num_hashes)
+                  if signature1[i] == signature2[i])
+jaccard_similarity = num_matches / num_hashes
+
+print('~ Jaccard similarity:', jaccard_similarity)</code></pre>
+
+  <h3>Code for STE (Straight-Through Estimator)</h3>
+  <pre><code>class BinaryLayer(torch.autograd.Function):
+    def forward(self, input):
+        return torch.sign(input)
+
+    def backward(self, grad_output):
+        input = self.saved_tensors
+        grad_output[input&gt;1]=0
+        grad_output[input&lt;-1]=0
+        return grad_output
+
+input = torch.randn(4,4)
+input = torch.autograd.Variable(input, requires_grad=True)
+
+model = BinaryLayer()
+output = model(input)
+loss = output.mean()
+loss.backward()
+
+# With STE:
+# input.grad =
+#   6.2500e-02 for all entries
+
+# Without STE:
+# input.grad =
+#   0 for all entries</code></pre>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

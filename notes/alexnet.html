@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlexNet — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">🎴</span>
+    <h1>AlexNet</h1>
+  </header>
+
+  <h2><a href="https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf">ImageNet Classification with Deep Convolutional Neural Networks</a></h2>
+
+  <h3>Key ideas</h3>
+  <ul>
+    <li>You can use CUDA and deep CNNs to classify images (yes, this was absolutely novel!)</li>
+    <li>Reduce overfitting via dropout</li>
+    <li>Five conv layers + max pooling + fully connected layers + 1000-way softmax</li>
+    <li>Won ImageNet</li>
+  </ul>
+
+  <h3>Introduction</h3>
+  <ul>
+    <li>Labeled datasets were small up until now (CIFAR is 32x32)</li>
+    <li>ImageNet is one of such larger datasets with 15M labeled images in 22k categories</li>
+    <li>Historically it's been prohibitively expensive to train CNNs for high-resolution images</li>
+    <li>GPUs + optimized 2D convolution operations are enough to do it now</li>
+  </ul>
+
+  <h3>Dataset</h3>
+  <ul>
+    <li>15M labeled images in 22k categories</li>
+    <li>ILSVRC is 1k images in 1k categories, 1.2M training images, 50k validation set, 150k test set</li>
+    <li>All images were down-sampled to 256x256</li>
+    <li>Subtracted mean activity from the centered raw RGB values of the pixels</li>
+  </ul>
+
+  <h3>Architecture</h3>
+  <ul>
+    <li>
+      <figure>
+        <figcaption>Diagram of the AlexNet architecture showing the split across two GPUs</figcaption>
+      </figure>
+    </li>
+    <li>One GPU runs the top part, another runs the bottom one</li>
+    <li>ReLU: $f(x) = \max(0, x)$, versus the usual tanh or sigmoid are MUCH faster</li>
+    <li>Multiple GPUs training: spread the net across 2 GPUs
+      <ul>
+        <li>GPUs communicate only in certain layers. E.g: kernels of layer 3 take input from kernels in layer 2 output only if they reside in the same GPU</li>
+      </ul>
+    </li>
+    <li>Local response normalization
+      <ul>
+        <li>ReLU might not require normalization but it aids generalization</li>
+        <li>If $a^i_{x,y}$ is the activity of a neuron applying kernel $i$ at position $(x,y)$, $b^i_{x,y}$ or the normalized activity is:</li>
+        <li>
+          <figure>
+            <figcaption>Formula for local response normalization in AlexNet</figcaption>
+          </figure>
+        </li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>Reducing overfitting</h3>
+  <ul>
+    <li>Data augmentation: random horizontal flipping, translation, and cropping
+      <ul>
+        <li>Note: it's crazy that this was discovered then and it's still the most useful data augmentation technique</li>
+      </ul>
+    </li>
+    <li>Data augmentation: altering the intensities of the RGB channels and perform PCA on the set of RGB pixel values (color jittering)</li>
+    <li>Dropout with probability 0.5 in the fully connected layers so that each neuron learns more robust features as it cannot rely on other neurons</li>
+  </ul>
+
+  <h3>Details of learning and results (skipped)</h3>
+
+  <h3>Discussion</h3>
+  <ul>
+    <li>It's notable that even if a single conv layer is removed, the network performance degrades significantly
+      <ul>
+        <li>Hint that depth is important for achieving good results</li>
+      </ul>
+    </li>
+    <li>Aim is to use even deeper and larger networks that include even temporal structure for videos</li>
+  </ul>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

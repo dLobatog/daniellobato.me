@@ -1,0 +1,315 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --fg: #e8e4de;
+  --fg-dim: #8a8680;
+  --accent: #c9a96e;
+  --accent2: #6ea5c9;
+  --accent3: #c96e8a;
+  --serif: 'EB Garamond', Georgia, serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--serif);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── NAV ─── */
+.note-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  background: rgba(10, 10, 15, 0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.note-nav a {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  transition: color 0.3s;
+}
+
+.note-nav a:hover { color: var(--accent); }
+
+.note-tag {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+}
+
+.note-tag[data-tag="Machine Learning"] { color: var(--accent2); border-color: rgba(110,165,201,0.3); }
+.note-tag[data-tag="Technology"] { color: var(--accent); border-color: rgba(201,169,110,0.3); }
+.note-tag[data-tag="Introspection"] { color: var(--accent3); border-color: rgba(201,110,138,0.3); }
+
+/* ─── ARTICLE ─── */
+.note-article {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 80px 24px 120px;
+}
+
+.note-article header {
+  margin-bottom: 48px;
+}
+
+.note-article .note-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.note-article h1 {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--fg);
+}
+
+.note-article h2 {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--fg);
+  margin: 48px 0 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(201,169,110,0.15);
+}
+
+.note-article h3 {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--fg);
+  margin: 36px 0 16px;
+}
+
+.note-article h4 {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  margin: 28px 0 12px;
+}
+
+.note-article p {
+  font-size: 1.1rem;
+  color: var(--fg);
+  margin-bottom: 1.2em;
+  line-height: 1.8;
+}
+
+.note-article a {
+  color: var(--accent2);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(110,165,201,0.3);
+  transition: all 0.3s;
+}
+
+.note-article a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ─── LISTS ─── */
+.note-article ul, .note-article ol {
+  margin: 0 0 1.2em 1.5em;
+  font-size: 1.05rem;
+  color: var(--fg);
+}
+
+.note-article li {
+  margin-bottom: 0.5em;
+  line-height: 1.7;
+}
+
+.note-article li ul, .note-article li ol {
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+}
+
+/* ─── BLOCKQUOTE ─── */
+.note-article blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 24px 0;
+  padding: 16px 24px;
+  background: rgba(201,169,110,0.04);
+  border-radius: 0 8px 8px 0;
+}
+
+.note-article blockquote p {
+  font-style: italic;
+  color: var(--fg-dim);
+  margin-bottom: 0.5em;
+}
+
+.note-article blockquote p:last-child { margin-bottom: 0; }
+
+/* ─── CODE ─── */
+.note-article code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: var(--bg2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--accent2);
+}
+
+.note-article pre {
+  background: var(--bg2);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 24px 0;
+  overflow-x: auto;
+  position: relative;
+}
+
+.note-article pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+/* ─── IMAGES ─── */
+.note-article img {
+  max-width: 100%;
+  border-radius: 10px;
+  margin: 24px 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.note-article figure {
+  margin: 32px 0;
+  text-align: center;
+}
+
+.note-article figcaption {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--fg-dim);
+  margin-top: 8px;
+}
+
+/* ─── TABLES ─── */
+.note-article table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  font-size: 0.95rem;
+}
+
+.note-article th {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 2px solid rgba(201,169,110,0.2);
+  background: var(--bg2);
+}
+
+.note-article td {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: var(--fg);
+  vertical-align: top;
+}
+
+.note-article tr:hover td {
+  background: rgba(255,255,255,0.02);
+}
+
+/* ─── MATH (KaTeX overrides) ─── */
+.katex { color: var(--fg); }
+.katex-display {
+  margin: 24px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0;
+}
+
+/* ─── HR ─── */
+.note-article hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--fg-dim), transparent);
+  opacity: 0.2;
+  margin: 48px 0;
+}
+
+/* ─── KEY IDEAS BOX ─── */
+.key-ideas {
+  background: var(--bg2);
+  border: 1px solid rgba(110,165,201,0.15);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
+}
+
+.key-ideas h4 {
+  margin-top: 0;
+  color: var(--accent2);
+}
+
+/* ─── FOOTER ─── */
+.note-footer {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.note-footer a {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  transition: color 0.3s;
+}
+
+.note-footer a:hover { color: var(--accent); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 600px) {
+  .note-nav { padding: 12px 16px; }
+  .note-article { padding: 48px 16px 80px; }
+  .note-article pre { padding: 14px 16px; }
+  .note-article table { font-size: 0.85rem; }
+  .note-article th, .note-article td { padding: 8px 10px; }
+}

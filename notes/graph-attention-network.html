@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Attention Network — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">🎖️</span>
+    <h1>Graph Attention Network</h1>
+  </header>
+
+  <h2><a href="https://arxiv.org/pdf/1710.10903.pdf">Graph Attention Networks</a></h2>
+
+  <h3>Key ideas</h3>
+  <ul>
+    <li>Apply different weights to different nodes in the neighborhood without prior knowledge of the graph's structure</li>
+    <li>Spectral vs non-spectral approaches to graph convolutions
+      <ul>
+        <li>Spectral filters learn on Laplacian eigenbasis, hence they are dependent on graph structure</li>
+        <li>Non-spectral filters use convolution directly on the graph operating as close neighbors
+          <ul>
+            <li>Sampling a fixed-size neighborhood (weighted for attention, self link for self-attention) and aggregating</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>Attention Layer</h3>
+  <ul>
+    <li>Input: node features $\mathbf{h} = \{h_1, h_2, h_3, \ldots\}$ (vectors)</li>
+    <li>Output: ditto</li>
+    <li>At least one linear transformation is required to have higher level features. A weight matrix $W$ can be used for this.</li>
+    <li>
+      <figure>
+        <figcaption>Diagram showing the attention coefficient computation: $e_{ij} = a(\mathbf{W}\vec{h}_i, \mathbf{W}\vec{h}_j)$</figcaption>
+      </figure>
+    </li>
+    <li>
+      <figure>
+        <figcaption>Diagram showing the softmax normalization of attention coefficients: $\alpha_{ij} = \mathrm{softmax}_j(e_{ij})$</figcaption>
+      </figure>
+    </li>
+    <li>Where $e_{ij}$ is the importance of node $j$'s features to node $i$
+      <ul>
+        <li>We only compute it for nodes $j$ in $i$'s neighborhood.</li>
+      </ul>
+    </li>
+    <li>Also $\|$ is concatenation</li>
+    <li>To stabilize the process of self-attention we have found extending one mechanism to employ multi-head attention
+      <figure>
+        <figcaption>Diagram showing multi-head attention concatenation formula</figcaption>
+      </figure>
+      <figure>
+        <figcaption>Diagram showing multi-head attention averaging formula for the final layer</figcaption>
+      </figure>
+    </li>
+    <li>Highly efficient as computing attention can be parallelized across multiple edges in $O(|V|FF' + |E|F')$ where $F$ is the number of node features.</li>
+  </ul>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do Transformers Really Perform Bad for Graph Representation? — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">⛏️</span>
+    <h1>Do Transformers Really Perform Bad for Graph Representation?</h1>
+  </header>
+  <p><a href="https://arxiv.org/pdf/2106.05234.pdf">Paper link</a></p>
+
+  <h2>Key ideas</h2>
+  <ul>
+    <li>Transformer architecture is becoming a dominant choice in NLP and CV, why not in Graphs?</li>
+    <li>Solution: Graphormer which uses special positional encoding for graphs.</li>
+    <li>Problem not mentioned in the paper: graph "positional encoding" often requires shortest path computation between two nodes.</li>
+  </ul>
+
+  <h2>Introduction</h2>
+  <ul>
+    <li>Transformer is the most powerful NN in modeling sequential data such as speech and natural language processing.</li>
+    <li>It's an open question whether Transformers are suitable to model graphs &mdash; Graphormer seems to be an affirmative answer.</li>
+    <li>Most leaderboards and benchmarks in chemistry seem to do well.</li>
+    <li>Centrality encoding captures node importance in the graph.</li>
+    <li>Spatial encoding captures the structural relation between nodes &mdash; for each node pair, we assign a learnable embedding based on the spatial relation.</li>
+  </ul>
+  <figure>
+    <figcaption>Diagram showing the Graphormer architecture with centrality and spatial encoding.</figcaption>
+  </figure>
+
+  <h2>Preliminary</h2>
+  <ul>
+    <li>GNNs aim to learn representations of nodes and graphs.</li>
+    <li>Modern GNNs follow a learning schema that updates the representation of a node by aggregating representations of its neighbors.</li>
+    <li>Aggregate-combine step:</li>
+  </ul>
+  <figure>
+    <figcaption>Formula showing the aggregate-combine step in GNNs.</figcaption>
+  </figure>
+  <ul>
+    <li>The task: graph classification.</li>
+  </ul>
+
+  <h2>Centrality Encoding</h2>
+  <ul>
+    <li>Learnable embedding applied to each node based on the indegree/outdegree of them.</li>
+  </ul>
+  <figure>
+    <figcaption>Centrality encoding formula based on indegree and outdegree.</figcaption>
+  </figure>
+
+  <h2>Spatial Encoding</h2>
+  <ul>
+    <li>Biased term is specific to the shortest path distance between $v_i$ and $v_j$.</li>
+  </ul>
+  <figure>
+    <figcaption>Spatial encoding formula showing bias term based on shortest path distance.</figcaption>
+  </figure>
+
+  <h2>Special Node</h2>
+  <ul>
+    <li>A node [VNode] is added to the graph which is then connected to every individual node (distance of 1). The point is that the representation of the entire graph $h_g$ is the node feature of [VNode].</li>
+  </ul>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

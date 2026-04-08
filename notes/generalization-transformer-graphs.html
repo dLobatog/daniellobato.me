@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Generalization of Transformer Networks to Graphs — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">🪐</span>
+    <h1>A Generalization of Transformer Networks to Graphs</h1>
+  </header>
+  <p><a href="https://arxiv.org/pdf/2012.09699v2.pdf">Paper</a></p>
+
+  <h2>Key ideas</h2>
+  <ul>
+    <li>Original transformer was conceived for NLP which operates on graphs representing all connections between words in a sequence.</li>
+    <li>Original transformer does not leverage graph inductive bias.</li>
+    <li>New graph transformer introduces four properties vs original one:
+      <ul>
+        <li>Attention mechanism is a function of neighborhood connectivity for each node.</li>
+        <li>Positional encoding is represented by Laplacian eigenvectors, which generalize the sinusoidal positional encodings in NLP.</li>
+        <li>Layer normalization is replaced by batchnorm layer.</li>
+        <li>Architecture is extended to edge feature representation (e.g: applied in chemistry for bond type) or link prediction.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Architecture</h2>
+
+  <h3>On Graph Sparsity</h3>
+  <ul>
+    <li>On NLP, a sentence is treated as a fully-connected graph. This choice is justified because it&rsquo;s difficult to find sparse interactions among words in a sentence. The dependency of a word on another word varies with context, applications&hellip;</li>
+    <li>This graph for NLP transformers has less than 10s or 100s of nodes (sentences can only be so long). This makes it computationally feasible. Actual graph datasets can have node sizes of billions.</li>
+    <li>On these accounts, it&rsquo;s more practical to have a Graph Transformer where a node attends to local node neighbors.</li>
+  </ul>
+
+  <h3>On Positional Encodings</h3>
+  <ul>
+    <li>NLP positional encoders need to ensure unique representation for each word and preserve distance information.</li>
+    <li>The design of unique node positions is challenging on graphs, as there are symmetries and isomorphisms that make graphs invariant to the node position.
+      <ul>
+        <li>This is a critical reason why GAT, where attention is a function of local neighborhood connectivity, instead of full-graph connectivity, does not achieve competitive performance on graph datasets.</li>
+        <li>Other literature cover Laplacian Positional Encoders as a generalization of the sinusoidal ones in original Transformers.</li>
+        <li>They encode distance-aware information: nearby nodes have similar positional features, farther nodes have dissimilar ones.</li>
+      </ul>
+    </li>
+    <li>Eigenvectors are defined as the factorization of the graph Laplacian matrix:</li>
+  </ul>
+  <figure>
+    <figcaption>Factorization of the graph Laplacian matrix into eigenvectors.</figcaption>
+  </figure>
+
+  <h3>Graph Transformer Architecture</h3>
+  <ul>
+    <li>Very similar to the original &ldquo;Attention is all you need&rdquo; architecture.</li>
+  </ul>
+  <figure>
+    <figcaption>Diagram of the Graph Transformer architecture, similar to the original Transformer.</figcaption>
+  </figure>
+  <ul>
+    <li>Node updates:</li>
+  </ul>
+  <figure>
+    <figcaption>Node update equations for the Graph Transformer.</figcaption>
+  </figure>
+  <ul>
+    <li>Attention outputs passed to Feed-Forward-Network preceded and succeeded by residual connections:</li>
+  </ul>
+  <figure>
+    <figcaption>Feed-Forward-Network with residual connections applied to attention outputs.</figcaption>
+  </figure>
+  <ul>
+    <li>Check the original paper for the edge-features version.</li>
+  </ul>
+
+  <h2>Discussion</h2>
+  <ul>
+    <li>Generalization of transformer network on graphs works best when Laplacian PE are used, and BatchNorm is used instead of LayerNorm.</li>
+    <li>Proposed architecture outperforms baseline isotropic and anisotropic GNNs (GCN and GAT).
+      <ul>
+        <li>Fresh and improved attention-based GNN baseline surpassing GAT.</li>
+      </ul>
+    </li>
+    <li>Sparse graph connectivity is a critical inductive bias for datasets with arbitrary graph structures. Demonstrated comparing sparse vs full graph experiments.</li>
+  </ul>
+
+  <p>References:<br>
+  <a href="https://arxiv.org/pdf/1806.01261.pdf">Relational inductive biases, deep learning, and graph networks</a></p>
+
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corecursion and Codata — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Technology">Technology</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">🌊</span>
+    <h1>Corecursion and Codata</h1>
+  </header>
+
+  <p>Four weeks ago, I embarked on a self-guided journey to learn Clojure. Despite not knowing the syntax, I boldly decided to build an Amazon web spider and solve Project Euler problems, hoping to learn as I went along.</p>
+
+  <p>So far, the journey has been both rewarding and challenging. I'm often tempted to procrastinate and deal with the issues at my job at Lifebooker. Balancing this learning experience with attending all hackNY events, hackathons, and making the most of my time in NYC (which I admit I'm not doing a great job at) leaves little room for experimentation. Tonight, I decided to take a break from my Amazon project, as I feel like I wouldn't accomplish much. Instead, I'll write a blog post about corecursion and learn by explaining it.</p>
+
+  <p>To start, let's define recursion.</p>
+
+  <p>According to Wikipedia, recursion is the process of repeating items in a self-similar way. While accurate, for the sake of clarity, let's define recursion as the expression of a function in terms of itself. This function could be a mathematical function $f(x)$ or a function in a programming language <code>function(x)</code>.</p>
+
+  <p>In mathematics, a function defined in terms of itself might look like <code>f(x) = f(x-1) + 2</code>. A simple function defined in terms of itself in Java-like pseudocode could look like this:</p>
+
+<pre><code class="language-java">recursive_function(argument1) {
+    return recursive_function(argument1)
+}</code></pre>
+
+  <p>Recursive functions typically have at least one base case, so they stop at a certain point and cease calling themselves. A simple example that comes to mind is a function that returns a number after some calls, provided that it's called with an integer argument less than 10.</p>
+
+<pre><code class="language-java">recursive_function(argument1) {
+    if (argument1 == 10) { return argument1 }
+    return recursive_function(argument1 + 1)
+}</code></pre>
+
+  <p>Now that we've refreshed our CS101 knowledge, let's dive into the main topic. Corecursion is essentially the same concept as recursion but applied to data structures instead of functions. If I had to phrase the problem, it would go something like this:</p>
+
+  <ul>
+    <li>Given a data structure, define a computation on that structure.</li>
+    <li>Execute it, then repeat the process on the result of this computation, and so on.</li>
+    <li>It is similar to recursion, but it produces a sequence of data, with calculations taking place on demand when this data is dereferenced.</li>
+    <li>It's data-oriented, not operation-oriented.</li>
+  </ul>
+
+  <h3>Codata</h3>
+
+  <p>To comprehend corecursion, it's crucial to understand codata. If you're really interested, I recommend reading this paper that covers the basics of F-algebras, F-coalgebras, and duality (with F representing a functor in this context). For simplicity's sake, let's use two basic data types based on natural numbers, Nat and CoNat.</p>
+
+  <p>Nat (the natural numbers) is defined as:</p>
+
+<pre><code>O
+S O
+S (S O)
+S (S (S O))
+S (S (S (S O)))
+...</code></pre>
+
+  <p>Ultimately, they're created from S and 0. If you consider S as 1, you could create all the numbers with this data type.</p>
+
+  <p>CoNat is almost identical to Nat but with an extra element.</p>
+
+<pre><code>cO
+cS cO
+cS (cS cO)
+cS (cS (cS cO))
+...
+cS (cS (cS (...)))...</code></pre>
+
+  <p>An interesting consequence of this is that the last element of the CoNat set <strong>doesn't contain c0</strong>. Plus, it's truly infinite, as opposed to the "latest" Nat, which is just applying S and 0 repeatedly. If we were to define Nat, we could say something like:</p>
+
+<pre><code>type nat = Zero | Successor(nat)</code></pre>
+
+  <p>But when it comes to infinity, we cannot do <code>infinity = Successor(infinity)</code>. Thus, infinity ($\omega$) is NOT a member of this set. If it was, now consider the set N that has all the same elements as Nat except it does not have $\omega$. Clearly Zero is in N, and if y is in N, Succ(y) is in N, but N is smaller than Nat which is a contradiction. Therefore $\omega$ is not in Nat. <em>Data is always finite. Codata can be infinite.</em></p>
+
+  <p>Taken word by word from reddit:</p>
+
+  <blockquote>
+    <p>All types in functional programming have two "tools" for using them:</p>
+    <ul>
+      <li>an introduction principle, and</li>
+      <li>an elimination principle</li>
+    </ul>
+    <p>The introduction principle lets us turn objects of some other type into objects of this type. The elimination principle lets us turn objects of this type into objects of some other type.</p>
+  </blockquote>
+
+  <p>This should be your personal mantra. Examples of this are:</p>
+
+  <ul>
+    <li>Function types - Lambda abstraction &amp; Function application</li>
+    <li>Sum types - inl and inr &amp; case expressions</li>
+    <li>Product types - the function <code>(,)</code> &amp; <code>fst</code> and <code>snd</code></li>
+    <li>Unit - the unit constructor <code>()</code> &amp; <code>case () of () -&gt;</code></li>
+    <li>Bool - <code>True</code> and <code>False</code> &amp; if-then-else statements</li>
+    <li>Empty - (no introduction rule) &amp; reductio ad absurdum, the ability to promote $\bot$ to any other type.</li>
+  </ul>
+
+  <p>A requirement for an introduction principle to be such, is that the introduction principle has to be able to turn some type into Nat. We do have an introduction principle for Nat. It is just our two old friends 0 and S (the constructors).</p>
+
+  <p>CoNat does NOT have an introduction principle as simple as its constructors. Its introduction principle is:</p>
+
+<pre><code class="language-haskell">coNatIntro : (a -> Either () a) -> a -> CoNat
+coNatIntro f a = case f a of
+    Left () -> cO
+    Right a' -> cS (coNatIntro f a')</code></pre>
+
+  <p>So essentially, <code>coNatIntro f</code> includes <code>a -&gt; CoNat</code>. And that's enough to 'turn some type into CoNat', so it's an introduction principle.</p>
+
+  <p>Elimination principles work just the opposite way, they turn elements of a type into elements of some other type, so in our example they would have the form <code>Nat -&gt; something</code>, <code>CoNat -&gt; something else</code>.</p>
+
+  <p>The elimination principle for our simple Nat type is:</p>
+
+<pre><code class="language-haskell">natElim : a -> (a -> a) -> Nat -> a
+natElim z s O = z
+natElim z s (S n) = s (natElim z s n)</code></pre>
+
+  <p>Wait. Isn't <code>Nat -&gt; a</code> the opposite of <code>a -&gt; CoNat</code>? Yup, so it is even clearer that they are elimination and introduction principles respectively. So it is proven that CoNat is codata, hence infinite but we can only see a finite amount of CoNat. This has some consequences, that can help understand corecursion and codata.</p>
+
+  <ul>
+    <li>You can't define total subtraction. (infinity - infinity will always loop).</li>
+    <li>You can't write total equality. (it loops when comparing infinity == infinity).</li>
+    <li>You can't write a total <code>elem</code> function that works on a CoList (it loops when the list is infinitely long and the element isn't in the list).</li>
+  </ul>
+
+  <p>Corecursive data structures are defined in terms of itself, corecursive algorithms are defined in terms of its output rather than on its input.</p>
+
+  <p>This and lazy evaluation allows "infinitely" large objects without allocating this memory and obviously running out of it prematurely.</p>
+
+  <h3>Corecursive binary trees</h3>
+
+  <p>A complex yet easy to understand corecursive structure would be a binary tree. I won't go into the details, but you can see how this would be defined in terms of a corecursive structure. <a href="http://stackoverflow.com/questions/3312608/tree-traversal-with-corecursion">Here is an example</a> on how they take advantage of corecursion to traverse the tree.</p>
+
+<pre><code class="language-clojure">(defstruct tree :val :left :right)
+(def my-tree (struct tree 1 (struct tree 2) (struct tree 3 (struct tree 4) (struct tree 5))))</code></pre>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

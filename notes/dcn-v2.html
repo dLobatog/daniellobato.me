@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCN V2: Improved Deep &amp; Cross Network — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">⛱️</span>
+    <h1>DCN V2: Improved Deep &amp; Cross Network</h1>
+  </header>
+  <p><a href="https://arxiv.org/pdf/2008.13535.pdf">Paper link</a></p>
+  <p class="note-subtitle">Practical Lessons for Web-scale Learning to Rank Systems</p>
+
+  <h2>Key ideas</h2>
+  <ul>
+    <li>Learning effective feature crosses is key behind building recommender systems.</li>
+    <li>Moving from Factorization Machine (FM) methods to NNs didn't work as they don't approximately model 2nd or 3rd-order feature crosses.</li>
+    <li>Making NNs wider and deeper isn't a solution, as this makes them much slower to serve. Can't handle high QPS.</li>
+    <li>DCN aims to leverage <strong>implicit</strong> high-order crosses from NNs, with <strong>explicit</strong> crosses modeled by formulas with controllable interaction order.</li>
+    <li>DCN cross network is $O(\text{input size})$, limiting flexibility.</li>
+    <li>DCN-V2 first learns explicit feature interactions through cross layers, and then combines with a deep network to learn complementary implicit interactions.</li>
+  </ul>
+
+  <h2>Related work</h2>
+  <ul>
+    <li><strong>Parallel Structure</strong>
+      <ul>
+        <li>Jointly train two parallel networks. Inspired from wide and deep model.</li>
+        <li>Wide component takes inputs as crosses of raw features.</li>
+        <li>Deep component is a NN.</li>
+        <li>Examples are DeepFM or DCN.</li>
+      </ul>
+    </li>
+    <li><strong>Stacked Structure</strong>
+      <ul>
+        <li>Introduce interaction layer which creates explicit feature crosses between embeddings and DNN.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Proposed Architecture: DCN-V2</h2>
+  <ul>
+    <li>Significantly improve expressiveness of DCN in modeling complex explicit cross terms, with easy deployment.</li>
+    <li>Observing the low-rank nature of the cross layers, we propose to leverage a mixture of low-rank cross layers.</li>
+  </ul>
+  <figure>
+    <figcaption>DCN-V2 architecture overview showing cross layers and deep network.</figcaption>
+  </figure>
+
+  <h3>Embedding Layer</h3>
+  <ul>
+    <li>Takes combination of sparse (categorical) and dense features and outputs $x_0$.</li>
+    <li>$i$-th categorical feature is projected from high-dimensional sparse space, to low-dimensional dense space through learned projection matrix.</li>
+    <li>Output is the concatenation of all embedded vectors and normalized dense features.</li>
+  </ul>
+
+  <h3>Cross Network</h3>
+  <figure>
+    <figcaption>Cross network layer formula diagram.</figcaption>
+  </figure>
+
+  <h3>Deep Network</h3>
+  <p>Just an NN activated by ReLU. Other activation functions are suitable.</p>
+
+  <h2>Combination of Deep and Cross Networks</h2>
+  <ul>
+    <li><strong>Stacked:</strong> $x_0$ input is fed to cross network, then is fed to deep network. $f_{\text{deep}} \cdot f_{\text{cross}}$ is the output.</li>
+    <li><strong>Parallel:</strong> $x_0$ is fed in parallel to both cross and deep networks. $f_{\text{deep}} + f_{\text{cross}}$ is the output.</li>
+  </ul>
+  <figure>
+    <figcaption>Stacked vs Parallel DCN-V2 architecture comparison diagram.</figcaption>
+  </figure>
+
+  <h2>Cost-Effective Mixture of Low-Rank DCN</h2>
+  <ul>
+    <li><a href="https://en.wikipedia.org/wiki/Low-rank_approximation">Low-rank techniques</a> are used to reduce computational cost.</li>
+    <li>Approximates a dense matrix $M$ by two tall and skinny matrices $U$, $V$.</li>
+    <li>Most effective when matrix shows a large gap in singular values or fast spectrum decay.</li>
+  </ul>
+  <figure>
+    <figcaption>Low-rank approximation diagram for cost-effective mixture of cross layers.</figcaption>
+  </figure>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

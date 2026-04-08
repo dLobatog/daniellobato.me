@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLIP: Contrastive Learning Image Pretraining — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">📋</span>
+    <h1>CLIP: Contrastive Learning Image Pretraining (image-to-text)</h1>
+  </header>
+
+  <figure>
+    <figcaption>CLIP architecture diagram showing image encoder and text encoder with contrastive learning.</figcaption>
+  </figure>
+  <figure>
+    <figcaption>CLIP training process: matching image-text pairs via contrastive objective.</figcaption>
+  </figure>
+
+  <ul>
+    <li>Trained on large amount of &lt;image, text&gt; pairs.</li>
+    <li>The underlying principle of CLIP is to transform images and text into a similar representation.
+      <ul>
+        <li>Once in this space, you can measure the similarity between an image and a text by computing the distance between their embeddings. Closer = more related.</li>
+        <li>Notice even though it's trained to find image-text similarity, it's able to perform a lot more than that!</li>
+      </ul>
+    </li>
+    <li>In practical terms, an ML Engineer could use CLIP for a variety of tasks such as image captioning, text-to-image synthesis, object detection, and more.
+      <ul>
+        <li>e.g.: pass your image through CLIP's image encoder to generate an image embedding.</li>
+        <li>For each potential text match, you have a precomputed text embedding.</li>
+      </ul>
+    </li>
+    <li>Notice this is a ranking task, where we learn the corresponding matching text higher than non-corresponding texts.</li>
+  </ul>
+
+  <p>Look for Contrastive loss in related notes.</p>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

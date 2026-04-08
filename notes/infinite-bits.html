@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infinite bits and the rule of product — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Technology">Technology</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">🌗</span>
+    <h1>Infinite bits and the rule of product</h1>
+  </header>
+
+  <p>Before I set foot on American soil, I grappled with one particular subject for an entire year at my home university - Discrete Mathematics. It wasn't exceptionally challenging, but the professor's approach to teaching led the majority of the class to failure. As I recall, only a handful - perhaps three - managed to pass the subject through regular exams.</p>
+
+  <p>In this state of uncertainty, with scarce resources to aid our understanding, my classmates and I prepared to take an exam that covered the entire subject in June. It might not seem like a big deal, but it was scheduled right after our second-semester exams. Amidst all the stress, I managed to pass the subject, owing a lot to Rosen's book, <a href="http://www.google.com/products/catalog?q=rosen+discrete+math&um=1&ie=UTF-8&tbm=shop&cid=6921607594339623143&sa=X&ei=PkHvTtCCEOKCsALawaSqCQ&ved=0CEoQ8wIwBA">'Discrete Mathematics and its Applications'</a> and Berkeley's online course.</p>
+
+  <p>This challenging journey taught me a lot, not just about combinatorics, number theory, and advanced graph theory, but also some philosophical concepts that continue to intrigue me. One of these was the principle of <a href="http://en.wikipedia.org/wiki/Counting">counting</a>. The <a href="http://en.wikipedia.org/wiki/Rule_of_sum">rule of sum</a>, the <a href="http://en.wikipedia.org/wiki/Rule_of_product">rule of product</a>, and the <a href="http://en.wikipedia.org/wiki/Pigeonhole_principle">pigeonhole principle</a> apply to numerous problems. Even though they're simple concepts, applying them to infinite sets allows us to demonstrate an array of ideas. I want to delve into how we perceive the future and our place in it, even though we're aware that something is already awaiting us there. Sounds intriguing, doesn't it?</p>
+
+  <p>Let's illustrate this with a basic example. I hope you'll excuse any minor inaccuracies; my main aim is to paint a broader picture.</p>
+
+  <p>Consider computer screens, which are essentially composed of several tiny dots filled with a color from a vast array of hues. This capability allows us to display any conceivable image on a screen.</p>
+
+  <blockquote>
+    <p>These tiny dots, or pixels, don't color themselves. The computer assigns a certain value to fill them. Computers typically use the RGB color space for this, with red, green, and blue colors each using 8 bits, resulting in integer values from 0 to 255. This gives us $256 \times 256 \times 256 = \mathbf{16{,}777{,}216}$ possible colors. Each pixel on an LCD monitor displays colors in this way, through a combination of red, green, and blue LEDs (light-emitting diodes). When the red pixel is set to 0, the LED is turned off. When it's set to 255, the LED is fully on.</p>
+  </blockquote>
+
+  <p>So far, so good. But what if we think about it from another angle? If we can control the device that picks a number between 0 and 16,777,216 (and we can), we could try assigning every single pixel on the screen every single number. This would result in <strong>every possible combination of colored dots</strong> on the screen, i.e., all <strong>possible images that can be displayed, whether from the past or future</strong>. Imagine a picture of your grandparents hugging in the middle of Kakariko Village from Zelda OOT - it could be there. A picture of what you saw when you were 5 years old going to school for the first time - it could be there too, assuming the human eye can capture a much wider range of colors. Now think of a larger screen with smaller dots. See where I'm going with this?</p>
+
+  <p>Let's extend this concept to different scenarios. Imagine constructing an <strong>infinite binary file.</strong> Even if it's not infinite, it will suffice for our example. If we had a 64MB binary file and we could write all combinations of 0s and 1s, then we could create any program that could fit within that size. If size is not a constraint (which it typically isn't), anything you can imagine could be represented there. Firefox 20000? There it is. Windows LongHorn? There it is. Ubuntu Sacred Unicorn? Absolutely.</p>
+
+  <p>If the binary file example doesn't resonate with you, <strong>think about sets of characters distributed across a vast amount of space in a source file.</strong> This would result in all possible programs in all possible languages. Quite fascinating, right?</p>
+
+  <p>So, why aren't we channeling all our efforts in this direction? To understand this, let's first grasp the rule of product.</p>
+
+  <blockquote>
+    <p>Consider ordering a pizza. Initially, you choose the type of crust: thin or deep dish (2 options). Next, you decide on the topping: cheese, pepperoni, or sausage (3 options). Applying the rule of product, we realize there are $2 \times 3 = 6$ possible pizza combinations.</p>
+  </blockquote>
+
+  <p>Discrete math illuminated the vast potentialities we're dealing with. Let's illustrate how the previous examples would work according to the rule of product.</p>
+
+  <h3>The screen</h3>
+
+  <p>Take a 1080p resolution screen, the latest trend, which has 1080 rows of pixels with 1920 pixels in each row, totaling 2,073,600 pixels. Each of these pixels can display any one of 16,777,216 colors. I like to liken this problem to placing colored golf balls into an array of cups.</p>
+
+  <p>When we decide to fill these pixels, we have <strong>16,777,216</strong> options at each step, since colors may be repeated. This results in a staggering total of $16{,}777{,}216^{2{,}073{,}600}$ possible images. Some estimates suggest there are $2.0 \times 10^{83}$ atoms in the observable universe, to give you a sense of scale.</p>
+
+  <h3>The binary file</h3>
+
+  <p>Now, consider an old 1GB USB stick, which contains 8,589,934,592 bits. Here, we only have two options to fill the spaces: 1 or 0. Despite the limited options, the complexity is immense. We can repeat options, resulting in $2^{8{,}589{,}934{,}592}$ combinations. To put this in perspective, the internet reportedly contained around 45 billion pages as of December 2011.</p>
+
+  <p><a href="http://www.wolframalpha.com/input/?i=2%5E9000">$2^{9000}$ is this, so you get the picture</a></p>
+
+  <p>The primary challenges lie in generating this massive amount of data, storing it, and distinguishing useful combinations from the irrelevant ones. While I'm not an expert in this area, I'm sure some of you can shed light on these issues.</p>
+
+  <p>To delve deeper into these operations, you might want to explore <a href="http://en.wikipedia.org/wiki/Infinitary_combinatorics">infinitary combinatorics</a>, a field that studies these kinds of problems.</p>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

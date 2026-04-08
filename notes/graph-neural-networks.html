@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Neural Networks: Vanilla, GCN, GAT, GIN — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">&#x1F347;</span>
+    <h1>Graph Neural Networks: Vanilla, GCN, GAT, GIN</h1>
+  </header>
+
+  <h2>Introduction</h2>
+  <p>Graph Neural Networks (GNNs) have become a critical tool in the machine learning toolbox, providing a powerful way to analyze and interpret graph-structured data. As data in the real world often exhibit graph-like characteristics &mdash; from social networks and web pages to molecules and proteins &mdash; understanding how to apply GNNs is increasingly important.</p>
+  <p>In this article, we'll delve into the world of GNNs, starting with an introduction to the concept of message passing in these networks. We will then explore three specific types of GNNs: Graph Convolutional Networks (GCNs), Graph Attention Networks (GATs), and Graph Isomorphism Networks (GINs). Each of these models offers unique advantages and challenges when dealing with graph-structured data.</p>
+  <figure>
+    <figcaption>Typical problems solved using GNNs (<a href="https://towardsdatascience.com/graph-convolutional-networks-deep-99d7fee5706f">source</a>)</figcaption>
+  </figure>
+
+  <h2>Graph Theory Basics</h2>
+  <p>Before we dive into GNNs, it's crucial to understand some fundamental concepts from graph theory, which forms the backbone of these models.</p>
+  <p>A <strong>graph</strong> <code>G</code> can be defined as a pair <code>&lt;V,E&gt;</code> where <code>V</code> is a set of <strong>vertices</strong> (or nodes) and <code>E</code> is a set of <strong>edges</strong>. Each edge connects a pair of vertices and can be represented as an ordered pair <code>(v_i, v_j)</code>. In the context of GNNs, these vertices and edges often represent entities and relationships, respectively.</p>
+  <p>A critical concept for understanding GNNs is the <strong>adjacency matrix</strong> <code>A</code>. For a graph with <code>n</code> vertices, the adjacency matrix is an $n \times n$ matrix where the entry $A_{ij}$ is 1 if there's an edge from vertex $v_i$ to vertex $v_j$ and 0 otherwise.</p>
+  <p>Along with the adjacency matrix, another important concept is the <strong>degree matrix</strong> <code>D</code>. This is a diagonal matrix where each entry $D_{ii}$ equals the degree of vertex $v_i$ (i.e., the number of edges connected to $v_i$). All non-diagonal elements are 0 in this matrix.</p>
+  <p>These matrices play a pivotal role in the functioning of GNNs, as we'll see in the upcoming sections. Please note that the specific formulae and the way matrices are used might change depending on the type of graph (undirected, directed, weighted, etc.) and the specific type of GNN. The general ideas, however, remain the same.</p>
+  <figure>
+    <figcaption>Illustration of a graph with its adjacency matrix and degree matrix.</figcaption>
+  </figure>
+
+  <h2>Message Passing Neural Networks</h2>
+  <p>One of the core principles of GNNs is the idea of "message passing", which refers to the process of aggregating and passing information between connected nodes in a graph. This concept is inspired by the nature of graph-structured data, where the features of a node are often deeply influenced by its neighboring nodes.</p>
+  <p>The general process of message passing in a GNN can be broken down into the following steps:</p>
+  <ol>
+    <li><strong>Message Function:</strong> This function, often denoted as <code>M</code>, is used to compute a "message" that a node sends to its neighboring nodes. The message is typically a function of the features of the node and its neighbors.</li>
+    <li><strong>Aggregate Function:</strong> After all nodes have sent their messages, the next step is to aggregate the received messages at each node. This is done using an aggregate function, often denoted as <code>A</code>. This function takes all the messages that a node has received and combines them into a single vector.
+      <ul><li>Notice the order of the nodes in a graph is arbitrary, therefore you need order-invariant aggregation functions, like the <code>sum</code> or the <code>average</code>. Notice subtraction, division, concatenation are all order-dependent.</li></ul>
+    </li>
+    <li><strong>Update Function:</strong> Once the aggregated message has been computed, an update function, often denoted as <code>U</code>, is applied to update the node's features based on the aggregated message.</li>
+  </ol>
+  <p>Mathematically, these steps can be expressed as follows:</p>
+
+  <p><strong>Step 1:</strong> Each node $v_i$ computes a message for each of its neighbors $v_j$, where $h_i$ and $h_j$ are the feature vectors of nodes <code>i</code> and <code>j</code>, and $e_{ij}$ is the feature vector of the edge connecting them:</p>
+  $$m_{ij}=M(h_i,h_j,e_{ij})$$
+
+  <p><strong>Step 2:</strong> Each node $v_i$ aggregates the messages from its neighbors, where $N(i)$ is the set of neighbors of node $i$:</p>
+  $$a_i = A(\{m_{ij}\}_{j \in N(i)})$$
+
+  <p><strong>Step 3:</strong> Each node $v_i$ updates its feature vector, where $h'_i$ is the updated feature vector of node $i$:</p>
+  $$h'_i = U(h_i, a_i)$$
+
+  <p>This process of message passing can be repeated for a number of rounds, allowing information to propagate through the graph. <strong>After the final round, the updated node features are used for downstream tasks such as node classification, link prediction, or graph classification.</strong></p>
+  <p>The power of message passing neural networks lies in their ability to learn complex patterns in the structure and features of the graph, providing a flexible framework for working with graph-structured data.</p>
+  <p>More info: <a href="https://distill.pub/2021/gnn-intro/">Distill.pub's "A gentle introduction to GNNs"</a></p>
+
+  <hr>
+
+  <h2>Vanilla Graph Neural Networks and Graph Convolutional Networks</h2>
+  <p>Before diving into Graph Convolutional Networks (GCNs), let's take a brief look at the most basic type of Graph Neural Network (GNN), often referred to as a Vanilla GNN.</p>
+
+  <h3>Vanilla Graph Neural Networks</h3>
+  <p>The simplest form of GNNs, sometimes called Vanilla GNNs, follows the message passing framework described in the previous section. The main idea behind these networks is to update the representation of each node by <strong>aggregating information from its neighboring nodes.</strong></p>
+  <p>One of the most common formulations of a Vanilla GNN is the following:</p>
+  $$h_i^{(l+1)}=\sigma(W^{l} \cdot \text{AGGREGATE}^l\{ h_j^{l} \mid v_j \in N(i) \} )$$
+  <p>Here:</p>
+  <ul>
+    <li>$h^{(l+1)}_i$ is the feature representation of node $i$ at layer $l+1$ &mdash; typically a vector</li>
+    <li>$W^l$ is a learnable weight matrix for layer $l$</li>
+    <li>$\text{AGGREGATE}^l$ is an aggregation function for layer $l$ (such as mean, sum, or max)</li>
+    <li>$\sigma$ is a non-linear activation function (such as ReLU)</li>
+    <li>The set $\{ h^l_j \mid v_j \in N(i) \}$ contains the feature representations of the neighboring nodes of node $i$ at layer $l$</li>
+  </ul>
+  <p>This equation essentially says that to update the feature representation of a node, we:</p>
+  <ul>
+    <li>Aggregate the feature representations of its neighbors</li>
+    <li>Apply a linear transformation to the aggregated representation</li>
+    <li>Finally apply a non-linear activation function</li>
+  </ul>
+  <p>As you can see, it <strong>does not consider the current node $h_i$ representation.</strong> The "message" being sent here is just the $h_j$ neighbor vector: so the message function here is the identity function!</p>
+
+  <h3>Graph Convolutional Networks (GCNs)</h3>
+  <p>Building on the concept of Vanilla GNNs, Graph Convolutional Networks (GCNs) introduce the idea of convolution operations on graphs.</p>
+  <p>GCNs use a similar update rule as Vanilla GNNs, but with a couple of key differences. First, in GCNs, the aggregation function is typically the mean function. Second, and more importantly, the feature representation of a node in GCNs is updated based not only on its neighbors' representations, but <strong>also on its own representation.</strong></p>
+  <p>The update rule for GCNs can be formulated as follows:</p>
+  $$h_i^{(l+1)}=\sigma(W^{l} \cdot \text{MEAN}\{ h_j^{l} \mid v_j \in N(i) \cup h_i^l \} )$$
+  <p>The terms are the same as in the vanilla GNN: however <strong>notice the "$\cup h_i^l$" at the end</strong> to capture the current node vector.</p>
+  <p>One of the key strengths of GCNs is their ability to preserve both the local and global structure of the graph, enabling them to capture complex patterns in the data. However, they do have some limitations, such as the difficulty in handling graphs with different scales and the problem known as over-smoothing, which can degrade performance when many layers are used.</p>
+  <p>More info: <a href="https://towardsdatascience.com/graph-convolutional-networks-deep-99d7fee5706f">Graph Convolutional Networks by Francesco Casalegno</a></p>
+
+  <hr>
+
+  <h2>Graph Attention Networks (GATs)</h2>
+  <p>After understanding the basics of GNNs and the improvements made by GCNs, let's move on to another important variant of GNNs known as Graph Attention Networks (GATs). GATs introduce the concept of attention mechanisms to the realm of GNNs, which provides a weighted importance to the features of neighboring nodes rather than treating them equally.</p>
+
+  <h3>Understanding Attention Mechanisms</h3>
+  <p>Before we dive into GATs, it's important to understand what attention mechanisms are. In essence, attention mechanisms allow a model to focus on certain parts of the input more than others. This idea was first introduced in the field of Natural Language Processing (NLP) and has since been adapted to various other domains, including GNNs.</p>
+  <p>The key idea behind an attention mechanism is that it provides a set of weights, which sum to one and are used to create a weighted sum of the input features. The weights are typically computed using a function that considers the relative importance of different parts of the input.</p>
+
+  <h3>Graph Attention Networks</h3>
+  <p>In the context of GNNs, GATs use an attention mechanism to <strong>weigh the importance of a node's neighbors</strong> when aggregating their features. This allows GATs to capture different types of graph structures and to handle graphs where different neighbors have different levels of relevance to a node.</p>
+  <figure>
+    <figcaption>Diagram illustrating the attention mechanism in a Graph Attention Network.</figcaption>
+  </figure>
+  <p>The update rule for GATs can be formulated as follows:</p>
+  $$h^{(l+1)}_i = \sigma \left(  \sum_{j \in N_{(i)}} \alpha^{(l)}_{ij}W^{(l)} h^{(l)}_j \right)$$
+  <p>Here, $\alpha^{(l)}_{ij}$ is the attention weight between nodes $i$ and $j$ at layer $l$, computed as:</p>
+  $$\alpha^{(l)}_{ij} = \frac{\exp\left( \text{LeakyReLU}\left( \vec{a^{T^{(l)}}} \cdot [W^{(l)} h^{(l)}_i \| W^{(l)} h^{(l)}_j] \right) \right)}{\sum_{k \in N(i)} \exp\left( \text{LeakyReLU}\left( \vec{a^{T^{(l)}}} \cdot [W^{(l)} h^{(l)}_i \| W^{(l)} h^{(l)}_k] \right) \right)} = \text{softmax}_j(a(Wh_i, Wh_j))$$
+  <p>In this equation:</p>
+  <ul>
+    <li>$\vec{a^{(l)}}$ is a learnable vector</li>
+    <li>$\|$ denotes concatenation, and the LeakyReLU function is applied element-wise</li>
+    <li>$a^{(l)}$ can be a single-layer feedforward neural network, in this case parameterized by the weight vector and LeakyReLU</li>
+  </ul>
+
+  <h3>Multi-head attention</h3>
+  <p>In addition to its basic implementation, multi-head attention in GATs works by applying the attention mechanism multiple times (once for each "head") in parallel, each with its own set of learnable parameters. The outputs of all the attention heads are then concatenated (for intermediary layers) or averaged (for the final layer) to form the final output.</p>
+  $$h_i^{(l+1)} = \|_{k=1}^{K} \sigma \left( \sum_{j \in N(i)} \alpha^{(l,k)}_{ij} W^{(l,k)} h_j^{(l)} \right)$$
+  $$h_i^{(l+1)} = \sigma\left( \frac{1}{K} \sum_{k=1}^{K}  \sum_{j \in N(i)} \alpha^{(l,k)}_{ij} W^{(l,k)} h_j^{(l)} \right) \quad \text{(last layer)}$$
+  <p>$k$ represents the number of independent attention mechanisms, or "heads".</p>
+  <ul>
+    <li>Notice that in this setting, the output will have a dimension of $KF'$ (where $F$ is the number of features, or the dimension of $h$) instead of $F$. That's why we need to normalize it in the last layer by averaging over $K$.</li>
+  </ul>
+  <p>Compared to GCNs, GATs have the advantage of being able to assign different importance to different nodes in the neighborhood, allowing for a more flexible and potentially more expressive model of the graph structure. However, they can also be more computationally intensive due to the need to compute and store the attention weights.</p>
+  <p>More info: <a href="https://petar-v.com/GAT/">Graph Attention Networks original site</a></p>
+
+  <hr>
+
+  <h2>Graph Isomorphism Networks (GINs)</h2>
+  <p>Now that we have covered the concepts of GNNs, GCNs, and GATs, let's delve into another important variant of GNNs: Graph Isomorphism Networks (GINs).</p>
+
+  <h3>Overview of Graph Isomorphism Networks and the Weisfeiler-Lehman Dilemma</h3>
+  <p>Graph Isomorphism Networks (GINs) provide a powerful solution to a fundamental challenge in graph representation learning, distinguishing between non-isomorphic graph structures.</p>
+  <figure>
+    <figcaption>Illustration of graph isomorphism and the Weisfeiler-Lehman test.</figcaption>
+  </figure>
+  <p>This problem, termed the Weisfeiler-Lehman (WL) dilemma, represents a limitation observed in earlier graph neural network models like GCNs and GATs. The issue stems from the fact that these models were not expressive enough to differentiate between certain pairs of non-isomorphic graphs that can be distinguished by the WL test, a method used to <strong>determine whether two graphs are isomorphic or identical up to a relabeling of nodes.</strong></p>
+  <p>GINs address this issue by incorporating a learnable and continuous version of the WL test into their architecture, thus elevating their expressiveness to the level of the WL test. This is achieved through the introduction of a learnable parameter, $\epsilon$, that adjusts the balance between a node's own features and the aggregated features of its neighbors.</p>
+  <p>It's worth noting that graph isomorphism itself is an <strong>NP problem,</strong> meaning there is no known efficient algorithm for solving it in the worst case.</p>
+
+  <h3>The GIN Update Rule</h3>
+  <p>The update rule for GINs can be formulated as follows:</p>
+  $$h^{(l+1)}_i = \text{MLP} \left(  (1 + \epsilon^{(l)}) h^{(l)}_i + \sum_{j \in N(i)} h^{(l)}_j  \right)$$
+  <p>Here, $\epsilon^{(l)}$ is a learnable parameter for layer $l$ that determines the relative importance of a node's own features versus the features of its neighbors.</p>
+  <p>The term $(1 + \epsilon^{(l)}) h^{(l)}_i + \sum_{j \in N(i)} h^{(l)}_j$ can be viewed as a more powerful aggregation function that includes the node's own features and allows for different levels of importance for the node's own features versus the neighbors' features.</p>
+  <p>Compared to GCNs and GATs, GINs have the potential to capture a broader range of graph structures due to their more powerful aggregation function. However, like GATs, they can also be more computationally intensive due to the need to compute and store additional parameters.</p>
+  <p>More info:</p>
+  <ul>
+    <li><a href="https://davidbieber.com/post/2019-05-10-weisfeiler-lehman-isomorphism-test/">A great article by David Bieber on the WL Isomorphism test</a></li>
+    <li>Another article by Professor Bronstein on the expressivity of GNNs</li>
+  </ul>
+
+  <h3>Conclusion</h3>
+  <p>In conclusion, Graph Neural Networks (GNNs) have emerged as a remarkable approach to tackle the exciting challenges posed by graph-structured data. With their ability to capture intricate relationships and dependencies within graphs, GNN variants have opened up a world of possibilities across diverse domains.</p>
+  <p><strong>Node classification</strong>, one of the key applications of GNNs, finds itself in good company. From predicting the interests of social media users to identifying protein functions in bioinformatics, GNNs excel at <strong>understanding the characteristics of individual nodes within a graph</strong>.</p>
+  <p><strong>Link prediction</strong>, another fascinating application, allows us to unravel hidden connections and <strong>anticipate missing edges</strong> in a graph. GNNs prove their mettle by discerning potential videos we want to watch in social networks, foreseeing collaborations in citation networks, or even predicting potential drug-target interactions in the field of drug discovery.</p>
+  <p>As we traverse the realm of graph representation learning, the potential for GNNs seems boundless. With their ability to capture complex patterns, model intricate relations, and unleash the potential hidden within graphs, GNNs are an extremely versatile tool in our ML toolkit, enabling us to unravel the mysteries of interconnected systems one node and one link at a time.</p>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

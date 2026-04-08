@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Link Prediction based on Social Networks — SEAL — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">💉</span>
+    <h1>Link Prediction based on Social Networks &mdash; SEAL</h1>
+  </header>
+  <p><a href="https://arxiv.org/pdf/1802.09691.pdf">Paper link</a></p>
+
+  <h2>Key ideas</h2>
+  <ul>
+    <li>Prior art based on common neighbors and Katz index for likelihood of links.</li>
+    <li>Learning the heuristic from the network instead of using predefined ones should be better.</li>
+    <li>Developed a novel gamma-decaying heuristic theory.</li>
+    <li>Local subgraphs are proven to have rich information for link existence.</li>
+  </ul>
+
+  <h2>Introduction</h2>
+  <ul>
+    <li>Heuristics like common neighbors and preferential attachment are first-order heuristics: they involve 1-hop.</li>
+    <li>Heuristics like Adamic-Adar (AA), Resource Allocation (RA) are 2nd order heuristics.</li>
+    <li>h-order heuristics go to the h-hop neighborhood.</li>
+  </ul>
+  <figure>
+    <figcaption>Illustration of h-order heuristics showing 1-hop and multi-hop neighborhoods.</figcaption>
+  </figure>
+  <ul>
+    <li>These heuristics belong to a more generic class: graph structural features.
+      <ul>
+        <li>Such are any features which can be computed directly from the graph.</li>
+      </ul>
+    </li>
+    <li>Weisfeiler-Lehman Neural Machine (WLNM) studied this problem and provided features specific for link prediction.</li>
+    <li>Higher order heuristics like PageRank and Katz have better performance than first and second order ones.</li>
+    <li>We don't need a huge h number for h-heuristics.</li>
+    <li>SEAL is an improvement on WLNM.</li>
+  </ul>
+
+  <h2>Preliminaries</h2>
+  <ul>
+    <li>Latent features: factorize a matrix representation to learn a low-dimensional representation for each node. Node2vec, DeepWalk, matrix factorization...</li>
+    <li>Explicit features: usually node attributes.</li>
+    <li>Combining both usually brings out the best performance.</li>
+    <li>Supervised heuristic learning: WLNM trained FCNN on the subgraphs adjacency matrices.</li>
+  </ul>
+  <figure>
+    <figcaption>Diagram of WLNM supervised heuristic learning architecture.</figcaption>
+  </figure>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DistDGL: Distributed Graph Neural Network Training for Billion-Scale Graphs — Daniel Lobato</title>
+<link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Machine Learning">Machine Learning</span>
+</nav>
+<article class="note-article">
+  <header>
+    <span class="note-icon">&#x1F45B;</span>
+    <h1>DistDGL: Distributed Graph Neural Network Training for Billion-Scale Graphs</h1>
+  </header>
+
+  <p><a href="https://arxiv.org/pdf/2010.05337.pdf">Read the paper</a></p>
+
+  <h2>Key Ideas</h2>
+  <ul>
+    <li>Based on the DGL (Deep Graph Library).</li>
+    <li>Synchronous-training approach, ego-networks forming mini-batches.</li>
+    <li>Min-cut partitioning algorithm.</li>
+  </ul>
+
+  <h2>Introduction</h2>
+  <ul>
+    <li>Challenging to train GNNs because of the inherent dependencies between nodes (vertices) &mdash; the next node can be on a completely different machine.</li>
+    <li>Each mini-batch must incorporate dependent samples (1-hop, 2-hop, etc.). Sampling algorithm is important.</li>
+    <li>As opposed to regular distributed NN training where the majority of network traffic comes from exchanging gradients, distributed GNN traffic comes from reading hundreds of neighbor vertices.</li>
+  </ul>
+
+  <h2>Background: Mini-Batch Training</h2>
+  <ul>
+    <li>Sample a set of $N$ vertices, uniformly at random from the training set.</li>
+    <li>Pick at most $K$ neighbor vertices (fan-out) for each target.</li>
+    <li>Compute the target vertex representations by gathering messages.</li>
+  </ul>
+  <figure>
+    <figcaption>Diagram of mini-batch training: sampling target nodes and their K-hop neighborhoods for GNN message passing.</figcaption>
+  </figure>
+
+  <h2>System Design: DistDGL</h2>
+
+  <h3>Samplers</h3>
+  <p>Sample the mini-batch graph structures from the input graph.</p>
+
+  <h3>KVStore</h3>
+  <p>Distributed store for all vertex and edge data (so mini-batches can find each other when necessary).</p>
+  <ul>
+    <li>Special KV-store instead of Redis or similar because we need better co-location of node/edge features in KVStore and graph partitions.</li>
+    <li>Efficient updates for sparse embeddings.</li>
+    <li>Flexible partition policies to map data to different machines.</li>
+    <li>Supports sparse embedding for training transductive models with learnable vertex embeddings.</li>
+  </ul>
+
+  <h3>Trainers</h3>
+  <ol>
+    <li>Fetch the mini-batch graphs from the samplers and corresponding vertex/edge features from KVStore.</li>
+    <li>Run forward/backward in parallel.</li>
+    <li>Dense model update component synchronized.</li>
+  </ol>
+
+  <figure>
+    <figcaption>DistDGL system architecture: Samplers, KVStore, and Trainers working together across distributed machines.</figcaption>
+  </figure>
+
+  <h3>Graph Partitioning</h3>
+  <p>Uses <a href="https://en.wikipedia.org/wiki/METIS">METIS</a>:</p>
+  <ul>
+    <li>Densely connected vertices are assigned to the same partition to reduce the number of edge cuts.</li>
+    <li>Minimizing edge-cut improves GNN performance as we need to check the KVStore less and less.</li>
+  </ul>
+
+  <figure>
+    <figcaption>Graph partitioning with METIS: densely connected subgraphs assigned to the same machine partition to minimize cross-machine communication.</figcaption>
+  </figure>
+</article>
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+</body>
+</html>
