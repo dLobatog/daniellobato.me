@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daniel Lobato</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --fg: #e8e4de;
+    --fg-dim: #8a8680;
+    --accent: #c9a96e;
+    --accent2: #6ea5c9;
+    --accent3: #c96e8a;
+    --serif: 'EB Garamond', Georgia, serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) var(--bg);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--serif);
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* ─── HERO ─── */
+  #hero {
+    position: relative;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  #graph-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .hero-name {
+    font-family: var(--serif);
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+    line-height: 1;
+    margin-bottom: 0.3em;
+    opacity: 0;
+    animation: fadeUp 1.2s ease-out 0.3s forwards;
+  }
+
+  .hero-tagline {
+    font-family: var(--mono);
+    font-size: clamp(0.7rem, 1.5vw, 0.95rem);
+    font-weight: 300;
+    color: var(--fg-dim);
+    letter-spacing: 0.08em;
+    opacity: 0;
+    animation: fadeUp 1.2s ease-out 0.7s forwards;
+  }
+
+  .hero-tagline .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--accent);
+    margin-left: 4px;
+    animation: blink 1s step-end infinite;
+    vertical-align: text-bottom;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    opacity: 0;
+    animation: fadeUp 1s ease-out 1.5s forwards;
+    text-align: center;
+  }
+
+  .scroll-hint span {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--fg-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    margin: 0 auto;
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+
+  /* ─── TOOLTIP ─── */
+  #node-tooltip {
+    position: fixed;
+    z-index: 100;
+    background: rgba(17, 17, 24, 0.95);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--fg);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    max-width: 260px;
+    backdrop-filter: blur(10px);
+  }
+
+  #node-tooltip.visible { opacity: 1; }
+  #node-tooltip .tt-label { color: var(--accent); font-weight: 500; margin-bottom: 4px; }
+  #node-tooltip .tt-detail { color: var(--fg-dim); font-size: 0.7rem; line-height: 1.4; }
+
+  /* ─── SECTIONS ─── */
+  section {
+    position: relative;
+    padding: 120px 0;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.8s ease-out;
+  }
+
+  .section-label.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .section-title {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 400;
+    color: var(--fg);
+    margin-bottom: 2.5rem;
+    line-height: 1.15;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s ease-out 0.15s;
+  }
+
+  .section-title.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--fg-dim), transparent);
+    opacity: 0.2;
+  }
+
+  /* ─── TIMELINE ─── */
+  .timeline {
+    position: relative;
+    padding-left: 60px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2), var(--accent3));
+    opacity: 0.3;
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 60px;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.7s ease-out;
+  }
+
+  .timeline-item.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -46px;
+    top: 8px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: var(--bg);
+    transition: all 0.3s;
+  }
+
+  .timeline-item:hover::before {
+    background: var(--accent);
+    box-shadow: 0 0 20px rgba(201, 169, 110, 0.4);
+  }
+
+  .timeline-item .ti-period {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  .timeline-item .ti-role {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    color: var(--fg);
+    margin-bottom: 4px;
+  }
+
+  .timeline-item .ti-company {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  .timeline-item .ti-desc {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    color: var(--fg-dim);
+    line-height: 1.7;
+    max-width: 600px;
+  }
+
+  .timeline-item .ti-tags {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 4px 10px;
+    border: 1px solid rgba(201, 169, 110, 0.25);
+    border-radius: 20px;
+    color: var(--fg-dim);
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .tag:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(201, 169, 110, 0.08);
+  }
+
+  /* ─── WORLD MAP (Cities) ─── */
+  .cities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .city-card {
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 28px;
+    cursor: default;
+    transition: all 0.4s ease;
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .city-card.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .city-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 3px;
+    background: linear-gradient(to right, var(--accent), var(--accent2));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.6s ease;
+  }
+
+  .city-card:hover::before { transform: scaleX(1); }
+
+  .city-card:hover {
+    border-color: rgba(201, 169, 110, 0.2);
+    transform: translateY(-4px) scale(1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .city-card .cc-flag {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .city-card .cc-name {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    color: var(--fg);
+    margin-bottom: 4px;
+  }
+
+  .city-card .cc-country {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+
+  .city-card .cc-note {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    color: var(--fg-dim);
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  /* ─── INTERESTS / PASSIONS ─── */
+  .passions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+  }
+
+  .passion-card {
+    padding: 32px;
+    border-radius: 12px;
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.05);
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .passion-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .passion-card:hover {
+    border-color: rgba(110, 165, 201, 0.3);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+
+  .passion-card .pc-icon {
+    font-size: 1.8rem;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .passion-card .pc-title {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    color: var(--fg);
+    margin-bottom: 10px;
+  }
+
+  .passion-card .pc-text {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    color: var(--fg-dim);
+    line-height: 1.7;
+  }
+
+  .passion-card .pc-text em {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  /* ─── PIANO SECTION ─── */
+  #piano-section {
+    text-align: center;
+    padding-bottom: 160px;
+  }
+
+  .piano-container {
+    display: inline-flex;
+    position: relative;
+    margin-top: 40px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+  }
+
+  .white-key {
+    width: 52px;
+    height: 180px;
+    background: linear-gradient(to bottom, #f8f6f0, #e8e4de);
+    border: 1px solid #ccc;
+    border-radius: 0 0 6px 6px;
+    cursor: pointer;
+    transition: all 0.1s;
+    position: relative;
+    z-index: 1;
+  }
+
+  .white-key:hover { background: linear-gradient(to bottom, #fff, #f0ece4); }
+  .white-key:active, .white-key.pressed {
+    background: linear-gradient(to bottom, #e8e4de, #d8d4ce);
+    transform: scaleY(0.98);
+    transform-origin: top;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
+  }
+
+  .black-key {
+    width: 32px;
+    height: 110px;
+    background: linear-gradient(to bottom, #2a2a2a, #111);
+    border-radius: 0 0 4px 4px;
+    cursor: pointer;
+    position: absolute;
+    z-index: 2;
+    transition: all 0.1s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  }
+
+  .black-key:hover { background: linear-gradient(to bottom, #3a3a3a, #1a1a1a); }
+  .black-key:active, .black-key.pressed {
+    height: 106px;
+    background: linear-gradient(to bottom, #222, #0a0a0a);
+  }
+
+  .piano-hint {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--fg-dim);
+    margin-top: 20px;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+  }
+
+  /* ─── SEARCH SECTION ─── */
+  #search-section {
+    text-align: center;
+    padding: 100px 24px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .search-box {
+    position: relative;
+    margin-top: 30px;
+    margin-bottom: 30px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 18px 24px;
+    padding-left: 50px;
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.3s;
+  }
+
+  .search-box input::placeholder {
+    color: var(--fg-dim);
+    opacity: 0.5;
+  }
+
+  .search-box input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px rgba(201, 169, 110, 0.1);
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    color: var(--fg-dim);
+  }
+
+  .search-results {
+    text-align: left;
+    min-height: 50px;
+  }
+
+  .search-result {
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px;
+    animation: fadeUp 0.3s ease-out forwards;
+    cursor: default;
+    transition: border-color 0.3s;
+  }
+
+  .search-result:hover {
+    border-color: rgba(201, 169, 110, 0.3);
+  }
+
+  .search-result .sr-category {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 6px;
+  }
+
+  .search-result .sr-text {
+    font-family: var(--serif);
+    font-size: 1rem;
+    color: var(--fg);
+    line-height: 1.5;
+  }
+
+  .search-result .sr-text mark {
+    background: rgba(201, 169, 110, 0.2);
+    color: var(--accent);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  .search-result .sr-score {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--fg-dim);
+    margin-top: 6px;
+    opacity: 0.6;
+  }
+
+  /* ─── LINKS / FOOTER ─── */
+  .links-row {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 40px;
+    flex-wrap: wrap;
+  }
+
+  .links-row a {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--fg-dim);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    transition: color 0.3s;
+    position: relative;
+  }
+
+  .links-row a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transition: width 0.3s;
+  }
+
+  .links-row a:hover { color: var(--accent); }
+  .links-row a:hover::after { width: 100%; }
+
+  footer {
+    text-align: center;
+    padding: 60px 24px;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--fg-dim);
+    opacity: 0.4;
+  }
+
+  /* ─── PRETEXT FLOW SECTION ─── */
+  #pretext-section {
+    position: relative;
+    padding: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  #pretext-section .section-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 20px;
+  }
+
+  #pretext-canvas {
+    width: 100%;
+    height: 600px;
+    display: block;
+    cursor: default;
+  }
+
+  .pretext-hint {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--fg-dim);
+    text-align: center;
+    padding: 12px 24px 40px;
+    letter-spacing: 0.12em;
+    opacity: 0.5;
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.4; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.1); }
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    section { padding: 80px 20px; }
+    .timeline { padding-left: 40px; }
+    .timeline::before { left: 10px; }
+    .timeline-item::before { left: -36px; }
+    .white-key { width: 38px; height: 140px; }
+    .black-key { width: 24px; height: 85px; }
+    .cities-grid { grid-template-columns: 1fr; }
+    .passions-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOOLTIP -->
+<div id="node-tooltip">
+  <div class="tt-label"></div>
+  <div class="tt-detail"></div>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section id="hero">
+  <canvas id="graph-canvas"></canvas>
+  <div class="hero-content">
+    <h1 class="hero-name">Daniel Lobato</h1>
+    <p class="hero-tagline">
+      <span id="typed-text"></span><span class="cursor"></span>
+    </p>
+  </div>
+  <div class="scroll-hint">
+    <span>explore the graph</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ PRETEXT FLOW ═══ -->
+<section id="pretext-section">
+  <div class="section-inner">
+    <div class="section-label anim">movement 0 — text as data</div>
+    <div class="section-title anim">The Bio, Flowing</div>
+  </div>
+  <canvas id="pretext-canvas"></canvas>
+  <div class="pretext-hint">move your mouse to disturb the field — text reflows in real time via canvas layout, no DOM</div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ SEARCH / RETRIEVAL ═══ -->
+<section id="search-section">
+  <div class="section-label anim">movement I — retrieval</div>
+  <div class="section-title anim">Ask me anything</div>
+  <p style="font-family: var(--serif); color: var(--fg-dim); font-size: 1.05rem; line-height: 1.7; margin-bottom: 10px;">
+    I work on search &amp; retrieval at Instagram. So naturally, this site has its own retrieval engine. Type a query and watch the "embeddings" find the nearest match.
+  </p>
+  <div class="search-box">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search-input" placeholder="try: piano, CERN, cats, GNN, DDR..." autocomplete="off" />
+  </div>
+  <div class="search-results" id="search-results"></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ CAREER TIMELINE ═══ -->
+<section id="career">
+  <div class="section-label anim">movement II — forward pass</div>
+  <div class="section-title anim">Career Graph</div>
+  <div class="timeline">
+    <div class="timeline-item anim">
+      <div class="ti-period">2021 — present</div>
+      <div class="ti-role">Machine Learning Engineer</div>
+      <div class="ti-company">Meta — Applied Research on MRS, Monetization, Instagram</div>
+      <div class="ti-desc">I've worked at Meta for the last few years on a variety of teams. Right now, I am working mostly on Instagram Search, specifically on Retrieval and Query Understanding problems. We are trying to make our platform the best content search in industry. Before then, I bootstrapped the monetization efforts for conversion and user quality models in Marketing Messages on Whatsapp. My initial role in Meta was working at Meta AI, on Modern Recommendation Systems. I've worked on Graph Neural Networks (GNNs) at Facebook and Instagram scale for a variety of recommendation systems.</div>
+      <div class="ti-tags">
+        <span class="tag">GNNs</span>
+        <span class="tag">RecSys</span>
+        <span class="tag">Search & Retrieval</span>
+        <span class="tag">Query Understanding</span>
+      </div>
+    </div>
+    <div class="timeline-item anim">
+      <div class="ti-period">2021</div>
+      <div class="ti-role">Machine Learning Engineer</div>
+      <div class="ti-company">Palo Alto Insight</div>
+      <div class="ti-desc">I worked for Palo Alto Insight, writing software to help deploy machine learning based solutions, and automate workflows with AI. We were offering consulting services mostly in data analysis and ML for vision to companies who needed it.</div>
+      <div class="ti-tags">
+        <span class="tag">Computer Vision</span>
+        <span class="tag">MLOps</span>
+        <span class="tag">Consulting</span>
+      </div>
+    </div>
+    <div class="timeline-item anim">
+      <div class="ti-period">2014 — 2021</div>
+      <div class="ti-role">Senior Software Engineer</div>
+      <div class="ti-company">Red Hat</div>
+      <div class="ti-desc">I spent 7 years working at Red Hat, working on Red Hat Insights, a tool for continuous analysis of your applications to predict risk, recommend actions and track costs in a hybrid cloud setting. My first 4 years there, I worked on the Foreman project and Satellite, which were the best options out there for hybrid cloud+bare metal management.</div>
+      <div class="ti-tags">
+        <span class="tag">Open Source</span>
+        <span class="tag">Hybrid Cloud</span>
+        <span class="tag">Red Hat Insights</span>
+        <span class="tag">Foreman</span>
+      </div>
+    </div>
+    <div class="timeline-item anim">
+      <div class="ti-period">2012 — 2014</div>
+      <div class="ti-role">Open Source Liaison</div>
+      <div class="ti-company">CERN — Geneva, Switzerland</div>
+      <div class="ti-desc">I spent 2 years working at CERN acting as liason between different Open Source projects (Puppet, Foreman and others) and our lab needs.</div>
+      <div class="ti-tags">
+        <span class="tag">Foreman</span>
+        <span class="tag">Puppet</span>
+        <span class="tag">Open Source</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ CITIES / WORLD ═══ -->
+<section id="cities">
+  <div class="section-label anim">movement III — embeddings</div>
+  <div class="section-title anim">Places I've Called Home</div>
+  <p style="font-family: var(--serif); color: var(--fg-dim); font-size: 1.05rem; line-height: 1.7; margin-bottom: 40px; max-width: 600px;">
+    Seven cities, four countries, two continents. Each one a node in the graph, each edge a flight I'll never forget.
+  </p>
+  <div class="cities-grid">
+    <div class="city-card anim">
+      <span class="cc-flag">🇪🇸</span>
+      <div class="cc-name">Madrid</div>
+      <div class="cc-country">Spain</div>
+      <div class="cc-note">I studied Computer Science and Engineering as my undergraduate major. I got my degree from Universidad Carlos III de Madrid.</div>
+    </div>
+    <div class="city-card anim">
+      <span class="cc-flag">🇺🇸</span>
+      <div class="cc-name">Irvine</div>
+      <div class="cc-country">California, USA</div>
+      <div class="cc-note">I studied 1.5y at University of California at Irvine.</div>
+    </div>
+    <div class="city-card anim">
+      <span class="cc-flag">🇨🇭</span>
+      <div class="cc-name">Geneva</div>
+      <div class="cc-country">Switzerland</div>
+      <div class="cc-note">I did my last year completely remote from Geneva, Switzerland, as I was working from CERN at that time, and flew back only for exams.</div>
+    </div>
+    <div class="city-card anim">
+      <span class="cc-flag">🇮🇱</span>
+      <div class="cc-name">Ra'anana</div>
+      <div class="cc-country">Israel</div>
+      <div class="cc-note">Near Tel Aviv.</div>
+    </div>
+    <div class="city-card anim">
+      <span class="cc-flag">🇬🇧</span>
+      <div class="cc-name">London</div>
+      <div class="cc-country">United Kingdom</div>
+      <div class="cc-note">Where I met my now wife.</div>
+    </div>
+    <div class="city-card anim">
+      <span class="cc-flag">🇺🇸</span>
+      <div class="cc-name">New York City</div>
+      <div class="cc-country">New York, USA</div>
+      <div class="cc-note">I was a hackNY fellow, class of 2012. I was a mentor of the 2015 class. It was a transforming experience for me.</div>
+    </div>
+    <div class="city-card anim">
+      <span class="cc-flag">🇺🇸</span>
+      <div class="cc-name">Jersey City</div>
+      <div class="cc-country">New Jersey, USA</div>
+      <div class="cc-note">Where I live with my wife and son, across the Hudson river to Manhattan.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ PASSIONS ═══ -->
+<section id="passions">
+  <div class="section-label anim">movement IV — latent space</div>
+  <div class="section-title anim">Beyond the Loss Function</div>
+  <div class="passions-grid">
+    <div class="passion-card anim">
+      <span class="pc-icon">🎹</span>
+      <div class="pc-title">Piano</div>
+      <div class="pc-text">I like to play the piano, at about <em>~ABRSM 8 level</em>, working on DipABRSM. I'm interested in chamber music collaborations, violin duos, so if you're into that hit me up!</div>
+    </div>
+    <div class="passion-card anim">
+      <span class="pc-icon">🕹️</span>
+      <div class="pc-title">Dance Dance Revolution</div>
+      <div class="pc-text">It's the one thing that brought the most relationships into my life, made me met a lot of people, and I really enjoyed. I ranked <em>#2 in Spain</em> consistently for many years, but it requires a time investment I don't want to make right now.</div>
+    </div>
+    <div class="passion-card anim">
+      <span class="pc-icon">🏔️</span>
+      <div class="pc-title">Snow Sports</div>
+      <div class="pc-text">I'm <em>always</em> down to hit the slopes once the snow sports season has started.</div>
+    </div>
+    <div class="passion-card anim">
+      <span class="pc-icon">🇨🇳</span>
+      <div class="pc-title">Mandarin Chinese</div>
+      <div class="pc-text">I'm currently learning Mandarin Chinese. My main motivation is being able to communicate with my partner's family and friends. Actually, learning <em>Japanese (~N4)</em> has helped me tremendously with learning Chinese characters.</div>
+    </div>
+    <div class="passion-card anim">
+      <span class="pc-icon">💪</span>
+      <div class="pc-title">Calisthenics & Boxing</div>
+      <div class="pc-text">I enjoy calisthenics to keep my body in shape. I recently hit a plateau there so I moved to a personal trainer. I used to spar as a <em>light-welterweight</em> boxer. I thoroughly enjoyed it and hope some day I can get back to it.</div>
+    </div>
+    <div class="passion-card anim">
+      <span class="pc-icon">📝</span>
+      <div class="pc-title">Paper Notes</div>
+      <div class="pc-text">I publish academic paper notes on <em>a public repository</em>. I started doing this when I studied my Masters and carried on until now, so it has a mix of OS and ML related papers.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ PIANO ═══ -->
+<section id="piano-section">
+  <div class="section-label anim">coda</div>
+  <div class="section-title anim">Play something</div>
+  <p style="font-family: var(--serif); color: var(--fg-dim); font-size: 1.05rem; margin-bottom: 10px;">
+    Every node in the graph above plays a note. But if you'd rather play yourself:
+  </p>
+  <div class="piano-container" id="piano">
+    <!-- Built by JS -->
+  </div>
+  <div class="piano-hint">click the keys or use keyboard: A S D F G H J K (white) &amp; W E T Y U (black)</div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<section style="text-align: center; padding: 60px 24px 20px;">
+  <div class="links-row">
+    <a href="https://github.com/dLobatog" target="_blank">GitHub</a>
+    <a href="https://twitter.com/dlobatog" target="_blank">Twitter</a>
+    <a href="https://www.linkedin.com/in/daniellobato/" target="_blank">LinkedIn</a>
+    <a href="https://scholar.google.com/citations?user=sDMSfzEAAAAJ&hl=en" target="_blank">Scholar</a>
+    <a href="https://speakerdeck.com/elobato" target="_blank">Talks</a>
+  </div>
+</section>
+
+<footer>
+  I think everyone has something worth teaching.
+</footer>
+
+<script type="module">
+// ═══════════════════════════════════════════════
+// WEB AUDIO — Piano synth
+// ═══════════════════════════════════════════════
+let audioCtx;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playNote(freq, duration = 0.9, volume = 0.15) {
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(2200, now);
+  filter.Q.setValueAtTime(0.7, now);
+
+  // Two oscillators for a richer, more piano-like timbre
+  // 1: triangle fundamental
+  const osc1 = ctx.createOscillator();
+  osc1.type = 'triangle';
+  osc1.frequency.setValueAtTime(freq, now);
+
+  // 2: sine one octave up, very quiet (adds shimmer)
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(freq * 2, now);
+  const gain2 = ctx.createGain();
+  gain2.gain.setValueAtTime(volume * 0.15, now);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.6);
+
+  // Piano-like envelope: fast attack, slow exponential decay
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(volume, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  osc1.connect(filter);
+  osc2.connect(gain2);
+  gain2.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc1.start(now);
+  osc1.stop(now + duration);
+  osc2.start(now);
+  osc2.stop(now + duration);
+}
+
+// ═══════════════════════════════════════════════
+// CHORD PROGRESSION SYSTEM
+// A beautiful looping progression that advances
+// each time you hover a new node.
+// ═══════════════════════════════════════════════
+
+// Chord voicings as arrays of frequencies (Hz).
+// Voiced in the C3–C5 range for warmth.
+// Progression: Cmaj7 → Em7 → Fmaj7 → Am7 →
+//              Dm9 → G7 → Em7 → Fmaj7 →
+//              Dm7 → Gsus4 → Cmaj9 → Am9
+// Each chord is a full voicing (4–5 notes).
+const CHORD_PROGRESSION = [
+  // Cmaj7 — home, warm
+  [130.81, 196.00, 329.63, 392.00, 493.88],
+  // Em7 — gentle, reflective
+  [164.81, 246.94, 329.63, 392.00, 493.88],
+  // Fmaj7 — bright lift
+  [174.61, 261.63, 349.23, 440.00, 523.25],
+  // Am7 — tender
+  [220.00, 261.63, 329.63, 392.00, 523.25],
+  // Dm9 — floating, jazzy
+  [146.83, 220.00, 293.66, 349.23, 329.63],
+  // G7 — pull back home
+  [196.00, 246.94, 293.66, 349.23, 493.88],
+  // Em7 (higher voicing) — airy
+  [164.81, 329.63, 392.00, 493.88, 587.33],
+  // Fmaj7 (spread) — expansive
+  [174.61, 261.63, 329.63, 440.00, 523.25],
+  // Dm7 — warm descent
+  [146.83, 220.00, 293.66, 349.23, 440.00],
+  // Gsus4 — suspended anticipation
+  [98.00, 196.00, 261.63, 293.66, 392.00],
+  // Cmaj9 — lush resolution
+  [130.81, 196.00, 329.63, 493.88, 293.66],
+  // Am9 — bittersweet ending before loop
+  [110.00, 164.81, 261.63, 329.63, 493.88],
+];
+
+let chordIndex = 0;
+
+function playChord(unused, duration = 1.5, volume = 0.08) {
+  const chord = CHORD_PROGRESSION[chordIndex % CHORD_PROGRESSION.length];
+  // Stagger the notes slightly for a gentle arpeggiated feel
+  chord.forEach((freq, i) => {
+    const delay = i * 0.03; // 30ms stagger between notes
+    const noteVol = i === 0 ? volume : volume * (0.7 - i * 0.05);
+    const noteDur = duration + (i * 0.15);
+    setTimeout(() => playNote(freq, noteDur, Math.max(0.01, noteVol)), delay * 1000);
+  });
+  chordIndex++;
+}
+
+// For clicks: play the same chord louder and more sustained
+function playChordLoud(duration = 2.5, volume = 0.14) {
+  const chord = CHORD_PROGRESSION[chordIndex % CHORD_PROGRESSION.length];
+  chord.forEach((freq, i) => {
+    const delay = i * 0.05;
+    const noteVol = i === 0 ? volume : volume * (0.75 - i * 0.04);
+    const noteDur = duration + (i * 0.2);
+    setTimeout(() => playNote(freq, noteDur, Math.max(0.01, noteVol)), delay * 1000);
+  });
+  chordIndex++;
+}
+
+// Note frequencies for the playable piano (C4 to C5)
+const NOTES = {
+  'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13,
+  'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00,
+  'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
+  'C5': 523.25
+};
+
+const NOTE_NAMES = Object.keys(NOTES);
+const NOTE_FREQS = Object.values(NOTES);
+
+// ═══════════════════════════════════════════════
+// HERO GRAPH — Interactive neural network
+// ═══════════════════════════════════════════════
+const canvas = document.getElementById('graph-canvas');
+const ctx2d = canvas.getContext('2d');
+let nodes = [];
+let edges = [];
+let mouse = { x: -1000, y: -1000 };
+let hoveredNode = null;
+const tooltip = document.getElementById('node-tooltip');
+
+// Logical (CSS pixel) dimensions — all positions use these
+let graphW = 0, graphH = 0;
+
+function sizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  graphW = rect.width;
+  graphH = rect.height;
+  // Set canvas buffer to match CSS size exactly (no DPR scaling needed
+  // because we only draw simple shapes — keeps coords 1:1 with mouse)
+  canvas.width = graphW;
+  canvas.height = graphH;
+}
+
+const NODE_DATA = [
+  { label: 'CERN', detail: 'Open Source @ the physics frontier', color: '#c9a96e', size: 18 },
+  { label: 'Red Hat', detail: '7 years, Foreman core maintainer', color: '#e84d3d', size: 20 },
+  { label: 'Meta AI', detail: 'Graph Neural Networks at scale', color: '#6ea5c9', size: 22 },
+  { label: 'Instagram Search', detail: 'Retrieval & Query Understanding', color: '#c96e8a', size: 22 },
+  { label: 'Monetization', detail: 'Marketing Messages on WhatsApp', color: '#4ecc5e', size: 16 },
+  { label: 'GNNs', detail: 'Graph Neural Networks for RecSys & Integrity', color: '#9b6ec9', size: 17 },
+  { label: 'Georgia Tech', detail: 'MSCS, Machine Learning specialization', color: '#c9a96e', size: 16 },
+  { label: 'hackNY', detail: 'Fellow 2012, Mentor 2015', color: '#6ec9b0', size: 14 },
+  { label: 'Piano', detail: 'ABRSM 8, working on DipABRSM', color: '#e8e4de', size: 16 },
+  { label: 'DDR', detail: '#2 in Spain', color: '#c96ebd', size: 14 },
+  { label: 'Foreman', detail: '2.3k ⭐ open source project', color: '#e84d3d', size: 15 },
+  { label: 'Madrid', detail: 'Where it all started', color: '#c9a96e', size: 13 },
+  { label: 'Geneva', detail: 'CERN days, Alps views', color: '#6ea5c9', size: 13 },
+  { label: 'NYC', detail: 'hackNY, the city that changes you', color: '#c96e8a', size: 14 },
+  { label: 'PyTorch', detail: 'Daily driver', color: '#e8734a', size: 12 },
+  { label: '中文', detail: 'Learning Mandarin Chinese', color: '#e84d3d', size: 12 },
+  { label: 'Iron Man VR', detail: 'Yes, I\'m in the credits', color: '#6ec9b0', size: 11 },
+  { label: 'Retrieval', detail: 'Embeddings, ranking, relevance', color: '#c96e8a', size: 16 },
+  { label: 'Open Source', detail: 'FOSDEM, PuppetConf, AnsibleConf', color: '#e84d3d', size: 14 },
+  { label: 'Cats', detail: 'Full-time sitter, obviously', color: '#e8e4de', size: 13 },
+];
+
+// Edges define relationships
+const EDGE_DEFS = [
+  [0, 1], [1, 2], [2, 3], [2, 4], [2, 5], [3, 17], [5, 14],
+  [6, 2], [7, 13], [0, 12], [1, 10], [1, 18], [11, 0], [11, 6],
+  [8, 9], [3, 5], [4, 3], [15, 13], [16, 2], [10, 18], [19, 8],
+  [17, 5], [6, 5], [14, 5], [0, 18], [7, 11]
+];
+
+function initGraph() {
+  sizeCanvas();
+
+  nodes = NODE_DATA.map((d, i) => ({
+    ...d,
+    x: Math.random() * graphW * 0.7 + graphW * 0.15,
+    y: Math.random() * graphH * 0.7 + graphH * 0.15,
+    vx: 0, vy: 0,
+    baseSize: d.size,
+    currentSize: d.size,
+    noteIndex: i % NOTE_FREQS.length,
+  }));
+
+  edges = EDGE_DEFS.map(([a, b]) => ({ a, b }));
+}
+
+function simulate() {
+  // Simple force-directed layout
+  const centerX = graphW / 2;
+  const centerY = graphH / 2;
+
+  // Repulsion between nodes
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[j].x - nodes[i].x;
+      const dy = nodes[j].y - nodes[i].y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const force = 2000 / (dist * dist);
+      const fx = (dx / dist) * force;
+      const fy = (dy / dist) * force;
+      nodes[i].vx -= fx;
+      nodes[i].vy -= fy;
+      nodes[j].vx += fx;
+      nodes[j].vy += fy;
+    }
+  }
+
+  // Edge attraction
+  for (const e of edges) {
+    const a = nodes[e.a], b = nodes[e.b];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const force = (dist - 120) * 0.003;
+    const fx = (dx / dist) * force;
+    const fy = (dy / dist) * force;
+    a.vx += fx; a.vy += fy;
+    b.vx -= fx; b.vy -= fy;
+  }
+
+  // Center gravity
+  for (const n of nodes) {
+    n.vx += (centerX - n.x) * 0.0003;
+    n.vy += (centerY - n.y) * 0.0003;
+  }
+
+  // Mouse interaction — repel distant nodes, but NOT the hovered one
+  for (const n of nodes) {
+    const dx = n.x - mouse.x;
+    const dy = n.y - mouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const hoverZone = n.baseSize + 20;
+    if (dist < hoverZone) {
+      // Close to node: slow it down so it's easy to hover
+      n.vx *= 0.7;
+      n.vy *= 0.7;
+    } else if (dist < 150) {
+      // Nearby but not on a node: gentle push
+      const force = (150 - dist) * 0.004;
+      n.vx += (dx / dist) * force;
+      n.vy += (dy / dist) * force;
+    }
+  }
+
+  // Integrate
+  for (const n of nodes) {
+    n.vx *= 0.88;
+    n.vy *= 0.88;
+    n.x += n.vx;
+    n.y += n.vy;
+    // Keep in bounds (extra bottom margin for labels)
+    n.x = Math.max(80, Math.min(graphW - 80, n.x));
+    n.y = Math.max(60, Math.min(graphH - 90, n.y));
+    // Size animation
+    n.currentSize += (n.baseSize - n.currentSize) * 0.1;
+  }
+}
+
+function drawGraph() {
+  ctx2d.clearRect(0, 0, graphW, graphH);
+
+  // Edges
+  for (const e of edges) {
+    const a = nodes[e.a], b = nodes[e.b];
+    const grad = ctx2d.createLinearGradient(a.x, a.y, b.x, b.y);
+    grad.addColorStop(0, a.color + '30');
+    grad.addColorStop(1, b.color + '30');
+    ctx2d.beginPath();
+    ctx2d.moveTo(a.x, a.y);
+    ctx2d.lineTo(b.x, b.y);
+    ctx2d.strokeStyle = grad;
+    ctx2d.lineWidth = 1;
+    ctx2d.stroke();
+  }
+
+  // Find the closest node to the mouse first
+  hoveredNode = null;
+  let closestDist = Infinity;
+  for (const n of nodes) {
+    const dx = mouse.x - n.x;
+    const dy = mouse.y - n.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < n.currentSize + 20 && dist < closestDist) {
+      closestDist = dist;
+      hoveredNode = n;
+    }
+  }
+
+  // Draw nodes
+  for (const n of nodes) {
+    const isHovered = (n === hoveredNode);
+
+    if (isHovered) {
+      n.currentSize = n.baseSize * 1.4;
+    }
+
+    // Glow
+    if (isHovered) {
+      ctx2d.beginPath();
+      ctx2d.arc(n.x, n.y, n.currentSize + 20, 0, Math.PI * 2);
+      const glow = ctx2d.createRadialGradient(n.x, n.y, n.currentSize, n.x, n.y, n.currentSize + 20);
+      glow.addColorStop(0, n.color + '30');
+      glow.addColorStop(1, n.color + '00');
+      ctx2d.fillStyle = glow;
+      ctx2d.fill();
+    }
+
+    // Node circle
+    ctx2d.beginPath();
+    ctx2d.arc(n.x, n.y, n.currentSize, 0, Math.PI * 2);
+    ctx2d.fillStyle = isHovered ? n.color + 'dd' : n.color + '55';
+    ctx2d.fill();
+
+    // Label (always visible)
+    const fontSize = isHovered ? 12 : 10;
+    ctx2d.font = `${isHovered ? '500' : '400'} ${fontSize}px 'JetBrains Mono', monospace`;
+    ctx2d.textAlign = 'center';
+    ctx2d.textBaseline = 'top';
+    const labelY = n.y + n.currentSize + 6;
+    // Subtle background behind label for readability
+    const labelW = ctx2d.measureText(n.label).width;
+    ctx2d.fillStyle = 'rgba(10, 10, 15, 0.7)';
+    ctx2d.fillRect(n.x - labelW/2 - 4, labelY - 1, labelW + 8, fontSize + 4);
+    ctx2d.fillStyle = isHovered ? '#fff' : n.color + 'cc';
+    ctx2d.fillText(n.label, n.x, labelY);
+  }
+
+  // Tooltip (uses viewport coords for fixed positioning)
+  if (hoveredNode) {
+    const canvasRect = canvas.getBoundingClientRect();
+    tooltip.querySelector('.tt-label').textContent = hoveredNode.label;
+    tooltip.querySelector('.tt-detail').textContent = hoveredNode.detail;
+    tooltip.style.left = (canvasRect.left + mouse.x + 20) + 'px';
+    tooltip.style.top = (canvasRect.top + mouse.y - 20) + 'px';
+    tooltip.classList.add('visible');
+  } else {
+    tooltip.classList.remove('visible');
+  }
+}
+
+let lastPlayedNode = null;
+canvas.addEventListener('mousemove', (e) => {
+  // Use canvas-relative coordinates, not viewport coordinates
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - rect.left;
+  mouse.y = e.clientY - rect.top;
+
+  // Play next chord in progression on hover
+  if (hoveredNode && hoveredNode !== lastPlayedNode) {
+    playChord(null, 1.5, 0.07);
+    lastPlayedNode = hoveredNode;
+  }
+  if (!hoveredNode) lastPlayedNode = null;
+});
+
+canvas.addEventListener('click', () => {
+  if (hoveredNode) {
+    playChordLoud(2.5, 0.13);
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  mouse.x = -1000;
+  mouse.y = -1000;
+});
+
+function animate() {
+  simulate();
+  drawGraph();
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', () => {
+  sizeCanvas();
+});
+
+initGraph();
+animate();
+
+// ═══════════════════════════════════════════════
+// TYPED TEXT
+// ═══════════════════════════════════════════════
+const phrases = [
+  'full time cat sitter, part time machine learning tinkerer',
+  'working mostly on Instagram Search, specifically on Retrieval and Query Understanding',
+  'I like to play the piano, at about ~ABRSM 8 level',
+  'I ranked #2 in Spain consistently for many years',
+  'I think everyone has something worth teaching',
+];
+
+let phraseIndex = 0, charIndex = 0, isDeleting = false;
+const typedEl = document.getElementById('typed-text');
+
+function typeLoop() {
+  const current = phrases[phraseIndex];
+  if (!isDeleting) {
+    typedEl.textContent = current.slice(0, charIndex++);
+    if (charIndex > current.length) {
+      setTimeout(() => { isDeleting = true; typeLoop(); }, 2500);
+      return;
+    }
+  } else {
+    typedEl.textContent = current.slice(0, charIndex--);
+    if (charIndex < 0) {
+      isDeleting = false;
+      phraseIndex = (phraseIndex + 1) % phrases.length;
+      setTimeout(typeLoop, 400);
+      return;
+    }
+  }
+  setTimeout(typeLoop, isDeleting ? 30 : 60);
+}
+setTimeout(typeLoop, 1500);
+
+// ═══════════════════════════════════════════════
+// SCROLL ANIMATIONS
+// ═══════════════════════════════════════════════
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.anim').forEach(el => observer.observe(el));
+
+// ═══════════════════════════════════════════════
+// SEARCH ENGINE
+// ═══════════════════════════════════════════════
+const SEARCH_DATA = [
+  { category: 'work', text: 'Right now, I am working mostly on Instagram Search, specifically on Retrieval and Query Understanding problems. We are trying to make our platform the best content search in industry.', keywords: ['meta', 'instagram', 'search', 'retrieval', 'query', 'ml', 'machine learning', 'work', 'job', 'career'] },
+  { category: 'work', text: 'My initial role in Meta was working at Meta AI, on Modern Recommendation Systems. I\'ve worked on Graph Neural Networks (GNNs) at Facebook and Instagram scale for a variety of recommendation systems. I spent a small amount of time working on GNNs for integrity as well.', keywords: ['gnn', 'graph', 'neural', 'network', 'recommendation', 'facebook', 'integrity', 'ml', 'ai', 'deep learning'] },
+  { category: 'work', text: 'I bootstrapped the monetization efforts for conversion and user quality models in Marketing Messages on Whatsapp.', keywords: ['whatsapp', 'monetization', 'marketing', 'conversion', 'quality', 'meta'] },
+  { category: 'work', text: 'I spent 7 years working at Red Hat, working on Red Hat Insights, a tool for continuous analysis of your applications to predict risk, recommend actions and track costs in a hybrid cloud setting. My first 4 years there, I worked on the Foreman project and Satellite.', keywords: ['red hat', 'foreman', 'insights', 'cloud', 'open source', 'ruby', 'infrastructure'] },
+  { category: 'work', text: 'I spent 2 years working at CERN acting as liason between different Open Source projects (Puppet, Foreman and others) and our lab needs.', keywords: ['cern', 'geneva', 'physics', 'open source', 'puppet', 'infrastructure', 'switzerland'] },
+  { category: 'education', text: 'I have completed a Masters on Computer Science (MSCS) at Georgia Institute of Technology, specialization on Machine Learning. 🐝', keywords: ['georgia tech', 'masters', 'mscs', 'machine learning', 'education', 'school', 'degree'] },
+  { category: 'education', text: 'I studied Computer Science and Engineering as my undergraduate major. I got my degree from Universidad Carlos III de Madrid and studied 1.5y at University of California at Irvine.', keywords: ['madrid', 'spain', 'university', 'carlos', 'irvine', 'california', 'education', 'degree'] },
+  { category: 'education', text: 'I was a hackNY fellow, class of 2012. I was a mentor of the 2015 class. It was a transforming experience for me.', keywords: ['hackny', 'fellow', 'new york', 'nyc', 'startup', 'mentor'] },
+  { category: 'music', text: 'I like to play the piano, at about ~ABRSM 8 level, working on DipABRSM. I\'m interested in chamber music collaborations, violin duos, so if you\'re into that hit me up!', keywords: ['piano', 'music', 'abrsm', 'classical', 'chamber', 'violin', 'keyboard'] },
+  { category: 'music', text: 'It\'s the one thing that brought the most relationships into my life, made me met a lot of people, and I really enjoyed. I ranked #2 in Spain consistently for many years.', keywords: ['ddr', 'dance', 'rhythm', 'game', 'spain', 'competition', 'arcade'] },
+  { category: 'personal', text: 'I\'m currently learning Mandarin Chinese. My main motivation is being able to communicate with my partner\'s family and friends. Actually, learning Japanese (~N4) has helped me tremendously with learning Chinese characters.', keywords: ['mandarin', 'chinese', 'japanese', 'language', 'study', 'learning'] },
+  { category: 'personal', text: 'I\'m always down to hit the slopes once the snow sports season has started. I enjoy calisthenics to keep my body in shape. Boxing — used to spar as a light-welterweight.', keywords: ['ski', 'snow', 'slopes', 'calisthenics', 'boxing', 'fitness', 'sports'] },
+  { category: 'personal', text: 'Full time cat sitter, part time machine learning tinkerer. I live in Jersey City with my wife and son, across the Hudson river to Manhattan.', keywords: ['cat', 'cats', 'jersey', 'home', 'about', 'who', 'family', 'wife', 'son'] },
+  { category: 'fun fact', text: 'I helped with some testing automation in Iron Man VR too, never thought I\'d show up on a game credits!', keywords: ['iron man', 'vr', 'game', 'credits', 'marvel', 'fun'] },
+  { category: 'open source', text: 'I publish academic paper notes on a public repository. I started doing this when I studied my Masters and carried on until now, so it has a mix of OS and ML related papers.', keywords: ['paper', 'notes', 'academic', 'research', 'github', 'publications', 'scholar'] },
+  { category: 'open source', text: 'I was one of the main maintainers of the Foreman (2.3k ⭐️ on GitHub) for 6 or 7 years. It was a wonderful experience to grow the community, meet them in person at multiple events such as FOSDEM, Linux NYC group, PuppetConf, AnsibleConf.', keywords: ['foreman', 'open source', 'community', 'fosdem', 'puppet', 'ansible'] },
+  { category: 'philosophy', text: 'I think everyone has something worth teaching.', keywords: ['philosophy', 'teach', 'believe', 'values', 'motto'] },
+];
+
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+
+function cosineSim(query, keywords) {
+  const q = query.toLowerCase().split(/\s+/);
+  let score = 0;
+  for (const word of q) {
+    for (const kw of keywords) {
+      if (kw.includes(word) || word.includes(kw)) {
+        score += word === kw ? 1 : 0.5;
+      }
+    }
+  }
+  return score;
+}
+
+function renderResults(query) {
+  if (!query.trim()) { searchResults.innerHTML = ''; return; }
+  const scored = SEARCH_DATA
+    .map(d => ({ ...d, score: cosineSim(query, d.keywords) }))
+    .filter(d => d.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  if (scored.length === 0) {
+    searchResults.innerHTML = `<div class="search-result"><div class="sr-category">no results</div><div class="sr-text" style="color: var(--fg-dim);">Embedding distance too large. Try: piano, CERN, GNN, cats...</div></div>`;
+    return;
+  }
+
+  searchResults.innerHTML = scored.map((d, i) => {
+    let text = d.text;
+    const words = query.toLowerCase().split(/\s+/);
+    for (const w of words) {
+      if (w.length < 2) continue;
+      const re = new RegExp(`(${w})`, 'gi');
+      text = text.replace(re, '<mark>$1</mark>');
+    }
+    const simScore = (d.score / (query.split(/\s+/).length) * 0.95).toFixed(4);
+    return `<div class="search-result" style="animation-delay: ${i * 0.08}s">
+      <div class="sr-category">${d.category}</div>
+      <div class="sr-text">${text}</div>
+      <div class="sr-score">cosine_similarity: ${simScore}</div>
+    </div>`;
+  }).join('');
+}
+
+let searchTimeout;
+searchInput.addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => renderResults(e.target.value), 150);
+});
+
+// ═══════════════════════════════════════════════
+// PLAYABLE PIANO
+// ═══════════════════════════════════════════════
+const pianoEl = document.getElementById('piano');
+const whiteNotes = ['C4','D4','E4','F4','G4','A4','B4','C5'];
+const blackNotes = [{note:'C#4',pos:0},{note:'D#4',pos:1},{note:'F#4',pos:3},{note:'G#4',pos:4},{note:'A#4',pos:5}];
+const keyMap = {'a':'C4','s':'D4','d':'E4','f':'F4','g':'G4','h':'A4','j':'B4','k':'C5','w':'C#4','e':'D#4','t':'F#4','y':'G#4','u':'A#4'};
+
+// White keys
+whiteNotes.forEach((note) => {
+  const key = document.createElement('div');
+  key.className = 'white-key';
+  key.dataset.note = note;
+  key.addEventListener('mousedown', () => { playNote(NOTES[note], 1.2, 0.2); key.classList.add('pressed'); });
+  key.addEventListener('mouseup', () => key.classList.remove('pressed'));
+  key.addEventListener('mouseleave', () => key.classList.remove('pressed'));
+  pianoEl.appendChild(key);
+});
+
+// Black keys
+blackNotes.forEach(({note, pos}) => {
+  const key = document.createElement('div');
+  key.className = 'black-key';
+  key.dataset.note = note;
+  key.style.left = (pos * 52 + 36) + 'px';
+  key.addEventListener('mousedown', (e) => { e.stopPropagation(); playNote(NOTES[note], 1.2, 0.2); key.classList.add('pressed'); });
+  key.addEventListener('mouseup', () => key.classList.remove('pressed'));
+  key.addEventListener('mouseleave', () => key.classList.remove('pressed'));
+  pianoEl.appendChild(key);
+});
+
+// Keyboard support
+const activeKeys = {};
+document.addEventListener('keydown', (e) => {
+  if (e.target === searchInput) return;
+  const note = keyMap[e.key.toLowerCase()];
+  if (note && !activeKeys[e.key]) {
+    activeKeys[e.key] = true;
+    playNote(NOTES[note], 1.2, 0.2);
+    const el = pianoEl.querySelector(`[data-note="${note}"]`);
+    if (el) el.classList.add('pressed');
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  const note = keyMap[e.key.toLowerCase()];
+  if (note) {
+    delete activeKeys[e.key];
+    const el = pianoEl.querySelector(`[data-note="${note}"]`);
+    if (el) el.classList.remove('pressed');
+  }
+});
+
+// ═══════════════════════════════════════════════
+// PRETEXT FLOW — Bio text wrapping around orbs
+// Uses @chenglou/pretext for DOM-free text layout
+// with fallback to custom word-wrap if CDN fails
+// ═══════════════════════════════════════════════
+(async function initPretextFlow() {
+  const ptCanvas = document.getElementById('pretext-canvas');
+  if (!ptCanvas) return;
+  const ptCtx = ptCanvas.getContext('2d');
+
+  const BIO_TEXT = `Full time cat sitter, part time machine learning tinkerer. I've worked at Meta for the last few years on a variety of teams. Right now, I am working mostly on Instagram Search, specifically on Retrieval and Query Understanding problems. We are trying to make our platform the best content search in industry. My initial role in Meta was working at Meta AI, on Modern Recommendation Systems. I've worked on Graph Neural Networks (GNNs) at Facebook and Instagram scale for a variety of recommendation systems. I spent 7 years working at Red Hat, working on Red Hat Insights, a tool for continuous analysis of your applications to predict risk, recommend actions and track costs. And before that, I spent 2 years working at CERN acting as liason between different Open Source projects and our lab needs. I have completed a Masters on Computer Science at Georgia Institute of Technology, specialization on Machine Learning. I was a hackNY fellow, class of 2012. I studied Computer Science and Engineering at Universidad Carlos III de Madrid and studied 1.5y at University of California at Irvine. I am living in Jersey City now, across the Hudson river to Manhattan. I have lived in Madrid, Irvine, New York City, Geneva, Ra'anana near Tel Aviv, and London. I like to play the piano, at about ABRSM 8 level, working on DipABRSM. I enjoy calisthenics to keep my body in shape. I'm always down to hit the slopes once the snow sports season has started. I'm currently learning Mandarin Chinese. I think everyone has something worth teaching.`;
+
+  // Floating orbs that text flows around
+  const orbs = [
+    { x: 0.18, y: 0.30, r: 55, color: '#c9a96e', label: 'ML', vx: 0, vy: 0 },
+    { x: 0.50, y: 0.22, r: 48, color: '#6ea5c9', label: 'Search', vx: 0, vy: 0 },
+    { x: 0.78, y: 0.35, r: 52, color: '#c96e8a', label: 'Music', vx: 0, vy: 0 },
+    { x: 0.35, y: 0.65, r: 44, color: '#9b6ec9', label: 'GNN', vx: 0, vy: 0 },
+    { x: 0.65, y: 0.70, r: 50, color: '#e84d3d', label: 'Open Source', vx: 0, vy: 0 },
+  ];
+
+  let ptMouse = { x: -1000, y: -1000 };
+  let pretextModule = null;
+  let prepared = null;
+  const FONT_SIZE = 16;
+  const LINE_HEIGHT = 26;
+  const FONT = `${FONT_SIZE}px 'EB Garamond', Georgia, serif`;
+  const PADDING = 60;
+
+  function resizePtCanvas() {
+    const rect = ptCanvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    ptCanvas.width = rect.width * dpr;
+    ptCanvas.height = 600 * dpr;
+    ptCanvas.style.width = rect.width + 'px';
+    ptCanvas.style.height = '600px';
+    ptCtx.scale(dpr, dpr);
+    // Position orbs in absolute coords
+    orbs.forEach(o => {
+      o.ax = o.x * rect.width;
+      o.ay = o.y * 600;
+    });
+  }
+
+  resizePtCanvas();
+  window.addEventListener('resize', resizePtCanvas);
+
+  // Try loading pretext from CDN
+  try {
+    pretextModule = await import('https://cdn.jsdelivr.net/npm/@chenglou/pretext/+esm');
+    prepared = pretextModule.prepare(BIO_TEXT, FONT);
+  } catch (e) {
+    console.log('Pretext CDN load failed, using built-in word layout', e);
+  }
+
+  // Word segmentation (fallback or supplement)
+  function segmentWords(text) {
+    const words = [];
+    const parts = text.split(/(\s+)/);
+    for (const p of parts) {
+      if (p.trim()) words.push(p);
+    }
+    return words;
+  }
+
+  const words = segmentWords(BIO_TEXT);
+
+  // Measure word widths using canvas
+  function measureWord(word) {
+    ptCtx.font = FONT;
+    return ptCtx.measureText(word).width;
+  }
+
+  // Check if a horizontal range [x1, x2] at height y intersects any orb
+  function getExclusions(y, lineH) {
+    const exclusions = [];
+    for (const o of orbs) {
+      const dy = Math.abs(o.ay - y - lineH / 2);
+      if (dy < o.r + lineH / 2 + 4) {
+        // Circle intersection at this y
+        const halfChord = Math.sqrt(Math.max(0, (o.r + 8) * (o.r + 8) - dy * dy));
+        exclusions.push({ left: o.ax - halfChord, right: o.ax + halfChord });
+      }
+    }
+    return exclusions.sort((a, b) => a.left - b.left);
+  }
+
+  // Get available horizontal runs on a line, avoiding exclusions
+  function getAvailableRuns(y, lineH, totalWidth) {
+    const excl = getExclusions(y, lineH);
+    const runs = [];
+    let cursor = PADDING;
+    const maxX = totalWidth - PADDING;
+
+    for (const e of excl) {
+      if (e.left > cursor) {
+        runs.push({ left: cursor, right: Math.min(e.left, maxX) });
+      }
+      cursor = Math.max(cursor, e.right);
+    }
+    if (cursor < maxX) {
+      runs.push({ left: cursor, right: maxX });
+    }
+    return runs;
+  }
+
+  // Layout and render text, flowing around orbs
+  function renderFlowingText() {
+    const W = ptCanvas.style.width ? parseInt(ptCanvas.style.width) : ptCanvas.width;
+    const H = 600;
+    const dpr = window.devicePixelRatio || 1;
+
+    ptCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ptCtx.clearRect(0, 0, W, H);
+
+    // Draw orbs (soft glowing circles with labels)
+    for (const o of orbs) {
+      // Outer glow
+      const grad = ptCtx.createRadialGradient(o.ax, o.ay, o.r * 0.3, o.ax, o.ay, o.r + 20);
+      grad.addColorStop(0, o.color + '25');
+      grad.addColorStop(0.7, o.color + '10');
+      grad.addColorStop(1, o.color + '00');
+      ptCtx.beginPath();
+      ptCtx.arc(o.ax, o.ay, o.r + 20, 0, Math.PI * 2);
+      ptCtx.fillStyle = grad;
+      ptCtx.fill();
+
+      // Inner orb
+      const inner = ptCtx.createRadialGradient(o.ax - o.r * 0.2, o.ay - o.r * 0.2, 0, o.ax, o.ay, o.r);
+      inner.addColorStop(0, o.color + '40');
+      inner.addColorStop(1, o.color + '15');
+      ptCtx.beginPath();
+      ptCtx.arc(o.ax, o.ay, o.r, 0, Math.PI * 2);
+      ptCtx.fillStyle = inner;
+      ptCtx.fill();
+      ptCtx.strokeStyle = o.color + '30';
+      ptCtx.lineWidth = 1;
+      ptCtx.stroke();
+
+      // Label
+      ptCtx.font = "500 11px 'JetBrains Mono', monospace";
+      ptCtx.fillStyle = o.color + 'bb';
+      ptCtx.textAlign = 'center';
+      ptCtx.textBaseline = 'middle';
+      ptCtx.fillText(o.label, o.ax, o.ay);
+    }
+
+    // Flow text around orbs
+    ptCtx.font = FONT;
+    ptCtx.fillStyle = '#b8b4ae';
+    ptCtx.textAlign = 'left';
+    ptCtx.textBaseline = 'top';
+
+    let wordIdx = 0;
+    let y = 30;
+    const spaceW = measureWord(' ');
+
+    while (wordIdx < words.length && y < H - LINE_HEIGHT) {
+      const runs = getAvailableRuns(y, LINE_HEIGHT, W);
+
+      for (const run of runs) {
+        let x = run.left + 4;
+        const maxX = run.right - 4;
+
+        while (wordIdx < words.length) {
+          const w = words[wordIdx];
+          const ww = measureWord(w);
+          if (x + ww > maxX && x > run.left + 8) break;
+          ptCtx.fillText(w, x, y + 3);
+          x += ww + spaceW;
+          wordIdx++;
+        }
+      }
+      y += LINE_HEIGHT;
+    }
+  }
+
+  // Animate orbs with gentle drift + mouse interaction
+  let time = 0;
+  function animatePretext() {
+    time += 0.008;
+
+    for (let i = 0; i < orbs.length; i++) {
+      const o = orbs[i];
+      const W = parseInt(ptCanvas.style.width) || ptCanvas.width;
+
+      // Gentle ambient drift
+      const baseX = o.x * W;
+      const baseY = o.y * 600;
+      let targetX = baseX + Math.sin(time + i * 1.7) * 30;
+      let targetY = baseY + Math.cos(time * 0.8 + i * 2.1) * 20;
+
+      // Mouse repulsion
+      const dx = o.ax - ptMouse.x;
+      const dy = o.ay - ptMouse.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist < 180) {
+        const force = (180 - dist) * 0.3;
+        targetX += (dx / dist) * force;
+        targetY += (dy / dist) * force;
+      }
+
+      // Smooth follow
+      o.ax += (targetX - o.ax) * 0.04;
+      o.ay += (targetY - o.ay) * 0.04;
+
+      // Keep in bounds
+      o.ax = Math.max(o.r + 10, Math.min(W - o.r - 10, o.ax));
+      o.ay = Math.max(o.r + 10, Math.min(590 - o.r, o.ay));
+    }
+
+    renderFlowingText();
+    requestAnimationFrame(animatePretext);
+  }
+
+  ptCanvas.addEventListener('mousemove', (e) => {
+    const rect = ptCanvas.getBoundingClientRect();
+    ptMouse.x = e.clientX - rect.left;
+    ptMouse.y = e.clientY - rect.top;
+  });
+
+  ptCanvas.addEventListener('mouseleave', () => {
+    ptMouse.x = -1000;
+    ptMouse.y = -1000;
+  });
+
+  // Click orb to play note
+  ptCanvas.addEventListener('click', (e) => {
+    const rect = ptCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    for (let i = 0; i < orbs.length; i++) {
+      const o = orbs[i];
+      const d = Math.sqrt((mx - o.ax) ** 2 + (my - o.ay) ** 2);
+      if (d < o.r) {
+        playChordLoud(2.0, 0.11);
+        // Pulse effect: briefly expand
+        const origR = o.r;
+        o.r = origR * 1.4;
+        setTimeout(() => { o.r = origR; }, 400);
+        break;
+      }
+    }
+  });
+
+  animatePretext();
+})();
+</script>
+</body>
+</html>
