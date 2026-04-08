@@ -426,6 +426,215 @@
     font-style: normal;
   }
 
+  /* ─── REPERTOIRE ─── */
+  .repertoire-era {
+    margin-bottom: 40px;
+  }
+
+  .repertoire-era h3 {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(201,169,110,0.15);
+  }
+
+  .rep-piece {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    color: var(--fg);
+    gap: 12px;
+  }
+
+  .rep-piece:last-child { border-bottom: none; }
+
+  .rep-piece .rep-name { flex: 1; }
+  .rep-piece .rep-author {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--fg-dim);
+    min-width: 90px;
+  }
+
+  .rep-piece .rep-status {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+  }
+
+  .rep-status.recorded { color: #6ec98a; border: 1px solid rgba(110,201,138,0.3); }
+  .rep-status.polishing { color: var(--accent); border: 1px solid rgba(201,169,110,0.3); }
+  .rep-status.reading { color: var(--accent2); border: 1px solid rgba(110,165,201,0.3); }
+  .rep-status.forgotten { color: var(--fg-dim); border: 1px solid rgba(255,255,255,0.1); }
+  .rep-status.abandoned { color: var(--accent3); border: 1px solid rgba(201,110,138,0.3); }
+
+  .rep-piece a.rep-video {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--accent2);
+    text-decoration: none;
+    border: 1px solid rgba(110,165,201,0.25);
+    padding: 3px 10px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+
+  .rep-piece a.rep-video:hover {
+    background: rgba(110,165,201,0.1);
+    border-color: var(--accent2);
+  }
+
+  .practice-zones {
+    margin-top: 32px;
+  }
+
+  .practice-zone {
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .practice-zone summary {
+    font-family: var(--serif);
+    font-size: 1rem;
+    color: var(--fg);
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+    list-style: none;
+  }
+
+  .practice-zone summary::-webkit-details-marker { display: none; }
+  .practice-zone summary::before {
+    content: '+';
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-right: 12px;
+  }
+
+  .practice-zone[open] summary::before { content: '-'; }
+  .practice-zone[open] summary { color: var(--accent); }
+
+  .practice-zone ul {
+    padding: 0 20px 16px 44px;
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    color: var(--fg-dim);
+    line-height: 1.7;
+  }
+
+  .practice-zone li { margin-bottom: 4px; }
+
+  /* ─── ACADEMICS ─── */
+  .edu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+  }
+
+  .edu-card {
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 28px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .edu-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .edu-card:hover {
+    border-color: rgba(110,165,201,0.3);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+
+  .edu-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 3px;
+    background: linear-gradient(to right, var(--accent2), var(--accent));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.6s ease;
+  }
+
+  .edu-card:hover::before { transform: scaleX(1); }
+
+  .edu-card .edu-icon {
+    font-size: 1.8rem;
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .edu-card .edu-degree {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    color: var(--fg);
+    margin-bottom: 4px;
+  }
+
+  .edu-card .edu-school {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+
+  .edu-card .edu-desc {
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    color: var(--fg-dim);
+    line-height: 1.7;
+  }
+
+  .edu-card .edu-desc a {
+    color: var(--accent2);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(110,165,201,0.3);
+    transition: all 0.3s;
+  }
+
+  .edu-card .edu-desc a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .edu-card .edu-tags {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (max-width: 600px) {
+    .rep-piece { flex-wrap: wrap; gap: 6px; }
+    .rep-piece .rep-author { min-width: auto; }
+  }
+
   /* ─── PIANO SECTION ─── */
   #piano-section {
     text-align: center;
@@ -906,6 +1115,58 @@
 
 <div class="divider"></div>
 
+<!-- ═══ ACADEMICS ═══ -->
+<section id="academics">
+  <div class="section-label anim">interlude — backpropagation</div>
+  <div class="section-title anim">Education</div>
+  <div class="edu-grid">
+    <div class="edu-card anim">
+      <span class="edu-icon">🐝</span>
+      <div class="edu-degree">M.S. Computer Science</div>
+      <div class="edu-school">Georgia Institute of Technology</div>
+      <div class="edu-desc">Completed an MSCS with a <a href="https://omscs.gatech.edu/specialization-machine-learning">specialization in Machine Learning</a>.</div>
+      <div class="edu-tags">
+        <span class="tag">Machine Learning</span>
+        <span class="tag">OMSCS</span>
+      </div>
+    </div>
+    <div class="edu-card anim">
+      <span class="edu-icon">🗽</span>
+      <div class="edu-degree">hackNY Fellow, Class of 2012</div>
+      <div class="edu-school">hackNY</div>
+      <div class="edu-desc">A transforming experience. I was a <a href="https://hackny.org/fellows-program">hackNY fellow</a> and a <a href="https://www.youtube.com/watch?v=ZavB1VRlFVU&list=PLqpheqvqKMFGZ68St6HSPICi-N55TwVjE&index=6">mentor of the 2015 class</a>. Here's my <a href="https://www.youtube.com/watch?v=EYr5OKGvfrE">lightning talk</a> from that summer.</div>
+      <div class="edu-tags">
+        <span class="tag">NYC</span>
+        <span class="tag">Startups</span>
+        <span class="tag">Fellowship</span>
+      </div>
+    </div>
+    <div class="edu-card anim">
+      <span class="edu-icon">🎓</span>
+      <div class="edu-degree">B.S. Computer Science & Engineering</div>
+      <div class="edu-school">Universidad Carlos III de Madrid + UC Irvine</div>
+      <div class="edu-desc">Got my degree from <a href="https://en.wikipedia.org/wiki/Charles_III_University_of_Madrid">UC3M</a> and studied 1.5 years at <a href="https://en.wikipedia.org/wiki/University_of_California,_Irvine">UC Irvine</a>. Did my last year completely remote from Geneva, Switzerland, as I was working from CERN at that time, and flew back only for exams.</div>
+      <div class="edu-tags">
+        <span class="tag">Madrid</span>
+        <span class="tag">California</span>
+        <span class="tag">CERN Remote</span>
+      </div>
+    </div>
+    <div class="edu-card anim">
+      <span class="edu-icon">📚</span>
+      <div class="edu-degree">Publications</div>
+      <div class="edu-school">Google Scholar</div>
+      <div class="edu-desc">Part of me wishes to have joined a PhD program, but it just never happened. However, I'm happy to <a href="https://scholar.google.com/citations?user=sDMSfzEAAAAJ&hl=en">collaborate on publications</a> that align with my interests.</div>
+      <div class="edu-tags">
+        <span class="tag">Research</span>
+        <span class="tag">Collaboration</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
 <!-- ═══ CITIES / WORLD ═══ -->
 <section id="cities">
   <div class="section-label anim">movement III — embeddings</div>
@@ -992,9 +1253,9 @@
       <div class="pc-text">I enjoy calisthenics to keep my body in shape. I recently hit a plateau there so I moved to a personal trainer. I used to spar as a <em>light-welterweight</em> boxer. I thoroughly enjoyed it and hope some day I can get back to it.</div>
     </div>
     <div class="passion-card anim">
-      <span class="pc-icon">📝</span>
-      <div class="pc-title">Paper Notes</div>
-      <div class="pc-text">I publish academic paper notes on <em>a public repository</em>. I started doing this when I studied my Masters and carried on until now, so it has a mix of OS and ML related papers.</div>
+      <span class="pc-icon">👐</span>
+      <div class="pc-title">Open Source</div>
+      <div class="pc-text">I was one of the main maintainers of <em>Foreman</em> (2.3k+ stars) for 6-7 years. Grew the community across FOSDEM, Linux NYC, PuppetConf, AnsibleConf. I also publish <em>academic paper notes</em> on a public repository — a mix of OS and ML papers from my Masters onward.</div>
     </div>
   </div>
 </section>
@@ -1174,6 +1435,105 @@
     <!-- Built by JS -->
   </div>
   <div class="piano-hint">click the keys or use keyboard: A S D F G H J K (white) &amp; W E T Y U (black)</div>
+
+  <div style="text-align: left; max-width: 800px; margin: 80px auto 0;">
+    <h2 style="font-family: var(--serif); font-size: 1.8rem; font-weight: 400; color: var(--fg); margin-bottom: 8px;">Repertoire</h2>
+    <p style="font-family: var(--serif); font-size: 0.95rem; color: var(--fg-dim); margin-bottom: 32px; line-height: 1.7;">
+      ~ABRSM 8 level, working on DipABRSM. Interested in chamber music collaborations and violin duos.
+    </p>
+
+    <div class="repertoire-era">
+      <h3>Baroque</h3>
+      <div class="rep-piece"><span class="rep-author">Bach</span><span class="rep-name">2-Part Invention No. 8 in F</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=DmcYKDWD-D4" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Bach</span><span class="rep-name">Sinfonia No. 8 in F Major</span><span class="rep-status forgotten">forgotten</span></div>
+      <div class="rep-piece"><span class="rep-author">Bach</span><span class="rep-name">Sinfonia No. 9 in F minor</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=jw-TQqJET98" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Scarlatti</span><span class="rep-name">Sonata 366 K1 D minor</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=NktQIsU8z5A" target="_blank">video</a></div>
+    </div>
+
+    <div class="repertoire-era">
+      <h3>Classical</h3>
+      <div class="rep-piece"><span class="rep-author">Beethoven</span><span class="rep-name">Piano Sonata No. 1, Op. 2 No. 1</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=AzSLnoCA-9s" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Beethoven</span><span class="rep-name">9 Variations on Paisiello WoO 69</span><span class="rep-status forgotten">forgotten</span></div>
+      <div class="rep-piece"><span class="rep-author">Beethoven</span><span class="rep-name">Sonate No. 8 "Path&eacute;tique" — 2nd Mvt</span><span class="rep-status recorded">recorded</span></div>
+      <div class="rep-piece"><span class="rep-author">Haydn</span><span class="rep-name">Sonata Hob. XVI:5 — I. Allegro</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=thuyTypzd88" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Haydn</span><span class="rep-name">Sonata Hob. XVI:5 — II. Menuet</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=ukfjb9gQQOk" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Haydn</span><span class="rep-name">Sonata Hob. XVI:5 — III. Presto</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=C4L9fyNoISU" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Mozart</span><span class="rep-name">Sonata in A minor</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=sK7Cn-h9n5U" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Mozart</span><span class="rep-name">Fantasia in D minor</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=0aGm4MkWbrg" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Mozart</span><span class="rep-name">Piano Sonata No. 16, K. 545</span><span class="rep-status polishing">polishing</span></div>
+    </div>
+
+    <div class="repertoire-era">
+      <h3>Romantic</h3>
+      <div class="rep-piece"><span class="rep-author">Chopin</span><span class="rep-name">Nocturne in C-sharp minor, B.49</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=pXpLxQg8_fw" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Chopin</span><span class="rep-name">Etude Op. 25, No. 1 "Aeolian Harp"</span><span class="rep-status reading">reading</span></div>
+      <div class="rep-piece"><span class="rep-author">Mendelssohn</span><span class="rep-name">Lieder ohne Worte, Op. 53: Andante con Moto</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=_a_bBNAh9Kg" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Schubert</span><span class="rep-name">Impromptu No. 2</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=p58vjYA-IWE" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Schubert</span><span class="rep-name">Impromptu No. 3</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=yDaGCv-Bq2o" target="_blank">video</a></div>
+    </div>
+
+    <div class="repertoire-era">
+      <h3>XX Century</h3>
+      <div class="rep-piece"><span class="rep-author">Alb&eacute;niz</span><span class="rep-name">Espa&ntilde;a, Op 165: 1. Preludio</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=AkbsLfkMtOg" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Bart&oacute;k</span><span class="rep-name">Romanian Folk Dances: III. Pe-Loc</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=Sj5DENa-xiA" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Debussy</span><span class="rep-name">Clair de Lune</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=ce3aEyQBhjI" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Debussy</span><span class="rep-name">Gollywog's Cakewalk</span><span class="rep-status recorded">recorded</span><a class="rep-video" href="https://www.youtube.com/watch?v=rec-h2abvmo" target="_blank">video</a></div>
+      <div class="rep-piece"><span class="rep-author">Prokofiev</span><span class="rep-name">Visions Fugitives: II Andante</span><span class="rep-status forgotten">forgotten</span></div>
+      <div class="rep-piece"><span class="rep-author">Prokofiev</span><span class="rep-name">Visions Fugitives: X Ridicolosamente</span><span class="rep-status forgotten">forgotten</span></div>
+    </div>
+
+    <div class="repertoire-era">
+      <h3>Etude</h3>
+      <div class="rep-piece"><span class="rep-author">Sibelius</span><span class="rep-name">Etude Op 76 No. 2</span><span class="rep-status abandoned">abandoned</span></div>
+    </div>
+
+    <h2 style="font-family: var(--serif); font-size: 1.8rem; font-weight: 400; color: var(--fg); margin: 60px 0 8px;">The Five Zones of Practice</h2>
+    <p style="font-family: var(--serif); font-size: 0.95rem; color: var(--fg-dim); margin-bottom: 20px; line-height: 1.7;">A framework I follow for structuring practice sessions.</p>
+
+    <div class="practice-zones">
+      <details class="practice-zone">
+        <summary>New Material</summary>
+        <ul>
+          <li>Divide into sections</li>
+          <li>Establish interpretive/technical plan</li>
+          <li>Slow tempo</li>
+        </ul>
+      </details>
+      <details class="practice-zone">
+        <summary>Developing Material</summary>
+        <ul>
+          <li>Refine interpretation</li>
+          <li>Increase tempo</li>
+          <li>Memorize</li>
+        </ul>
+      </details>
+      <details class="practice-zone">
+        <summary>Performance Material</summary>
+        <ul>
+          <li>Practice performing</li>
+          <li>Maintain memory</li>
+          <li>Renew and innovate</li>
+        </ul>
+      </details>
+      <details class="practice-zone">
+        <summary>Technique</summary>
+        <ul>
+          <li>Scales</li>
+          <li>Arpeggios</li>
+          <li>Voice/instrument-specific work</li>
+        </ul>
+      </details>
+      <details class="practice-zone">
+        <summary>Musicianship</summary>
+        <ul>
+          <li>Sight-reading</li>
+          <li>Theory/ear training</li>
+          <li>Composition/improvisation</li>
+          <li>Listening/study</li>
+        </ul>
+      </details>
+    </div>
+  </div>
 </section>
 
 <!-- ═══ FOOTER ═══ -->
@@ -1658,6 +2018,8 @@ const SEARCH_DATA = [
   { category: 'education', text: 'I studied Computer Science and Engineering as my undergraduate major. I got my degree from Universidad Carlos III de Madrid and studied 1.5y at University of California at Irvine.', keywords: ['madrid', 'spain', 'university', 'carlos', 'irvine', 'california', 'education', 'degree'] },
   { category: 'education', text: 'I was a hackNY fellow, class of 2012. I was a mentor of the 2015 class. It was a transforming experience for me.', keywords: ['hackny', 'fellow', 'new york', 'nyc', 'startup', 'mentor'] },
   { category: 'music', text: 'I like to play the piano, at about ~ABRSM 8 level, working on DipABRSM. I\'m interested in chamber music collaborations, violin duos, so if you\'re into that hit me up!', keywords: ['piano', 'music', 'abrsm', 'classical', 'chamber', 'violin', 'keyboard'] },
+  { category: 'music', text: 'My repertoire spans Baroque to XX Century: Bach, Scarlatti, Beethoven, Haydn, Mozart, Chopin, Schubert, Mendelssohn, Debussy, Prokofiev, Bartók, Albéniz. Most pieces recorded on video.', keywords: ['repertoire', 'bach', 'beethoven', 'chopin', 'debussy', 'mozart', 'schubert', 'haydn', 'baroque', 'romantic', 'classical'] },
+  { category: 'education', text: 'Did my last year of university completely remote from Geneva, Switzerland, as I was working from CERN at that time, and flew back only for exams.', keywords: ['cern', 'geneva', 'remote', 'university', 'exams', 'switzerland'] },
   { category: 'music', text: 'It\'s the one thing that brought the most relationships into my life, made me met a lot of people, and I really enjoyed. I ranked #2 in Spain consistently for many years.', keywords: ['ddr', 'dance', 'rhythm', 'game', 'spain', 'competition', 'arcade'] },
   { category: 'personal', text: 'I\'m currently learning Mandarin Chinese. My main motivation is being able to communicate with my partner\'s family and friends. Actually, learning Japanese (~N4) has helped me tremendously with learning Chinese characters.', keywords: ['mandarin', 'chinese', 'japanese', 'language', 'study', 'learning'] },
   { category: 'personal', text: 'I\'m always down to hit the slopes once the snow sports season has started. I enjoy calisthenics to keep my body in shape. Boxing — used to spar as a light-welterweight.', keywords: ['ski', 'snow', 'slopes', 'calisthenics', 'boxing', 'fitness', 'sports'] },
