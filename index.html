@@ -1508,6 +1508,8 @@ document.addEventListener('keyup', (e) => {
   ];
 
   let ptMouse = { x: -1000, y: -1000 };
+  let draggedOrb = null;
+  let dragOffset = { x: 0, y: 0 };
   let pretextModule = null;
   let prepared = null;
   const FONT_SIZE = 16;
@@ -1672,25 +1674,33 @@ document.addEventListener('keyup', (e) => {
       const o = orbs[i];
       const W = parseInt(ptCanvas.style.width) || ptCanvas.width;
 
-      // Gentle ambient drift
-      const baseX = o.x * W;
-      const baseY = o.y * 600;
-      let targetX = baseX + Math.sin(time + i * 1.7) * 30;
-      let targetY = baseY + Math.cos(time * 0.8 + i * 2.1) * 20;
+      if (o === draggedOrb) {
+        // Dragged orb follows mouse directly
+        o.ax = ptMouse.x + dragOffset.x;
+        o.ay = ptMouse.y + dragOffset.y;
+      } else {
+        // Gentle ambient drift
+        const baseX = o.x * W;
+        const baseY = o.y * 600;
+        let targetX = baseX + Math.sin(time + i * 1.7) * 30;
+        let targetY = baseY + Math.cos(time * 0.8 + i * 2.1) * 20;
 
-      // Mouse repulsion
-      const dx = o.ax - ptMouse.x;
-      const dy = o.ay - ptMouse.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      if (dist < 180) {
-        const force = (180 - dist) * 0.3;
-        targetX += (dx / dist) * force;
-        targetY += (dy / dist) * force;
+        // Mouse repulsion (only when not dragging anything)
+        if (!draggedOrb) {
+          const dx = o.ax - ptMouse.x;
+          const dy = o.ay - ptMouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          if (dist < 180) {
+            const force = (180 - dist) * 0.3;
+            targetX += (dx / dist) * force;
+            targetY += (dy / dist) * force;
+          }
+        }
+
+        // Smooth follow
+        o.ax += (targetX - o.ax) * 0.04;
+        o.ay += (targetY - o.ay) * 0.04;
       }
-
-      // Smooth follow
-      o.ax += (targetX - o.ax) * 0.04;
-      o.ay += (targetY - o.ay) * 0.04;
 
       // Keep in bounds
       o.ax = Math.max(o.r + 10, Math.min(W - o.r - 10, o.ax));
@@ -1705,30 +1715,49 @@ document.addEventListener('keyup', (e) => {
     const rect = ptCanvas.getBoundingClientRect();
     ptMouse.x = e.clientX - rect.left;
     ptMouse.y = e.clientY - rect.top;
+    // Show grab cursor when hovering an orb
+    if (!draggedOrb) {
+      let overOrb = false;
+      for (const o of orbs) {
+        const d = Math.sqrt((ptMouse.x - o.ax) ** 2 + (ptMouse.y - o.ay) ** 2);
+        if (d < o.r) { overOrb = true; break; }
+      }
+      ptCanvas.style.cursor = overOrb ? 'grab' : 'default';
+    }
+  });
+
+  ptCanvas.addEventListener('mousedown', (e) => {
+    const rect = ptCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    for (const o of orbs) {
+      const d = Math.sqrt((mx - o.ax) ** 2 + (my - o.ay) ** 2);
+      if (d < o.r) {
+        draggedOrb = o;
+        dragOffset.x = o.ax - mx;
+        dragOffset.y = o.ay - my;
+        ptCanvas.style.cursor = 'grabbing';
+        playChordLoud(2.0, 0.11);
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (draggedOrb) {
+      // Update base position so orb stays where you dropped it
+      const W = parseInt(ptCanvas.style.width) || ptCanvas.width;
+      draggedOrb.x = draggedOrb.ax / W;
+      draggedOrb.y = draggedOrb.ay / 600;
+      draggedOrb = null;
+      ptCanvas.style.cursor = 'default';
+    }
   });
 
   ptCanvas.addEventListener('mouseleave', () => {
     ptMouse.x = -1000;
     ptMouse.y = -1000;
-  });
-
-  // Click orb to play note
-  ptCanvas.addEventListener('click', (e) => {
-    const rect = ptCanvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    for (let i = 0; i < orbs.length; i++) {
-      const o = orbs[i];
-      const d = Math.sqrt((mx - o.ax) ** 2 + (my - o.ay) ** 2);
-      if (d < o.r) {
-        playChordLoud(2.0, 0.11);
-        // Pulse effect: briefly expand
-        const origR = o.r;
-        o.r = origR * 1.4;
-        setTimeout(() => { o.r = origR; }, 400);
-        break;
-      }
-    }
   });
 
   animatePretext();
