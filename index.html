@@ -1068,7 +1068,7 @@
       <div class="ti-period">2021 — present</div>
       <div class="ti-role">Machine Learning Engineer</div>
       <div class="ti-company">Meta — Applied Research on MRS, Monetization, Instagram</div>
-      <div class="ti-desc">I've worked at Meta for the last few years on a variety of teams. Right now, I am working mostly on Instagram Search, specifically on Retrieval and Query Understanding problems. We are trying to make our platform the best content search in industry. Before then, I bootstrapped the monetization efforts for conversion and user quality models in Marketing Messages on Whatsapp. My initial role in Meta was working at Meta AI, on Modern Recommendation Systems. I've worked on Graph Neural Networks (GNNs) at Facebook and Instagram scale for a variety of recommendation systems.</div>
+      <div class="ti-desc">I've worked at <strong>Meta</strong> for the last few years on a variety of teams. Right now, I am working mostly on <em>Instagram Search</em>, specifically on <em>Retrieval and Query Understanding</em> problems. We are trying to make our platform the best content search in industry. Before then, I bootstrapped the <em>monetization efforts for conversion and user quality models in Marketing Messages on Whatsapp</em>. My initial role in Meta was working at <em>Meta AI</em>, on <em>Modern Recommendation Systems</em>. I've worked on <em>Graph Neural Networks (GNNs)</em> at Facebook and Instagram scale for a variety of recommendation systems. I helped with some testing automation in <em>Iron Man VR</em> too, never thought I'd show up on a game credits!</div>
       <div class="ti-tags">
         <span class="tag">GNNs</span>
         <span class="tag">RecSys</span>
@@ -1080,7 +1080,7 @@
       <div class="ti-period">2021</div>
       <div class="ti-role">Machine Learning Engineer</div>
       <div class="ti-company">Palo Alto Insight</div>
-      <div class="ti-desc">I worked for Palo Alto Insight, writing software to help deploy machine learning based solutions, and automate workflows with AI. We were offering consulting services mostly in data analysis and ML for vision to companies who needed it.</div>
+      <div class="ti-desc">I worked for <strong>Palo Alto Insight</strong>, writing software to help deploy machine learning based solutions, and automate workflows with AI. We were offering consulting services mostly in <em>data analysis and ML for vision</em> to companies who needed it.</div>
       <div class="ti-tags">
         <span class="tag">Computer Vision</span>
         <span class="tag">MLOps</span>
@@ -1091,7 +1091,7 @@
       <div class="ti-period">2014 — 2021</div>
       <div class="ti-role">Senior Software Engineer</div>
       <div class="ti-company">Red Hat</div>
-      <div class="ti-desc">I spent 7 years working at Red Hat, working on Red Hat Insights, a tool for continuous analysis of your applications to predict risk, recommend actions and track costs in a hybrid cloud setting. My first 4 years there, I worked on the Foreman project and Satellite, which were the best options out there for hybrid cloud+bare metal management.</div>
+      <div class="ti-desc">I spent <em>7 years</em> working at <strong>Red Hat</strong>, working on <em>Red Hat Insights</em>, a tool for continuous analysis of your applications to predict risk, recommend actions and track costs in a hybrid cloud setting. My first 4 years there, I worked on the <em>Foreman project</em> and <em>Satellite</em>, which were the best options out there for hybrid cloud+bare metal management.</div>
       <div class="ti-tags">
         <span class="tag">Open Source</span>
         <span class="tag">Hybrid Cloud</span>
@@ -1103,7 +1103,7 @@
       <div class="ti-period">2012 — 2014</div>
       <div class="ti-role">Open Source Liaison</div>
       <div class="ti-company">CERN — Geneva, Switzerland</div>
-      <div class="ti-desc">I spent 2 years working at CERN acting as liason between different Open Source projects (Puppet, Foreman and others) and our lab needs.</div>
+      <div class="ti-desc">I spent <em>2 years</em> working at <strong>CERN</strong> acting as liason between different Open Source projects (<em>Puppet</em>, <em>Foreman</em> and others) and our lab needs.</div>
       <div class="ti-tags">
         <span class="tag">Foreman</span>
         <span class="tag">Puppet</span>
@@ -1179,7 +1179,7 @@
       <span class="cc-flag">🇪🇸</span>
       <div class="cc-name">Madrid</div>
       <div class="cc-country">Spain</div>
-      <div class="cc-note">I studied Computer Science and Engineering as my undergraduate major. I got my degree from Universidad Carlos III de Madrid.</div>
+      <div class="cc-note">Born and raised here. I studied Computer Science and Engineering as my undergraduate major, and got my degree from Universidad Carlos III de Madrid.</div>
     </div>
     <div class="city-card anim">
       <span class="cc-flag">🇺🇸</span>
@@ -2146,7 +2146,8 @@ document.addEventListener('keyup', (e) => {
   if (!ptCanvas) return;
   const ptCtx = ptCanvas.getContext('2d');
 
-  const BIO_TEXT = `Full time cat sitter, part time machine learning tinkerer. I've worked at Meta for the last few years on a variety of teams. Right now, I am working mostly on Instagram Search, specifically on Retrieval and Query Understanding problems. We are trying to make our platform the best content search in industry. My initial role in Meta was working at Meta AI, on Modern Recommendation Systems. I've worked on Graph Neural Networks (GNNs) at Facebook and Instagram scale for a variety of recommendation systems. I spent 7 years working at Red Hat, working on Red Hat Insights, a tool for continuous analysis of your applications to predict risk, recommend actions and track costs. And before that, I spent 2 years working at CERN acting as liason between different Open Source projects and our lab needs. I have completed a Masters on Computer Science at Georgia Institute of Technology, specialization on Machine Learning. I was a hackNY fellow, class of 2012. I studied Computer Science and Engineering at Universidad Carlos III de Madrid and studied 1.5y at University of California at Irvine. I am living in Jersey City now, across the Hudson river to Manhattan. I have lived in Madrid, Irvine, New York City, Geneva, Ra'anana near Tel Aviv, and London. I like to play the piano, at about ABRSM 8 level, working on DipABRSM. I enjoy calisthenics to keep my body in shape. I'm always down to hit the slopes once the snow sports season has started. I'm currently learning Mandarin Chinese. I think everyone has something worth teaching.`;
+  // Markup: **bold**, *italic*. Escaped before segmentation.
+  const BIO_TEXT = `Full time cat sitter, part time *machine learning* tinkerer. I've worked at **Meta** for the last few years on a variety of teams. Right now, I am working mostly on *Instagram Search*, specifically on *Retrieval and Query Understanding* problems. We are trying to make our platform the best content search in industry. My initial role in **Meta** was working at *Meta AI*, on *Modern Recommendation Systems*. I've worked on *Graph Neural Networks (GNNs)* at Facebook and Instagram scale for a variety of recommendation systems. I spent *7 years* working at **Red Hat**, working on *Red Hat Insights*, a tool for continuous analysis of your applications to predict risk, recommend actions and track costs. And before that, I spent *2 years* working at **CERN** acting as liason between different Open Source projects and our lab needs. I have completed a Masters on *Computer Science* at **Georgia Institute of Technology**, specialization on *Machine Learning*. I was a **hackNY** fellow, class of 2012. I studied *Computer Science and Engineering* at **Universidad Carlos III de Madrid** and studied 1.5y at **University of California at Irvine**. I was born and raised in **Madrid**. I am living in **Jersey City** now, across the Hudson river to Manhattan. I have also lived in **Irvine**, **New York City**, **Geneva**, **Ra'anana** near Tel Aviv, and **London**. I like to play the *piano*, at about *ABRSM 8* level, working on *DipABRSM*. I enjoy *calisthenics* to keep my body in shape. I'm always down to hit the slopes once the snow sports season has started. I'm currently learning *Mandarin Chinese*. I think everyone has something worth teaching.`;
 
   // Floating orbs that text flows around
   const orbs = [
@@ -2160,11 +2161,13 @@ document.addEventListener('keyup', (e) => {
   let ptMouse = { x: -1000, y: -1000 };
   let draggedOrb = null;
   let dragOffset = { x: 0, y: 0 };
-  let pretextModule = null;
-  let prepared = null;
   const FONT_SIZE = 16;
   const LINE_HEIGHT = 26;
-  const FONT = `${FONT_SIZE}px 'EB Garamond', Georgia, serif`;
+  const FONT_FAMILY = `'EB Garamond', Georgia, serif`;
+  const FONT_REGULAR = `${FONT_SIZE}px ${FONT_FAMILY}`;
+  const FONT_BOLD = `bold ${FONT_SIZE}px ${FONT_FAMILY}`;
+  const FONT_ITALIC = `italic ${FONT_SIZE}px ${FONT_FAMILY}`;
+  const fontFor = (style) => style === 'bold' ? FONT_BOLD : style === 'italic' ? FONT_ITALIC : FONT_REGULAR;
   const PADDING = 60;
 
   function resizePtCanvas() {
@@ -2185,30 +2188,50 @@ document.addEventListener('keyup', (e) => {
   resizePtCanvas();
   window.addEventListener('resize', resizePtCanvas);
 
-  // Try loading pretext from CDN
-  try {
-    pretextModule = await import('https://cdn.jsdelivr.net/npm/@chenglou/pretext/+esm');
-    prepared = pretextModule.prepare(BIO_TEXT, FONT);
-  } catch (e) {
-    console.log('Pretext CDN load failed, using built-in word layout', e);
-  }
-
-  // Word segmentation (fallback or supplement)
-  function segmentWords(text) {
-    const words = [];
-    const parts = text.split(/(\s+)/);
-    for (const p of parts) {
-      if (p.trim()) words.push(p);
+  // Parse **bold** / *italic* markers into {text, style} segments
+  function parseMarkup(text) {
+    const segments = [];
+    let buf = '';
+    let style = 'regular';
+    const flush = () => { if (buf) { segments.push({ text: buf, style }); buf = ''; } };
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '*' && text[i + 1] === '*') {
+        flush();
+        style = style === 'bold' ? 'regular' : 'bold';
+        i++;
+      } else if (text[i] === '*') {
+        flush();
+        style = style === 'italic' ? 'regular' : 'italic';
+      } else {
+        buf += text[i];
+      }
     }
-    return words;
+    flush();
+    return segments;
   }
 
-  const words = segmentWords(BIO_TEXT);
+  // Segment into styled words: [{text, style}, ...]
+  function segmentStyledWords(text) {
+    const out = [];
+    for (const seg of parseMarkup(text)) {
+      for (const p of seg.text.split(/(\s+)/)) {
+        if (p.trim()) out.push({ text: p, style: seg.style });
+      }
+    }
+    return out;
+  }
 
-  // Measure word widths using canvas
+  const words = segmentStyledWords(BIO_TEXT);
+
+  // Measure a styled word width using canvas
   function measureWord(word) {
-    ptCtx.font = FONT;
-    return ptCtx.measureText(word).width;
+    ptCtx.font = fontFor(word.style);
+    return ptCtx.measureText(word.text).width;
+  }
+
+  function measureSpace() {
+    ptCtx.font = FONT_REGULAR;
+    return ptCtx.measureText(' ').width;
   }
 
   // Check if a horizontal range [x1, x2] at height y intersects any orb
@@ -2286,14 +2309,13 @@ document.addEventListener('keyup', (e) => {
     }
 
     // Flow text around orbs
-    ptCtx.font = FONT;
     ptCtx.fillStyle = '#b8b4ae';
     ptCtx.textAlign = 'left';
     ptCtx.textBaseline = 'top';
 
     let wordIdx = 0;
     let y = 30;
-    const spaceW = measureWord(' ');
+    const spaceW = measureSpace();
 
     while (wordIdx < words.length && y < H - LINE_HEIGHT) {
       const runs = getAvailableRuns(y, LINE_HEIGHT, W);
@@ -2306,7 +2328,8 @@ document.addEventListener('keyup', (e) => {
           const w = words[wordIdx];
           const ww = measureWord(w);
           if (x + ww > maxX && x > run.left + 8) break;
-          ptCtx.fillText(w, x, y + 3);
+          ptCtx.font = fontFor(w.style);
+          ptCtx.fillText(w.text, x, y + 3);
           x += ww + spaceW;
           wordIdx++;
         }
