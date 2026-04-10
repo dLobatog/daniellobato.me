@@ -938,6 +938,147 @@
 
   .note-card:hover .nc-edge { opacity: 0.5; }
 
+  /* ─── ATELIER (WORKSHOP) ─── */
+  .atelier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  .atelier-card {
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 14px;
+    padding: 28px 28px 24px;
+    cursor: pointer;
+    transition: all 0.5s ease;
+    opacity: 0;
+    transform: translateY(20px);
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .atelier-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .atelier-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s ease;
+  }
+
+  .atelier-card:hover::before { transform: scaleX(1); }
+
+  .atelier-card:hover {
+    border-color: rgba(201, 169, 110, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  }
+
+  .atelier-card .ac-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: 0.8;
+  }
+
+  .atelier-card .ac-badge .ac-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .atelier-card .ac-title {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    color: var(--fg);
+    line-height: 1.3;
+  }
+
+  .atelier-card .ac-desc {
+    font-family: var(--serif);
+    font-size: 0.92rem;
+    color: var(--fg-dim);
+    line-height: 1.65;
+  }
+
+  .atelier-card .ac-desc em {
+    color: var(--accent2);
+    font-style: normal;
+  }
+
+  .atelier-card .ac-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .atelier-card .ac-stat {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--fg-dim);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .atelier-card .ac-stat .ac-stat-val {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .atelier-card .ac-edge {
+    position: absolute;
+    bottom: 14px;
+    right: 18px;
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    color: var(--fg-dim);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .atelier-card:hover .ac-edge { opacity: 0.5; }
+
+  .atelier-intro {
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    color: var(--fg-dim);
+    line-height: 1.7;
+    max-width: 720px;
+    margin-bottom: 40px;
+  }
+
+  .atelier-intro em {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  /* live viz preview embed inside a card */
+  .atelier-preview {
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
   footer {
     text-align: center;
     padding: 60px 24px;
@@ -1424,6 +1565,48 @@
 
 <div class="divider"></div>
 
+<!-- ═══ ATELIER ═══ -->
+<section id="atelier-section">
+  <div class="section-label anim">movement VI — generative</div>
+  <div class="section-title anim">Atelier</div>
+  <p class="atelier-intro anim">
+    Things I build to understand things better. The word <em>atelier</em> means workshop &mdash;
+    a place where craft meets curiosity. Each project here is interactive, runs in the browser,
+    and was made because I wanted to see the math move.
+  </p>
+
+  <div class="atelier-grid">
+    <a class="atelier-card anim" href="atelier/">
+      <div class="ac-badge"><span class="ac-dot"></span>interactive</div>
+      <div class="ac-title">ML Visualizations</div>
+      <div class="ac-desc">
+        <em>53 interactive explorations</em> covering the full ML stack &mdash; from linear algebra
+        and gradient descent through transformers, RL, and RLHF. Every visualization is built with
+        React, framer-motion, and SVG. No canvas, no shortcuts. You can drag sliders, scrub through
+        training steps, and watch backprop happen.
+      </div>
+      <div class="ac-stats">
+        <span class="ac-stat"><span class="ac-stat-val">53</span> visualizations</span>
+        <span class="ac-stat"><span class="ac-stat-val">13</span> chapters</span>
+        <span class="ac-stat"><span class="ac-stat-val">React + SVG</span></span>
+      </div>
+      <div class="ac-edge">explore &rarr;</div>
+    </a>
+  </div>
+
+  <!-- Live preview: one viz rendered inline -->
+  <div id="atelier-live-preview" class="anim" style="margin-top: 40px;">
+    <div style="font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 16px;">
+      live preview &mdash; try it
+    </div>
+    <div class="atelier-preview">
+      <div class="atelier-embed" data-viz="attention" id="atelier-preview-mount"></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
 <!-- ═══ PIANO ═══ -->
 <section id="piano-section">
   <div class="section-label anim">coda</div>
@@ -1551,6 +1734,31 @@
 <footer>
   I think everyone has something worth teaching.
 </footer>
+
+<!-- Atelier viz bundle (lazy-loaded only when section scrolls into view) -->
+<link rel="stylesheet" href="atelier/embed.css">
+<script>
+(function() {
+  var loaded = false;
+  var target = document.getElementById('atelier-live-preview');
+  if (!target) return;
+  var io = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting && !loaded) {
+      loaded = true;
+      var s1 = document.createElement('script');
+      s1.src = 'atelier/react-viz/dist/atelier-viz.iife.js';
+      s1.onload = function() {
+        var s2 = document.createElement('script');
+        s2.src = 'atelier/embed.js';
+        document.body.appendChild(s2);
+      };
+      document.body.appendChild(s1);
+      io.disconnect();
+    }
+  }, { rootMargin: '200px' });
+  io.observe(target);
+})();
+</script>
 
 <script type="module">
 // ═══════════════════════════════════════════════

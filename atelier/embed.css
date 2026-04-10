@@ -1,0 +1,50 @@
+/* embed.css — Standalone styles for atelier viz embeds on daniellobato.me
+   Only needed for the metrics/takeaway chrome around the viz. The viz
+   themselves render inline styles via React, so this is minimal. */
+
+.atelier-embed {
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.atelier-embed-stage {
+  width: 100%;
+}
+
+/* Metric cards written by setMetrics() */
+.atelier-embed-metrics .metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.atelier-embed-metrics .metric-label {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8680;
+}
+
+.atelier-embed-metrics .metric-value {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 14px;
+  color: #c9a96e;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Responsive: stack metrics on narrow screens */
+@media (max-width: 600px) {
+  .atelier-embed-metrics {
+    gap: 6px !important;
+  }
+  .atelier-embed-metrics .metric-card {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+}
