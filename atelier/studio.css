@@ -2192,6 +2192,20 @@ em {
 /* ── phone-specific (≤ 480px) ─────────────────────────────────────────── */
 @media (max-width: 480px) {
 
+  /* ── desktop hint banner ─── */
+  body::before {
+    content: 'These visualizations are best experienced on a wider screen.';
+    display: block;
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-align: center;
+    color: var(--fg-dim);
+    background: rgba(201, 169, 110, 0.06);
+    border-bottom: 1px solid rgba(201, 169, 110, 0.12);
+  }
+
   /* ── overall tightening ─── */
   .site-nav,
   .shell,
