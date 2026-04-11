@@ -1,0 +1,300 @@
+.prototype-shell {
+  padding-bottom: 96px;
+}
+
+.prototype-hero h1 {
+  max-width: 12ch;
+}
+
+.prototype-rules {
+  margin-bottom: 34px;
+}
+
+.prototype-rules .editorial-card {
+  padding: 28px 30px;
+}
+
+.prototype-index {
+  display: grid;
+  gap: 24px;
+}
+
+.prototype-index-card {
+  max-width: 760px;
+}
+
+.candidate-map {
+  margin-bottom: 30px;
+}
+
+.candidate-concept-card {
+  padding: 34px;
+}
+
+.candidate-head {
+  max-width: 860px;
+  margin-bottom: 22px;
+}
+
+.candidate-intro {
+  margin: 0;
+  font-size: 1.22rem;
+  color: var(--fg);
+}
+
+.candidate-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.candidate-teaching {
+  display: grid;
+  gap: 16px;
+}
+
+.candidate-remember {
+  border-color: rgba(201, 169, 110, 0.16);
+  background: rgba(201, 169, 110, 0.05);
+}
+
+.candidate-tools {
+  margin-top: 20px;
+}
+
+.prototype-formula-help {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.prototype-formula-help p {
+  margin: 0;
+  color: var(--fg-soft);
+}
+
+.prototype-bayes-chain {
+  margin: 14px 2px 0;
+  color: var(--fg-soft);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.prototype-review-stack {
+  display: grid;
+  gap: 34px;
+}
+
+.prototype-candidate-stack {
+  display: grid;
+  gap: 42px;
+}
+
+.prototype-review-card {
+  display: grid;
+  gap: 22px;
+}
+
+.prototype-review-head {
+  display: grid;
+  gap: 10px;
+}
+
+.prototype-review-kicker,
+.prototype-chip,
+.prototype-status,
+.prototype-checklist strong {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.prototype-review-kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--accent2);
+}
+
+.prototype-review-head h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.02;
+}
+
+.prototype-review-head p {
+  margin: 0;
+  max-width: 860px;
+  color: var(--fg-soft);
+  font-size: 1.06rem;
+}
+
+.prototype-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.prototype-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.68rem;
+  color: var(--fg-dim);
+}
+
+.prototype-chip.is-yes {
+  border-color: rgba(120, 192, 120, 0.28);
+  color: #93d393;
+}
+
+.prototype-chip.is-almost {
+  border-color: rgba(201, 169, 110, 0.32);
+  color: var(--accent);
+}
+
+.prototype-chip.is-no {
+  border-color: rgba(201, 110, 138, 0.3);
+  color: var(--accent3);
+}
+
+.prototype-review-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  align-items: start;
+}
+
+.prototype-baseline {
+  min-width: 0;
+}
+
+.prototype-baseline .concept-card {
+  margin: 0;
+}
+
+.prototype-side {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.prototype-brief {
+  padding: 22px 22px 24px;
+}
+
+.prototype-brief h3 {
+  margin: 0 0 10px;
+  font-size: 1.4rem;
+  font-weight: 400;
+}
+
+.prototype-status {
+  margin: 0 0 10px;
+  font-size: 0.66rem;
+  color: var(--accent);
+}
+
+.prototype-brief p,
+.prototype-brief li {
+  color: var(--fg-soft);
+}
+
+.prototype-brief p {
+  margin: 0 0 12px;
+}
+
+.prototype-brief ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.prototype-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.prototype-checklist-item {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.prototype-checklist-item strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.62rem;
+  color: var(--accent2);
+}
+
+.prototype-checklist-item p {
+  margin: 0;
+  color: var(--fg-soft);
+}
+
+@media (max-width: 1120px) {
+  .candidate-layout,
+  .prototype-side {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .prototype-rules .editorial-card,
+  .prototype-brief {
+    padding: 20px;
+  }
+
+  .prototype-review-stack {
+    gap: 26px;
+  }
+
+  .candidate-concept-card {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .candidate-concept-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .candidate-head {
+    margin-bottom: 16px;
+  }
+
+  .candidate-intro {
+    font-size: 1.06rem;
+  }
+
+  .candidate-tools {
+    margin-top: 14px;
+  }
+
+  .prototype-bayes-chain {
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .prototype-formula-help p {
+    font-size: 0.9rem;
+  }
+
+  .prototype-shell {
+    padding-bottom: 48px;
+  }
+
+  .prototype-candidate-stack {
+    gap: 28px;
+  }
+
+  .prototype-side {
+    grid-template-columns: 1fr;
+  }
+}
