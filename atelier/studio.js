@@ -5540,8 +5540,45 @@ function mountVisualization(card, section) {
       if (values[input.dataset.key] !== undefined) input.value = values[input.dataset.key];
     });
   }
-  render();
-  pretextFontsReady.then(() => render());
+
+  // Lazy-mount: only render when scrolled into view. On chapter pages with many
+  // React viz this prevents the browser from choking when every viz mounts
+  // simultaneously on page load.
+  let hasMounted = false;
+  const mountNow = () => {
+    if (hasMounted) return;
+    hasMounted = true;
+    // Clear the placeholder before first render so mount feels instant.
+    const placeholder = stageRoot?.querySelector('.viz-placeholder');
+    if (placeholder) placeholder.remove();
+    render();
+    pretextFontsReady.then(() => render());
+  };
+
+  if (typeof IntersectionObserver === 'undefined' || !panel) {
+    mountNow();
+  } else {
+    // Lightweight placeholder so the layout doesn't jump when the viz mounts.
+    if (stageRoot && !stageRoot.hasChildNodes()) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'viz-placeholder';
+      placeholder.setAttribute('aria-hidden', 'true');
+      stageRoot.appendChild(placeholder);
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            observer.disconnect();
+            mountNow();
+            return;
+          }
+        }
+      },
+      { rootMargin: '400px 0px' }
+    );
+    observer.observe(panel);
+  }
 }
 
 document.addEventListener('keydown', (event) => {
@@ -10259,6 +10296,15 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   });
   if (line) ctx.fillText(line.trim(), x, currentY);
 }
+
+window.AtelierStudio = {
+  chapters,
+  renderSectionMarkup,
+  mountVisualization,
+  mountQuiz,
+  mountGeometry,
+  renderMathBlocks,
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   const chapterKey = document.body.dataset.chapter;
