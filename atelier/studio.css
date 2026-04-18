@@ -110,6 +110,37 @@ a {
   color: var(--accent);
 }
 
+.bmc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #FF813F;
+  color: #0a0a0f;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid rgba(255, 129, 63, 0.8);
+  box-shadow: 0 4px 18px rgba(255, 129, 63, 0.25);
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.bmc-pill:hover,
+.bmc-pill:focus-visible {
+  transform: translateY(-1px);
+  background: #ff9357;
+  box-shadow: 0 6px 22px rgba(255, 129, 63, 0.38);
+  outline: none;
+}
+
+.bmc-pill-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .shell {
   max-width: 1100px;
   margin: 0 auto;
