@@ -5541,41 +5541,58 @@ function mountVisualization(card, section) {
     });
   }
 
-  // Lazy-mount: only render when scrolled into view. On chapter pages with many
-  // React viz this prevents the browser from choking when every viz mounts
-  // simultaneously on page load.
-  let hasMounted = false;
+  // Lazy-mount / unmount based on viewport proximity. Without this, chapter
+  // pages with many React viz bring the browser to a crawl because every
+  // framer-motion animation composites every frame even off-screen.
+  let isMounted = false;
+
+  const insertPlaceholder = () => {
+    if (stageRoot && !stageRoot.querySelector('.viz-placeholder')) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'viz-placeholder';
+      placeholder.setAttribute('aria-hidden', 'true');
+      stageRoot.replaceChildren(placeholder);
+    }
+  };
+
   const mountNow = () => {
-    if (hasMounted) return;
-    hasMounted = true;
-    // Clear the placeholder before first render so mount feels instant.
+    if (isMounted) return;
+    isMounted = true;
     const placeholder = stageRoot?.querySelector('.viz-placeholder');
     if (placeholder) placeholder.remove();
     render();
-    pretextFontsReady.then(() => render());
+    pretextFontsReady.then(() => {
+      if (isMounted) render();
+    });
+  };
+
+  const unmountNow = () => {
+    if (!isMounted) return;
+    // Don't unmount if the lightbox is open — user is actively using the viz.
+    if (!overlay.hidden) return;
+    isMounted = false;
+    // Unmount any React root so framer-motion animations stop running.
+    if (stageRoot) {
+      if (window.AtelierReactViz && typeof window.AtelierReactViz.unmount === 'function') {
+        try { window.AtelierReactViz.unmount(stageRoot); } catch (_) {}
+      }
+      stageRoot.replaceChildren();
+    }
+    insertPlaceholder();
   };
 
   if (typeof IntersectionObserver === 'undefined' || !panel) {
     mountNow();
   } else {
-    // Lightweight placeholder so the layout doesn't jump when the viz mounts.
-    if (stageRoot && !stageRoot.hasChildNodes()) {
-      const placeholder = document.createElement('div');
-      placeholder.className = 'viz-placeholder';
-      placeholder.setAttribute('aria-hidden', 'true');
-      stageRoot.appendChild(placeholder);
-    }
+    insertPlaceholder();
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            observer.disconnect();
-            mountNow();
-            return;
-          }
+          if (entry.isIntersecting) mountNow();
+          else unmountNow();
         }
       },
-      { rootMargin: '400px 0px' }
+      { rootMargin: '200px 0px' }
     );
     observer.observe(panel);
   }

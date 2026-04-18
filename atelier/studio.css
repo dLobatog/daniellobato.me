@@ -573,6 +573,11 @@ code {
 .concept-card {
   padding: 30px;
   overflow: hidden;
+  /* Skip rendering/layout/paint for off-screen concept cards. Huge perf win
+     on chapter pages with many viz because the browser stops compositing
+     framer-motion animations and SVG redraws outside the viewport. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1200px;
 }
 
 .concept-header {
