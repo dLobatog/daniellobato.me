@@ -1,5 +1,27 @@
 const { hybridRenderers, isHybridViz } = window.AtelierHybrid || {};
 const AtelierPretext = window.AtelierPretext || null;
+
+// Lazy-loader for the 1.5 MB React bundle. Chapter pages used to load it
+// eagerly via a <script> tag; now we only inject it when the first viz is
+// about to mount. Saves the JS parse cost on initial page load.
+let reactBundlePromise = null;
+function ensureReactBundle() {
+  if (window.AtelierReactViz) return Promise.resolve();
+  if (reactBundlePromise) return reactBundlePromise;
+  reactBundlePromise = new Promise((resolve, reject) => {
+    // Find our own script tag to resolve the relative URL to the bundle.
+    const studioScript = document.querySelector('script[src*="studio.js"]');
+    const base = studioScript
+      ? studioScript.src.replace(/studio\.js.*$/, '')
+      : './';
+    const s = document.createElement('script');
+    s.src = base + 'react-viz/dist/atelier-viz.iife.js';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Failed to load atelier-viz bundle'));
+    document.head.appendChild(s);
+  });
+  return reactBundlePromise;
+}
 const pretextPreparedCache = new Map();
 const pretextFontsReady =
   AtelierPretext && typeof document !== 'undefined' && document.fonts?.ready
@@ -5558,12 +5580,23 @@ function mountVisualization(card, section) {
   const mountNow = () => {
     if (isMounted) return;
     isMounted = true;
-    const placeholder = stageRoot?.querySelector('.viz-placeholder');
-    if (placeholder) placeholder.remove();
-    render();
-    pretextFontsReady.then(() => {
-      if (isMounted) render();
-    });
+    const doMount = () => {
+      if (!isMounted) return;
+      const placeholder = stageRoot?.querySelector('.viz-placeholder');
+      if (placeholder) placeholder.remove();
+      render();
+      pretextFontsReady.then(() => {
+        if (isMounted) render();
+      });
+    };
+    // Ensure React bundle is loaded before trying to render React viz.
+    if (isHybridViz(section.viz)) {
+      ensureReactBundle().then(doMount, (err) => {
+        console.error('[atelier]', err);
+      });
+    } else {
+      doMount();
+    }
   };
 
   const unmountNow = () => {
