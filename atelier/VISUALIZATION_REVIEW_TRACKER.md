@@ -39,12 +39,12 @@ Non-negotiables:
 | neural-basics | neural-network-basics.html | gradient-descent | reviewing | 4 | 4 | 4 | P1 | Strong overall. The surface presets, LR control, and trajectory story build good intuition. Biggest opportunity is to simplify the surrounding text and metrics so the path animation remains the hero. |
 | neural-basics | neural-network-basics.html | optimizers | todo |  |  |  |  |  |
 | neural-basics | neural-network-basics.html | lr-schedule | todo |  |  |  |  |  |
-| deep-learning | deep-learning.html | learning-rate | todo |  |  |  |  |  |
-| deep-learning | deep-learning.html | initialization | todo |  |  |  |  |  |
-| deep-learning | deep-learning.html | gradient-flow | todo |  |  |  |  |  |
-| deep-learning | deep-learning.html | normalization | todo |  |  |  |  |  |
-| deep-learning | deep-learning.html | residuals | todo |  |  |  |  |  |
-| deep-learning | deep-learning.html | flash-attention | todo |  |  |  |  |  |
+| deep-learning | deep-learning.html | learning-rate | verified | 4 | 4 | 4 | P2 | The quadratic-bowl viz was already mechanically strong, but the chapter copy now makes the target behavior explicit: look for the largest step that still stays stable, then decay later. The main remaining work is visual polish, not conceptual repair. |
+| deep-learning | deep-learning.html | initialization | verified | 4 | 4 | 4 | P2 | The initialization bars already showed the right healthy-band story; the biggest gap was first-read guidance. Updated copy now frames initialization as a signal-budget problem and explicitly anchors Xavier vs He to tanh vs ReLU so the learner can act on the comparison faster. |
+| deep-learning | deep-learning.html | gradient-flow | verified | 4 | 4 | 4 | P2 | This card teaches the right mechanism, but it benefited from sharper framing around repeated multipliers and why the rest of the chapter exists. The new copy turns it into the chapter’s bridge concept instead of a standalone warning about vanishing/exploding gradients. |
+| deep-learning | deep-learning.html | normalization | verified | 4 | 4 | 4 | P2 | Completeness was solid, but the old wording left BatchNorm, LayerNorm, and RMSNorm slightly too name-heavy on first pass. The revised explanation now foregrounds the common job — stop internal scale drift — and makes the architecture tradeoff clearer without dropping detail. |
+| deep-learning | deep-learning.html | residuals | verified | 4 | 4 | 4 | P2 | The residual visualization already carried the identity-path intuition well. Copy updates now make the “preserve the signal, then learn the correction” story more explicit, which helps the skip connection read as an optimization tool instead of just an architectural trick. |
+| deep-learning | deep-learning.html | flash-attention | verified | 4 | 4 | 4 | P2 | Flash Attention already had the right exact-vs-approximate stance, but the first-read story needed a clearer hardware mental model. The updated copy now foregrounds IO-aware tiling, online softmax state, and the fact that the win is memory traffic rather than a new modeling objective. |
 | transformers-rag | transformers-rag.html | tokenization | todo |  |  |  |  |  |
 | transformers-rag | transformers-rag.html | embeddings | todo |  |  |  |  |  |
 | transformers-rag | transformers-rag.html | positional | todo |  |  |  |  |  |

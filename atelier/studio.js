@@ -1230,9 +1230,9 @@ const chapters = {
     eyebrow: 'Deep Learning',
     title: 'The mechanics that make neural networks train or break.',
     lede:
-      'Deep learning becomes easier once you stop treating training as magic. This chapter now walks through the main stability levers in the order they actually matter: update size, initialization, gradient flow, normalization, skip paths, and attention efficiency.',
+      'Deep learning gets much easier once you read training as a chain of simple failure modes instead of one mysterious process. This chapter walks through that chain in order: pick a stable step size, preserve signal scale at initialization, keep gradients alive through depth, stabilize drifting activations, open identity highways with residuals, then make long-context attention fit real hardware.',
     bestFor: 'Core interview preparation / quick optimization refresh',
-    studyMove: 'Use the presets first, then drag one control at a time',
+    studyMove: 'Start from the balanced preset in each card, then push one control into failure so you can see exactly what breaks',
     sections: [
       {
         id: 'learning-rate',
@@ -1240,16 +1240,16 @@ const chapters = {
         label: 'Concept 01',
         title: 'Learning rate: too small wastes time, too large destroys stability',
         summary:
-          'Gradient descent is just repeated correction. The learning rate decides whether each correction is thoughtful, timid, or reckless.',
+          'A learning rate is just update size. The whole game is finding the fastest step that is still stable.',
         what:
-          'On every training step, the optimizer looks at the slope of the loss surface and moves downhill. The <strong>learning rate</strong> is the size of that move. Small values make progress painfully slow. Large values can overshoot the valley and bounce around.',
+          'On every training step, the optimizer follows the slope of the loss surface downhill. The <strong>learning rate</strong> decides how far that one correction travels. Tiny steps make the loss inch downward. Oversized steps jump across the valley and can grow into oscillation or outright divergence.',
         why:
-          'A lot of training failures are not architecture problems. They are update-size problems wearing a more complicated costume.',
+          'A surprising number of “the model architecture is bad” stories are really “the step size was wrong” stories. If you can read slow, healthy, and unstable loss curves quickly, you debug training much faster.',
         interview:
-          'The clean answer is: <em>the learning rate controls stability versus speed.</em> Bad settings either crawl or diverge.',
+          'The clean answer is: <em>the learning rate sets the speed-vs-stability tradeoff, so the goal is the largest step that still converges.</em>',
         details: [
-          'This is why schedulers matter: the right step size early in training is often too aggressive later on.',
-          'Adaptive optimizers still live inside the same tradeoff. They just rescale the step per parameter.',
+          'The practical workflow is always the same: find the biggest learning rate that still behaves, then decay it once you need finer control near a good basin.',
+          'Adaptive optimizers still live inside the same tradeoff. They rescale updates per parameter, but they do not remove the need for a stable global step size.',
         ],
         math: {
           title: 'Update rule',
@@ -1299,16 +1299,16 @@ const chapters = {
         label: 'Concept 02',
         title: 'Initialization: training starts healthier when signal scale survives depth',
         summary:
-          'Before the optimizer does anything, the network already has a signal-propagation problem. Initialization chooses the starting weight scale so activations and gradients do not collapse or explode.',
+          'Initialization is the network’s starting signal budget. Too little scale makes everything fade; too much makes everything blow up.',
         what:
-          'Every layer multiplies the incoming signal by weights. If those weights are too small, activations and gradients shrink toward zero. If they are too large, both blow up. <strong>Xavier</strong> and <strong>He</strong> initialization are variance rules designed to keep those scales roughly steady across many layers.',
+          'Every layer multiplies the incoming signal by weights, so the wrong starting variance compounds with depth immediately. If weights are too small, activations and gradients decay toward zero. If they are too large, both explode. <strong>Xavier</strong> and <strong>He</strong> initialization are just variance rules for staying near the healthy middle band.',
         why:
-          'A surprising amount of “deep nets are hard to train” pain begins before the first optimizer step. Good initialization gives optimization a sane starting geometry.',
+          'Initialization decides whether optimization begins on sane terrain or in a numeric mess. Before SGD can learn anything useful, the forward and backward signals need to survive the trip through the stack.',
         interview:
-          'The clean sentence is: <em>initialization keeps activation and gradient scale in a healthy range as depth grows.</em>',
+          'The clean sentence is: <em>good initialization keeps activation and gradient scale in a healthy range as depth grows, with Xavier for tanh-like activations and He for ReLU.</em>',
         details: [
-          'He/Kaiming initialization uses a larger variance than Xavier because ReLU drops roughly half the signal.',
-          'Initialization is not about finding the right features in advance; it is about preventing the network from becoming numerically hostile before learning begins.',
+          'He/Kaiming initialization uses a larger variance than Xavier because ReLU drops roughly half the signal, so the surviving activations need extra scale to stay near unit variance.',
+          'Initialization is not about guessing useful features in advance. It is about making sure the network starts in the narrow band where information can actually propagate.',
         ],
         math: {
           title: 'Variance rules',
@@ -1361,16 +1361,16 @@ const chapters = {
         label: 'Concept 03',
         title: 'Gradient flow: repeated multiplication can make signals vanish or explode',
         summary:
-          'Backpropagation multiplies derivatives layer after layer. If those factors are consistently below one, gradients collapse. If they are above one, gradients blow up.',
+          'Backprop is a long multiplication chain. If the typical factor stays below 1, gradients fade; if it stays above 1, they blow up.',
         what:
-          'Every layer passes a gradient backward. The size of that gradient gets multiplied over and over. That means even a modest repeated factor can become tiny or enormous by the time it reaches earlier layers.',
+          'Every layer sends a gradient backward, and each step scales that signal again. That means a harmless-looking factor like 0.9 becomes tiny after enough layers, while 1.1 can become enormous. Gradient flow is just the accumulated effect of those repeated multipliers.',
         why:
-          'This is why activation choice, initialization, normalization, and residual paths matter. They are all attempts to keep learning signals in a sane range.',
+          'This is the bridge concept for the whole chapter. Initialization, normalization, and residuals all matter because they change whether the backward signal can cross depth without collapsing or exploding.',
         interview:
-          'The memorable sentence is: <em>deep networks are hard to train when gradient magnitudes are repeatedly shrunk or amplified across many layers.</em>',
+          'The memorable sentence is: <em>deep networks fail when repeated local gains push gradients away from the narrow healthy range.</em>',
         details: [
-          'Residual connections help because they create easier routes for gradients to travel.',
-          'Normalization reduces internal scale drift, which makes gradient flow less fragile.',
+          'Residual connections help because they create shorter, easier routes for gradients to travel, so not every unit of blame must survive the full fragile chain.',
+          'Normalization reduces internal scale drift, which keeps the typical local multiplier closer to the range where training stays controllable.',
         ],
         math: {
           title: 'Repeated derivative chain',
@@ -1420,16 +1420,16 @@ const chapters = {
         label: 'Concept 04',
         title: 'Normalization: keep internal scale drift from turning every layer into a moving target',
         summary:
-          'Normalization keeps activations in a saner numeric range so later layers do not have to relearn around unstable scale and offset changes.',
+          'Normalization keeps activations in a predictable range so later layers are not constantly relearning around shifting mean and scale.',
         what:
-          'As activations move through the network, their mean and scale can drift. <strong>BatchNorm</strong> uses batch statistics, <strong>LayerNorm</strong> normalizes each example across features, and <strong>RMSNorm</strong> mostly fixes scale without subtracting the mean. They are different answers to the same question: how do we keep the network numerically well-behaved?',
+          'As activations move through the network, their mean and scale can drift enough to make the next layer chase a new input distribution every step. <strong>BatchNorm</strong> fixes that drift with batch statistics, <strong>LayerNorm</strong> normalizes each example across features, and <strong>RMSNorm</strong> mostly fixes scale without subtracting the mean. They are different implementations of the same core idea: keep the internal numerics well-behaved.',
         why:
-          'Normalization often makes optimization faster, lets you use larger learning rates, and reduces fragility when the network gets deep.',
+          'Normalization matters because it buys room for larger learning rates and makes deep optimization less fragile. The exact flavor changes by architecture, but the job is always the same: stop internal scale drift from becoming the hidden reason training feels unstable.',
         interview:
-          'The sharp answer is: <em>normalization reduces internal scale drift, which makes optimization more stable and gradients easier to manage.</em>',
+          'The sharp answer is: <em>normalization stabilizes optimization by keeping internal activations in a healthier numeric range, with BatchNorm coupling examples and LayerNorm/RMSNorm working sample-by-sample.</em>',
         details: [
-          'BatchNorm depends on the batch, so it shines in CNN-style settings with decent batch sizes but becomes awkward in autoregressive sequence models.',
-          'LayerNorm and RMSNorm are popular in transformers because they work sample-by-sample and do not depend on batch statistics.',
+          'BatchNorm depends on the batch, so it shines in CNN-style settings with decent batch sizes but becomes awkward in autoregressive sequence models and tiny-batch regimes.',
+          'LayerNorm and RMSNorm are popular in transformers because they work token-by-token. RMSNorm keeps the scale fix while skipping mean subtraction, which is often enough in practice.',
         ],
         math: {
           title: 'Normalization family',
@@ -1482,16 +1482,16 @@ const chapters = {
         label: 'Concept 05',
         title: 'Residual connections: each block learns a correction instead of rebuilding the whole signal',
         summary:
-          'Residual blocks keep an identity route open, so the network can preserve useful information while only learning the correction it needs.',
+          'Residual blocks keep an identity highway open, so depth only has to learn the useful correction instead of replacing the whole representation.',
         what:
-          'A residual block outputs <strong>x + F(x)</strong>, not just <strong>F(x)</strong>. That means the default behavior can stay close to identity while the learned branch adds a refinement. Backward gradients also inherit that easy route through the skip connection.',
+          'A residual block outputs <strong>x + F(x)</strong>, not just <strong>F(x)</strong>. That means the safest default behavior is “keep what already works, then add a correction.” The same shortcut helps the backward pass too: gradients inherit a direct path that does not depend entirely on the learned branch behaving perfectly.',
         why:
-          'This is one of the main reasons very deep ResNets and transformers are trainable in practice while plain deep stacks often are not.',
+          'This is one of the biggest reasons very deep ResNets and transformers are trainable in practice. Residuals do not add expressivity for free; they make the optimization problem less brittle by keeping an identity route alive.',
         interview:
-          'The sentence worth remembering is: <em>residuals turn a hard “learn everything” problem into an easier “learn the correction” problem.</em>',
+          'The sentence worth remembering is: <em>residuals turn a hard “rebuild everything” problem into an easier “preserve the signal, then learn the correction” problem.</em>',
         details: [
-          'If a block is not useful yet, the network can lean on the skip path instead of forcing every layer to be perfect immediately.',
-          'Residuals do not magically remove all optimization issues, but they make deep networks far less brittle.',
+          'If a block is not useful yet, the network can lean on the skip path instead of forcing every layer to become perfect immediately.',
+          'Residuals do not magically remove all optimization issues, but they dramatically improve gradient flow because every block comes with an identity fallback.',
         ],
         math: {
           title: 'Skip-path rule',
@@ -1544,16 +1544,16 @@ const chapters = {
         label: 'Concept 06',
         title: 'Flash Attention: same attention, much less memory traffic',
         summary:
-          'Flash Attention does not approximate attention. It changes the computation order so the huge score matrix is never fully materialized in slow memory.',
+          'Flash Attention is not a new attention formula. It is an IO-aware way to compute the same answer without ever parking the full n × n score matrix in slow memory.',
         what:
-          'Standard attention builds the full <strong>n × n</strong> score matrix, which becomes painfully memory-hungry at long context lengths. <strong>Flash Attention</strong> tiles the computation so query, key, and value blocks fit in fast SRAM and computes the softmax incrementally. The result is exact attention with much better IO behavior.',
+          'Standard attention wants the full <strong>n × n</strong> score matrix, which becomes painfully memory-hungry at long context lengths. <strong>Flash Attention</strong> instead streams small query, key, and value tiles through fast SRAM and keeps the softmax statistics online. The math stays exact; only the computation order changes.',
         why:
-          'This is one of the biggest practical reasons modern transformer stacks can handle longer sequences without memory blowing up first.',
+          'This is one of the biggest practical reasons modern transformer stacks can stretch to longer contexts before memory bandwidth becomes the real bottleneck. The win is hardware realism, not a modeling shortcut.',
         interview:
-          'The line to use is: <em>Flash Attention is exact attention with tiled IO; it avoids materializing the full attention matrix in HBM.</em>',
+          'The line to use is: <em>Flash Attention is exact attention computed with tiled IO, so it avoids materializing the full score matrix in HBM.</em>',
         details: [
-          'The key win is memory traffic, not a new modeling trick. It changes what sequence lengths are feasible on real hardware.',
-          'Flash Attention 2 improves parallelism and reduces non-matmul overhead further, but the core intuition is still IO-aware tiling.',
+          'The key win is memory traffic, not a new modeling trick. Flash Attention changes how data moves between HBM and SRAM, which is why the same formula suddenly becomes practical at longer sequence lengths.',
+          'Flash Attention 2 improves parallelism and trims non-matmul overhead further, but the first-order intuition stays the same: tile the work, keep running softmax state, and never store the full quadratic scores.',
         ],
         math: {
           title: 'Exact objective, better memory',
