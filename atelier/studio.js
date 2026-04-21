@@ -9053,6 +9053,7 @@ function drawVectors(ctx, state, takeaway, metrics) {
   const norm = Math.hypot(x, y);
   const unitX = norm > 1e-8 ? x / norm : 0;
   const unitY = norm > 1e-8 ? y / norm : 0;
+  const angle = (Math.atan2(y, x) * 180) / Math.PI;
 
   clearCanvas(ctx);
 
@@ -9085,6 +9086,18 @@ function drawVectors(ctx, state, takeaway, metrics) {
   const tip = { x: origin.x + x * scale, y: origin.y - y * scale };
   const unitTip = { x: origin.x + unitX * 82, y: origin.y - unitY * 82 };
 
+  if (norm > 0.12) {
+    const angleRad = Math.atan2(-y, x);
+    ctx.strokeStyle = 'rgba(201,169,110,0.48)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, 30, 0, angleRad, angleRad < 0);
+    ctx.stroke();
+    ctx.fillStyle = '#c9a96e';
+    ctx.font = '12px "JetBrains Mono", monospace';
+    ctx.fillText(`θ ${angle.toFixed(0)}°`, origin.x + 32, origin.y - 8);
+  }
+
   ctx.strokeStyle = 'rgba(110,165,201,0.48)';
   ctx.lineWidth = 6;
   ctx.lineCap = 'round';
@@ -9112,9 +9125,9 @@ function drawVectors(ctx, state, takeaway, metrics) {
 
   ctx.fillStyle = '#8a8680';
   ctx.font = '12px "JetBrains Mono", monospace';
-  ctx.fillText('RAW VECTOR', 400, 112);
-  ctx.fillText('UNIT VECTOR', 400, 198);
-  ctx.fillText('COMPONENTS', 400, 284);
+  ctx.fillText('LENGTH', 400, 112);
+  ctx.fillText('DIRECTION ONLY (UNIT)', 400, 198);
+  ctx.fillText('FULL VECTOR', 400, 284);
 
   ctx.fillStyle = '#e8e4de';
   ctx.font = '32px "EB Garamond", serif';
@@ -9126,15 +9139,15 @@ function drawVectors(ctx, state, takeaway, metrics) {
 
   takeaway.textContent =
     norm < 0.35
-      ? 'This vector is small, but it still has a direction. A tiny gradient is still a gradient.'
+      ? 'This vector is short, but it still points somewhere specific. Small magnitude does not mean “no direction.”'
       : Math.abs(norm - 1) < 0.1
-        ? 'The vector is already close to unit length, which is why normalization would barely change anything.'
-        : 'Normalizing this vector would keep the same direction but remove the scale information.';
+        ? 'This vector is already close to unit length, so normalization mainly leaves the geometry alone.'
+        : 'Think of the gold arrow as full magnitude + direction and the blue arrow as direction only. Normalization keeps the heading and removes the scale.';
 
   metrics.innerHTML = metricMarkup([
     ['Length', norm.toFixed(2)],
-    ['x', x.toFixed(2)],
-    ['y', y.toFixed(2)],
+    ['Angle', `${angle.toFixed(0)}°`],
+    ['Unit', `(${unitX.toFixed(2)}, ${unitY.toFixed(2)})`],
   ]);
 }
 
@@ -9229,6 +9242,8 @@ function drawMatrixMultiply(ctx, state, takeaway, metrics) {
   ];
   const transform = ([x, y]) => [A[0][0] * x + A[0][1] * y, A[1][0] * x + A[1][1] * y];
   const determinant = state.sx * state.sy;
+  const sampleInput = [0.78, 0.62];
+  const sampleOutput = transform(sampleInput);
 
   clearCanvas(ctx);
 
@@ -9281,6 +9296,21 @@ function drawMatrixMultiply(ctx, state, takeaway, metrics) {
       ctx.font = '14px "EB Garamond", serif';
       ctx.fillText(name, ox + vx * scale + 8, oy - vy * scale + 4);
     });
+
+    const sampleVec = transformed ? sampleOutput : sampleInput;
+    const sampleLabel = transformed ? 'Ax' : 'x';
+    ctx.strokeStyle = '#c9a96e';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(ox + sampleVec[0] * scale, oy - sampleVec[1] * scale);
+    ctx.stroke();
+    ctx.fillStyle = '#c9a96e';
+    ctx.beginPath();
+    ctx.arc(ox + sampleVec[0] * scale, oy - sampleVec[1] * scale, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '16px "EB Garamond", serif';
+    ctx.fillText(sampleLabel, ox + sampleVec[0] * scale + 10, oy - sampleVec[1] * scale - 6);
   };
 
   drawPanel(170, 232, 'INPUT SPACE', false);
@@ -9301,15 +9331,15 @@ function drawMatrixMultiply(ctx, state, takeaway, metrics) {
 
   takeaway.textContent =
     Math.abs(state.shear) > 0.45
-      ? 'This matrix is clearly mixing coordinates, not just scaling axes independently.'
+      ? 'Watch the same input arrow x land at Ax on the right. The skew comes from mixing coordinates, not just stretching each axis separately.'
       : determinant > 1.15
-        ? 'The map is expanding area overall, which is exactly what the determinant is telling you.'
-        : 'This is a gentle linear map: mostly scaling, with only a modest amount of coordinate mixing.';
+        ? 'The same rule sends every input through a larger output area. That is the determinant story made visible.'
+        : 'The sample arrow and the basis vectors are all following one shared rule. That is what makes a matrix a linear map instead of a one-off lookup.';
 
   metrics.innerHTML = metricMarkup([
     ['det(A)', determinant.toFixed(2)],
-    ['x scale', state.sx.toFixed(2)],
-    ['y scale', state.sy.toFixed(2)],
+    ['x → Ax', `(${sampleOutput[0].toFixed(2)}, ${sampleOutput[1].toFixed(2)})`],
+    ['shear', state.shear.toFixed(2)],
   ]);
 }
 
@@ -9369,7 +9399,7 @@ function drawEigen(ctx, state, takeaway, metrics) {
     }
     ctx.stroke();
 
-    const drawEigLine = (vec, lambda, color) => {
+    const drawEigLine = (vec, lambda, color, label) => {
       const stretch = transformed ? lambda : 1;
       ctx.strokeStyle = color;
       ctx.lineWidth = 4;
@@ -9377,10 +9407,14 @@ function drawEigen(ctx, state, takeaway, metrics) {
       ctx.moveTo(ox - vec.x * scale * stretch, oy + vec.y * scale * stretch);
       ctx.lineTo(ox + vec.x * scale * stretch, oy - vec.y * scale * stretch);
       ctx.stroke();
+
+      ctx.fillStyle = color;
+      ctx.font = '14px "EB Garamond", serif';
+      ctx.fillText(label, ox + vec.x * scale * stretch + 10, oy - vec.y * scale * stretch - 6);
     };
 
-    drawEigLine(v1, lambda1, '#c9a96e');
-    drawEigLine(v2, lambda2, '#6ea5c9');
+    drawEigLine(v1, lambda1, '#c9a96e', transformed ? 'A v₁' : 'v₁');
+    drawEigLine(v2, lambda2, '#6ea5c9', transformed ? 'A v₂' : 'v₂');
   };
 
   ctx.fillStyle = '#8a8680';
@@ -9406,8 +9440,8 @@ function drawEigen(ctx, state, takeaway, metrics) {
     Math.abs(lambda1 - lambda2) < 0.18
       ? 'The transform is close to isotropic here, so no direction is overwhelmingly special.'
       : Math.abs(c) > 0.4
-        ? 'The matrix mixes the axes, but the eigenvectors reveal the hidden rotated directions it really cares about.'
-        : 'Even a simple-looking matrix has preferred directions where it only stretches instead of bending.';
+        ? 'The matrix mixes the axes, but the colored lines survive that mixing: v goes in, Av stays on the same line, only stretched by λ.'
+        : 'The special part of an eigenvector is visible here: it does not bend onto a new line. It just comes back longer or shorter.';
 
   metrics.innerHTML = metricMarkup([
     ['λ₁', lambda1.toFixed(2)],
@@ -9469,6 +9503,9 @@ function drawSvd(ctx, state, takeaway, metrics) {
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
   ctx.fillText('SVD says every matrix can be read as rotate, stretch, rotate', 56, 52);
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '13px "JetBrains Mono", monospace';
+  ctx.fillText('Read A = UΣVᵀ from right to left: align the input basis, stretch orthogonal axes, then rotate into the final output.', 56, 76);
 
   drawMiniPanel(136, panelCenterY, 'INPUT', (p) => p, 'rgba(255,255,255,0.16)');
   drawMiniPanel(320, panelCenterY, 'Vᵀ: ALIGN', (p) => rotate(p, -inputAngle), '#6ea5c9');
@@ -9481,6 +9518,24 @@ function drawSvd(ctx, state, takeaway, metrics) {
     const stretched = { x: aligned.x * sigma1, y: aligned.y * sigma2 };
     return rotate(stretched, outputAngle);
   }, '#c96e8a');
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.lineWidth = 1.5;
+  [[214, '1 ALIGN'], [398, '2 STRETCH'], [582, '3 ROTATE']].forEach(([x, label]) => {
+    ctx.beginPath();
+    ctx.moveTo(x, panelCenterY);
+    ctx.lineTo(x + 48, panelCenterY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 48, panelCenterY);
+    ctx.lineTo(x + 40, panelCenterY - 6);
+    ctx.moveTo(x + 48, panelCenterY);
+    ctx.lineTo(x + 40, panelCenterY + 6);
+    ctx.stroke();
+    ctx.fillStyle = '#8a8680';
+    ctx.font = '12px "JetBrains Mono", monospace';
+    ctx.fillText(label, x - 8, panelCenterY - 18);
+  });
 
   ctx.fillStyle = '#8a8680';
   ctx.font = '12px "JetBrains Mono", monospace';
@@ -9498,15 +9553,17 @@ function drawSvd(ctx, state, takeaway, metrics) {
 
   ctx.fillStyle = '#e8e4de';
   ctx.font = '24px "EB Garamond", serif';
+  ctx.fillText(`σ₁ ${sigma1.toFixed(2)}`, 84, 300);
+  ctx.fillText(`σ₂ ${sigma2.toFixed(2)}`, 84, 344);
   ctx.fillText(`${(retained * 100).toFixed(0)}%`, 288, 334);
   ctx.fillText(`${Math.round(state.inputRotate)}°`, 524, 334);
 
   takeaway.textContent =
     retained > 0.9
-      ? 'Almost all the action lives along one singular direction, so a low-rank approximation would keep most of the structure.'
+      ? 'Almost all the action lives along one singular direction, so after align → stretch → rotate you could keep a rank-1 version and preserve most of the geometry.'
       : retained > 0.7
-        ? 'There is one dominant direction, but the second singular direction still carries visible detail.'
-        : 'This map is not especially low-rank; both singular directions matter materially.';
+        ? 'There is one dominant stretch, but the second direction still matters. The middle Σ panel is where that imbalance becomes visible.'
+        : 'Both singular directions matter materially here, so a low-rank summary would throw away visible structure.';
 
   metrics.innerHTML = metricMarkup([
     ['σ₁', sigma1.toFixed(2)],
