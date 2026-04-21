@@ -160,11 +160,11 @@ const chapters = {
         label: 'Concept 03',
         title: 'Bayes: evidence updates a prior belief',
         summary:
-          'Bayes is the rule for answering a simple question: after seeing new evidence, how much should I change what I believed before?',
+          'Start with a base rate, then crop the world down to the cases that produced the evidence. The posterior is simply: among the positives you kept, what fraction are actually true?',
         what:
-          'You start with a <strong>prior</strong>, which is your belief before the evidence. Then you ask how consistent the evidence is with the event versus without it. The posterior is the updated belief after combining both pieces.',
+          'You start with a <strong>prior</strong>, which is your belief before the evidence. Then you ask how consistent the evidence is with the event versus without it. The posterior is the updated belief after combining both pieces. The easiest mental move is: <strong>filter the world down to the examples that match the evidence, then ask what share of that smaller pool is actually the thing you care about.</strong>',
         why:
-          'This is the cleanest way to understand why a strong test can still produce a surprisingly modest probability when the event itself is rare.',
+          'This is the cleanest way to understand why a strong test can still produce a surprisingly modest probability when the event itself is rare. The update only feels counterintuitive until you literally picture how many false positives survive the crop.',
         interview:
           'The high-value interview sentence is: <em>a positive signal is not the same as a high posterior when the base rate is tiny.</em>',
         details: [
@@ -229,13 +229,13 @@ const chapters = {
         label: 'Concept 04',
         title: 'Entropy and cross-entropy: uncertainty plus model mismatch',
         summary:
-          'Entropy tells you how uncertain the true outcome already is. Cross-entropy tells you how expensive it is when your model bets on the wrong distribution.',
+          'Entropy is the uncertainty already built into the true distribution. Cross-entropy is that unavoidable surprise plus the extra pain your model creates when it bets on the wrong shape.',
         what:
-          'Think of <strong>entropy</strong> as the <strong>average surprise</strong> of the true distribution. If outcomes are predictable, surprise is low and entropy is low. If outcomes are hard to guess, surprise is high and entropy is high. Then think of <strong>cross-entropy</strong> as that built-in surprise plus the extra penalty you pay because your model distribution <code>q</code> does not match the true distribution <code>p</code>.',
+          'Think of <strong>entropy</strong> as the <strong>average surprise</strong> of the true distribution. A peaky distribution is low entropy because the next outcome is rarely a shock; a flat distribution is high entropy because many outcomes stay plausible. Then think of <strong>cross-entropy</strong> as that built-in surprise plus the extra penalty you pay because your model distribution <code>q</code> does not match the true distribution <code>p</code>. The clean visual mantra is: <strong>blue is the task, gold is the avoidable mismatch.</strong>',
         why:
-          'This turns the classification loss into something intuitive: some of the loss is unavoidable, and the rest is your model being off.',
+          'This turns the classification loss into something intuitive: some of the loss is unavoidable, and the rest is your model being off. If you can separate those two pieces, log-loss stops feeling like arbitrary punishment and starts feeling like bookkeeping.',
         interview:
-          'The reusable equation is: <em>cross-entropy = entropy + KL divergence.</em> The extra term is purely mismatch.',
+          'The reusable equation is: <em>cross-entropy = entropy + KL divergence.</em> Read it as: unavoidable surprise plus avoidable mismatch.',
         details: [
           'When the true labels are one-hot, entropy can be low while cross-entropy still spikes if the model puts probability mass on the wrong class.',
           'In language modeling, the same idea becomes next-token prediction over a much larger distribution.',
@@ -291,11 +291,11 @@ const chapters = {
         label: 'Concept 05',
         title: 'Loss turns wrongness into a single number you can minimize',
         summary:
-          'A loss function assigns a single score to every possible model. Training is the process of finding the model that makes that score as small as possible.',
+          'Loss is the penalty score for a prediction. Lower is better, and training is just repeated weight updates that try to make that score smaller.',
         what:
-          'Pick any prediction your model makes. Compare it to the truth. A <strong>loss function</strong> turns that comparison into a number, then sums or averages it across the whole dataset. Different loss functions care about different kinds of wrongness: <strong>squared error</strong> punishes big mistakes quadratically, <strong>absolute error</strong> treats every dollar of mistake the same, and <strong>Huber</strong> gets the best of both. For classification, <strong>log-loss</strong> rewards being confidently right and punishes being confidently wrong with an exploding penalty.',
+          'Pick any prediction your model makes. Compare it to the truth. A <strong>loss function</strong> turns that comparison into a number, then sums or averages it across the whole dataset. Different losses care about different kinds of wrongness: <strong>squared error</strong> punishes big misses quadratically, <strong>absolute error</strong> treats every dollar of miss the same, and <strong>Huber</strong> behaves like squared error near the target but stops letting one wild outlier dominate. For classification, <strong>log-loss</strong> rewards being confidently right and punishes being confidently wrong with an exploding penalty.',
         why:
-          'Loss is the handle gradient descent grabs. The next chapter is entirely about how to shrink it. If you are not clear on what "it" is, the optimizers story has nowhere to land.',
+          'Loss is the handle gradient descent grabs. The next chapter is entirely about how to shrink it. If you are not clear on what "it" is, the optimizers story has nowhere to land. The practical learner sentence is: a loss tells the model both <strong>how wrong</strong> it was and <strong>what kind of wrongness matters most</strong>.',
         interview:
           'The sentence to keep: <em>loss is a single minimizable number, and choosing the loss is choosing what kind of mistake you care about most.</em>',
         details: [

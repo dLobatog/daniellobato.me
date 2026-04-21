@@ -634,8 +634,8 @@ code {
 
 .concept-layout {
   display: grid;
-  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
-  gap: 32px;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  gap: 36px;
   align-items: start;
 }
 
@@ -664,7 +664,7 @@ code {
 .viz-panel {
   position: relative;
   z-index: 1;
-  padding: 24px;
+  padding: 28px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)),
     var(--panel-strong);
@@ -676,12 +676,12 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .viz-toolbar-label {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--fg-dim);
@@ -693,7 +693,7 @@ code {
     'stage'
     'readout'
     'support';
-  gap: 20px;
+  gap: 24px;
 }
 
 .viz-support {
@@ -722,10 +722,10 @@ code {
   background: rgba(201, 169, 110, 0.08);
   color: var(--accent);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 10px 14px;
+  padding: 11px 16px;
   cursor: pointer;
   transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, color 180ms ease;
 }
@@ -766,7 +766,7 @@ code {
   gap: 16px;
   margin-bottom: 8px;
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   color: var(--fg-dim);
   letter-spacing: 0.06em;
 }
@@ -827,8 +827,8 @@ code {
 .hybrid-stage {
   display: grid;
   gap: 18px;
-  padding: 22px;
-  min-height: 380px;
+  padding: 26px;
+  min-height: 420px;
   container-type: inline-size;
   container-name: vizstage;
   border-radius: 18px;
@@ -839,11 +839,11 @@ code {
 }
 
 .viz-panel[data-viewer-layout='wide'] .hybrid-stage {
-  min-height: 420px;
+  min-height: 470px;
 }
 
 .viz-panel[data-viewer-layout='comparison'] .hybrid-stage {
-  min-height: 400px;
+  min-height: 420px;
 }
 
 .viz-panel[data-renderer-kind='plot'] .hybrid-stage {
@@ -1533,21 +1533,22 @@ body.viz-expanded-open .chapter-map {
 .lab-readout {
   grid-area: readout;
   margin-top: 18px;
-  padding: 20px 22px;
-  background: rgba(255, 255, 255, 0.03);
+  padding: 24px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
   overflow: hidden;
 }
 
 .takeaway-label {
   display: block;
   margin-bottom: 10px;
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   color: var(--accent);
 }
 
 .takeaway-line {
-  font-size: clamp(1.4rem, 2.5vw, 2rem);
-  line-height: 1.15;
+  font-size: clamp(1.5rem, 2.2vw, 2.15rem);
+  line-height: 1.18;
   color: var(--fg);
 }
 
@@ -1558,26 +1559,27 @@ body.viz-expanded-open .chapter-map {
 .metric-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
   margin-top: 18px;
 }
 
 .metric-card {
-  padding: 14px 14px 12px;
+  padding: 16px 16px 14px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.018);
+  background: rgba(255, 255, 255, 0.024);
 }
 
 .metric-label {
   display: block;
   margin-bottom: 8px;
-  font-size: 0.64rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
   color: var(--fg-dim);
 }
 
 .metric-value {
-  font-size: 1.4rem;
+  font-size: 1.52rem;
   color: var(--fg);
 }
 
