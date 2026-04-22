@@ -1607,7 +1607,7 @@ const chapters = {
     eyebrow: 'Transformers And RAG',
     title: 'Representation, context, and grounding are different jobs.',
     lede:
-      'This chapter walks from raw text to grounded answers: how text becomes pieces, how pieces become vectors, how order gets injected, how context gets selected, how generation is sped up, and how retrieval adds external evidence.',
+      'This chapter walks from raw text to grounded answers as a sequence of distinct jobs: compress text into reusable pieces, turn those pieces into vectors, inject order, choose context, reuse past computation, and then ground generation with retrieved evidence.',
     bestFor: 'LLM interviews / modern systems refresh',
     studyMove: 'Treat each control as a tradeoff, not a magic quality knob',
     sections: [
@@ -1617,16 +1617,16 @@ const chapters = {
         label: 'Concept 01',
         title: 'Tokenization: subwords are a compromise between sequence length and vocabulary size',
         summary:
-          'Tokenization is not just text splitting. It is a representation choice that trades off sequence length, vocabulary size, and flexibility on rare words.',
+          'Tokenization is your first context-budget decision. Smaller pieces make sequences longer, bigger pieces make the vocabulary explode, and subwords sit in the useful middle.',
         what:
-          'Character-level tokens keep the vocabulary tiny but make sequences long. Whole-word tokens shorten sequences but explode the vocabulary. <strong>Subword tokenization</strong> sits in the middle: it gives common patterns short codes while still composing rare words from smaller parts.',
+          'Character-level tokens keep the vocabulary tiny but make sequences long. Whole-word tokens shorten sequences but explode the vocabulary. <strong>Subword tokenization</strong> sits in the middle: common strings get short reusable pieces, while rare words can still be spelled out from smaller fragments. The clean mental model is: <strong>the tokenizer is spending a fixed context budget on text compression.</strong>',
         why:
-          'This is why BPE and related tokenizers are so widely used in language models. They are practical compression schemes for text.',
+          'This is why BPE and related tokenizers are so widely used in language models. A bad tokenization choice silently wastes context on long sequences or wastes model capacity on a bloated vocabulary before the transformer has even started reasoning.',
         interview:
-          'The compact line is: <em>subword tokenization is a compromise between vocabulary growth and sequence length.</em>',
+          'The compact line is: <em>subword tokenization is a context-budget compromise between vocabulary growth and sequence length, while still handling rare words compositionally.</em>',
         details: [
           'Frequent strings get merged into shorter tokens because they save sequence length the most often.',
-          'Rare words remain representable because they can still be decomposed into smaller pieces.',
+          'Rare words remain representable because they can still be decomposed into smaller pieces instead of becoming unknown-word failures.',
         ],
         code: {
           title: 'Code sketch',
@@ -1671,13 +1671,13 @@ const chapters = {
         label: 'Concept 02',
         title: 'Embeddings: similar meaning becomes geometric closeness',
         summary:
-          'Embeddings turn discrete tokens or chunks into vectors. Once you are in vector space, “similar” starts meaning “nearby.”',
+          'Embeddings turn text into coordinates. Once you are in vector space, “similar meaning” starts reading as “nearby direction.”',
         what:
-          'The useful intuition is that an embedding is a <strong>coordinate in a semantic space</strong>. Nearby vectors should correspond to similar meaning, which is why similarity search, clustering, and retrieval all become possible after embedding.',
+          'The useful intuition is that an embedding is a <strong>coordinate in a semantic space</strong>. Nearby vectors should correspond to similar meaning, which is why similarity search, clustering, and retrieval all become possible after embedding. The first-read learner sentence is: <strong>distance becomes meaning-aware instead of string-aware.</strong>',
         why:
-          'This idea powers semantic search, RAG retrieval, nearest-neighbor recommendation, and a lot of the intuition behind transformer internals.',
+          'This idea powers semantic search, RAG retrieval, nearest-neighbor recommendation, and a lot of the intuition behind transformer internals. It also explains why retrieval quality is never just about the encoder — chunk boundaries and indexing determine what the geometry is allowed to retrieve.',
         interview:
-          'The interview sentence is: <em>embeddings make meaning geometric, so retrieval can be done with distance rather than exact string match.</em>',
+          'The interview sentence is: <em>embeddings make meaning geometric, so retrieval can rank by semantic proximity rather than exact keyword overlap.</em>',
         details: [
           'Cosine similarity is popular because it cares about direction more than raw magnitude.',
           'Embedding systems still need good chunking and indexing; a beautiful vector is not enough if the retrieval unit is wrong.',
@@ -1730,11 +1730,11 @@ const chapters = {
         label: 'Concept 03',
         title: 'Positional encoding: attention needs order injected from outside',
         summary:
-          'Attention compares tokens, but by itself it has no native notion of “before” or “after.” Position information is what turns a bag of tokens into an ordered sequence.',
+          'Attention can compare tokens, but by itself it has no native notion of “before” or “after.” Position is the extra signal that turns the same words into different sentences.',
         what:
-          'Without position signals, the model sees the same tokens but not their arrangement. <strong>Positional encoding breaks that symmetry</strong> by giving each position a distinct signature, so order-sensitive meaning becomes recoverable.',
+          'Without position signals, the model sees the same tokens but not their arrangement. <strong>Positional encoding breaks that symmetry</strong> by giving each position a distinct signature, so order-sensitive meaning becomes recoverable. The intuition to keep is: <strong>attention supplies content matching; position supplies arrangement.</strong>',
         why:
-          'This is why “dog bites man” and “man bites dog” can lead to different internal states even though the token set is the same.',
+          'This is why “dog bites man” and “man bites dog” can lead to different internal states even though the token set is the same. If that distinction is not obvious, the whole transformer story feels more magical than it is.',
         interview:
           'The compact answer is: <em>self-attention is permutation-invariant until positional information is added.</em>',
         details: [
@@ -1792,11 +1792,11 @@ const chapters = {
         label: 'Concept 04',
         title: 'Transformer block: context mixing first, feature rewriting second',
         summary:
-          'A transformer layer is easier to understand when you split it into jobs: attention mixes information across tokens, then the MLP rewrites each token locally.',
+          'A transformer layer gets much easier once you split it into jobs: attention mixes information across tokens, then the MLP rewrites each token locally.',
         what:
-          'The key idea is that a transformer block does <strong>two different kinds of work</strong>. <strong>Self-attention</strong> lets one token pull useful context from other tokens. Then the <strong>MLP / feed-forward layer</strong> transforms that updated token state on its own. Residual connections keep the previous representation alive so each sublayer adds a correction instead of overwriting everything.',
+          'The key idea is that a transformer block does <strong>two different kinds of work</strong>. <strong>Self-attention</strong> lets one token pull useful context from other tokens. Then the <strong>MLP / feed-forward layer</strong> rewrites that updated token state on its own. Residual connections keep the previous representation alive so each sublayer adds a correction instead of overwriting everything. The simplest reading is: <strong>talk to other tokens, then think locally.</strong>',
         why:
-          'This is the mental model that helps interviews stop feeling like memorizing a diagram. Attention is about communication across tokens. The MLP is about computation inside one token.',
+          'This is the mental model that helps interviews stop feeling like memorizing a diagram. Attention is about communication across tokens. The MLP is about computation inside one token. Residual paths and normalization are there to keep those two jobs trainable, not to introduce a third mysterious job.',
         interview:
           'The one-liner is: <em>a transformer block alternates context mixing and per-token feature rewriting, with residual paths making each step an update rather than a reset.</em>',
         details: [
@@ -1846,13 +1846,13 @@ const chapters = {
         label: 'Concept 05',
         title: 'Attention: the model decides which earlier tokens deserve context weight right now',
         summary:
-          'Self-attention is a relevance mechanism. For the current token, it scores earlier tokens, normalizes those scores, and mixes information according to the resulting weights.',
+          'Self-attention is a relevance mechanism. For the current token, it scores earlier tokens, turns those scores into weights, and mixes information according to the resulting distribution.',
         what:
-          'The clean mental model is: <strong>attention is soft lookup</strong>. Instead of picking one previous token, the model gives a distribution of weights across many tokens and then forms a weighted combination of their information.',
+          'The clean mental model is: <strong>attention is soft lookup</strong>. Instead of picking one previous token, the model gives a distribution of weights across many tokens and then forms a weighted combination of their information. Queries ask what the current token needs, keys advertise what each previous token offers, and values carry the content that actually gets mixed.',
         why:
-          'This is what makes transformer context feel flexible. Different tokens can pull information from different places without passing through a fixed recurrent state.',
+          'This is what makes transformer context feel flexible. Different tokens can pull information from different places without passing through a fixed recurrent state. The first thing to notice is not the formula — it is the three-step machine: score -> softmax -> mix.',
         interview:
-          'The short line is: <em>attention turns similarity scores into a probability distribution over context.</em>',
+          'The short line is: <em>attention scores possible context, softmax normalizes those scores, and the resulting weights mix the value vectors into one context state.</em>',
         details: [
           'Queries ask what the current token needs. Keys describe what each earlier token offers. Values are the information that gets mixed once the weights are chosen.',
           'Softmax matters because it converts arbitrary scores into nonnegative weights that sum to one.',
@@ -1905,11 +1905,11 @@ const chapters = {
         label: 'Concept 06',
         title: 'KV cache: decoding gets faster by reusing past attention state',
         summary:
-          'Autoregressive generation would be painfully wasteful if the model recomputed every previous key and value on every step. The KV cache exists to reuse what was already computed.',
+          'Autoregressive generation would be painfully wasteful if the model recomputed every previous key and value on every step. The KV cache exists to reuse what was already paid for.',
         what:
-          'During generation, the new token changes, but the old tokens do not. So the model stores their previously computed <strong>keys and values</strong> and reuses them. That turns repeated full recomputation into incremental extension.',
+          'During generation, the new token changes, but the old tokens do not. So the model stores their previously computed <strong>keys and values</strong> and reuses them. That turns repeated full recomputation into incremental extension. The practical mental model is: <strong>every new token adds one fresh slice instead of replaying the whole prefix.</strong>',
         why:
-          'This is one of the most important practical ideas for inference. Without it, long generations become far more expensive than they need to be.',
+          'This is one of the most important practical ideas for inference. Without it, long generations become far more expensive than they need to be. The tradeoff is the whole point: decoding gets faster, but the live cache becomes a real memory bill.',
         interview:
           'The concise line is: <em>KV cache trades memory for speed by storing past attention state so each new token only adds one new slice.</em>',
         details: [
@@ -1961,11 +1961,11 @@ const chapters = {
         summary:
           'A base model answers from its parameters. RAG adds a retrieval step so generation can lean on external evidence instead of guessing from memory alone.',
         what:
-          'Retrieval-augmented generation has two stages: first retrieve relevant documents, then generate with that context in the prompt. The key idea is that <strong>grounding quality depends on retrieval quality</strong>; the generator cannot cite evidence it never received.',
+          'Retrieval-augmented generation has two stages: first retrieve relevant documents, then generate with that context in the prompt. The key idea is that <strong>grounding quality depends on retrieval quality</strong>; the generator cannot use evidence it never received. The first debugging split is simple: <strong>did we fetch the right evidence, or did the model underuse good evidence?</strong>',
         why:
-          'This distinction matters in real systems because many “LLM failures” are actually retrieval failures, chunking failures, or context-selection failures.',
+          'This distinction matters in real systems because many “LLM failures” are actually retrieval failures, chunking failures, or context-selection failures. If you do not keep that split visible, RAG becomes a vague promise instead of a debuggable system design.',
         interview:
-          'The clean answer is: <em>RAG separates knowledge access from generation, so the model can ground answers on retrieved context instead of parameters alone.</em>',
+          'The clean answer is: <em>RAG separates knowledge access from generation, so the model can ground answers on retrieved context instead of parameters alone — and failures should be split into retrieval quality versus context usage.</em>',
         details: [
           'Strong generation with weak retrieval still hallucinates because the context is poor or missing.',
           'Good retrieval with a weak prompt or poor chunking can still underuse the evidence.',
@@ -5567,6 +5567,16 @@ function mountVisualization(card, section) {
       if (values[input.dataset.key] !== undefined) input.value = values[input.dataset.key];
     });
   }
+
+  const localCanvasViz = new Set([
+    'tokenization',
+    'embeddings',
+    'positional',
+    'transformer-block',
+    'attention',
+    'kv-cache',
+    'rag',
+  ]);
 
   // Lazy-mount / unmount based on viewport proximity. Without this, chapter
   // pages with many React viz bring the browser to a crawl because every
