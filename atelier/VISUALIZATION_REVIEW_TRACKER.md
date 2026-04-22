@@ -77,9 +77,9 @@ Non-negotiables:
 | classical | classical-ml-stats.html | mle-map | todo |  |  |  |  |  |
 | classical | classical-ml-stats.html | bias-variance | todo |  |  |  |  |  |
 | classical | classical-ml-stats.html | regularization | todo |  |  |  |  |  |
-| production | production-systems.html | serving-skew | todo |  |  |  |  |  |
-| production | production-systems.html | online-offline | todo |  |  |  |  |  |
-| production | production-systems.html | data-drift | todo |  |  |  |  |  |
+| production | production-systems.html | serving-skew | verified | 4 | 4 | 4 | P2 | The main issue was a shell/renderer mismatch: the chapter copy and controls loaded, but the inline stage could sit on a placeholder or diverge into a different React teaching model. Routing the card through the local canvas view restores an immediate default-state lesson, a connected current-read, and a much clearer “same model, different feature reality” story. |
+| production | production-systems.html | online-offline | verified | 4 | 4 | 4 | P2 | This card now teaches in the inline state instead of hiding behind a blank shell. The chapter-native bar view makes the proxy-vs-product split legible at a glance, and the shell controls/readout now match the stage instead of competing with a separate renderer model. |
+| production | production-systems.html | data-drift | verified | 4 | 4 | 4 | P2 | Drift was strongest once the inline card showed the moving live distribution immediately rather than waiting on a hybrid placeholder. The repaired local canvas view keeps the environment-changed-not-code-broke lesson visible in one glance while preserving the population-vs-concept distinction. |
 | gbdt | gbdt-tabular.html | tree-split | todo |  |  |  |  |  |
 | gbdt | gbdt-tabular.html | boosting | todo |  |  |  |  |  |
 | data-features | data-features.html | feature-leakage | todo |  |  |  |  |  |

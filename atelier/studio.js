@@ -5343,6 +5343,11 @@ function mountVisualization(card, section) {
   );
   const overlayPresetButtons = Array.from(overlay.querySelectorAll('.preset-button'));
   const overlayClose = overlay.querySelector('.viz-lightbox__close');
+  const localCanvasViz = new Set([
+    'serving-skew',
+    'online-offline',
+    'data-drift',
+  ]);
 
   function getState() {
     const state = {};
@@ -5375,7 +5380,7 @@ function mountVisualization(card, section) {
 
   function renderTarget(targetStageRoot, targetTakeaway, targetMetrics, datasetNode) {
     const state = getState();
-    if (isHybridViz(section.viz)) {
+    if (isHybridViz(section.viz) && !localCanvasViz.has(section.viz)) {
       hybridRenderers[section.viz].render(targetStageRoot, section, state, {
         takeaway: targetTakeaway,
         metrics: targetMetrics,
@@ -5590,7 +5595,7 @@ function mountVisualization(card, section) {
       });
     };
     // Ensure React bundle is loaded before trying to render React viz.
-    if (isHybridViz(section.viz)) {
+    if (isHybridViz(section.viz) && !localCanvasViz.has(section.viz)) {
       ensureReactBundle().then(doMount, (err) => {
         console.error('[atelier]', err);
       });
@@ -5614,7 +5619,7 @@ function mountVisualization(card, section) {
     insertPlaceholder();
   };
 
-  if (typeof IntersectionObserver === 'undefined' || !panel) {
+  if (typeof IntersectionObserver === 'undefined' || !panel || localCanvasViz.has(section.viz)) {
     mountNow();
   } else {
     insertPlaceholder();
