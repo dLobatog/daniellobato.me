@@ -7,7 +7,7 @@
 <meta name="description" content="An interactive map of GDP per capita across European regions, and why crossing into Switzerland is a bigger economic jump than crossing the length of Italy.">
 <link rel="stylesheet" href="notes.css">
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
 <style>
   /* ─── MAP MODULE ─── */
   .map-stage {
@@ -83,7 +83,6 @@
   .nodata { fill: #2c2c3e; }
   .nation-border { fill: none; stroke: #fff; stroke-width: 0.9px; stroke-linejoin: round; opacity: 0.85; pointer-events: none; }
   .ch-outline { fill: none; stroke: #fff; stroke-width: 1.6px; stroke-linejoin: round; pointer-events: none; }
-  .base-land { fill: #1f1f33; stroke: none; }
   .lake { fill: #14142a; stroke: none; pointer-events: none; }
 
   .pair-line { fill: none; pointer-events: none; }
@@ -205,6 +204,23 @@
     .map-timeline { flex-wrap: wrap; }
     .tl-highlight { order: 5; flex-basis: 100%; }
   }
+
+  /* this note runs a touch larger than the default note type */
+  .note-article p          { font-size: 1.2rem; line-height: 1.85; }
+  .note-article ul,
+  .note-article ol         { font-size: 1.15rem; }
+  .note-article h1         { font-size: clamp(2.2rem, 5.2vw, 3.3rem); }
+  .note-article h2         { font-size: 1.75rem; }
+  .note-article h3         { font-size: 1.42rem; }
+  .note-article blockquote p { font-size: 1.12rem; }
+  /* clean accent underline for <u> emphasis (distinct from links) */
+  .note-article u {
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    color: inherit;
+  }
 </style>
 </head>
 <body>
@@ -219,9 +235,9 @@
     <h1>The Swiss prosperity island</h1>
   </header>
 
-  <p>I spent two years working at CERN, living on the French side of the border and crossing into Geneva most mornings. The drive is fifteen minutes. The line on the map is invisible. The economics on either side of it are not.</p>
+  <p>I spent two years working at CERN, and I lived <strong>in Geneva</strong> for almost all of it. Almost. For the first couple of weeks, before I'd found a flat, I camped out across the border in the <strong>Pays de Gex</strong>, on the French side, and drove in every morning. Fifteen minutes, door to door. The line on the map is invisible. The economics on either side of it really aren't.</p>
 
-  <p>That fifteen-minute drive from the Pays de Gex into the canton of Geneva is a bigger jump in measured prosperity than driving the whole length of Italy, Sicily up to Lombardy. That always bugged me. On almost every other border in Europe the wealth just fades gently as you cross, so you never really feel it. Switzerland doesn't do that. It sits in the middle of the continent like an island, suddenly and kind of ridiculously richer than everything around it.</p>
+  <p>That little daily crossing, from the Pays de Gex into the canton of Geneva, is a <u>bigger jump in measured prosperity than driving the entire length of Italy</u>, Sicily all the way up to Lombardy. That always bugged me. On almost every other border in Europe the wealth just fades gently as you cross, so gently you'd never feel it. Switzerland doesn't do that. It sits in the middle of the continent like an island: suddenly, and kind of ridiculously, richer than everything around it.</p>
 
   <p>Here it is. Hover any region to see its GDP per capita. The color scale is logarithmic, because if it weren't, Switzerland's deep reds would flatten all the variation in the EU around it into one shade of yellow. Drag the time slider, or hit <em>Play</em>, and you can watch the island form over 170 years.</p>
 </article>
@@ -292,7 +308,7 @@
 
   <p>Look at the warm core in the middle. Basel-Stadt is at €207,000 a head, Zug at €190,000. Then look straight across the Rhine into Germany. Freiburg sits at €36,600, the same pale yellow as any ordinary European region. Same river, same language, same Black Forest weather, and a <strong>5.7×</strong> gap in output per person. If you flip on <em>Highlight border pairs</em> you can see it laid out: thick red lines for the cliffs around Switzerland, thin blue lines everywhere else, where the ratios barely move off 1.0.</p>
 
-  <p>That's basically the whole point of the map. Italy has argued about its north-south divide for 160 years, and end to end that's about a 2× gap. Crossing from Lombardy into Ticino is 2.8×. So one border does more work than the entire length of a country.</p>
+  <p>That's basically the whole point of the map. Italy has argued about its north-south divide for 160 years, and end to end that's about a 2× gap. Crossing from Lombardy into Ticino is <strong>2.8×</strong>. So <u>one border does more work than the entire length of a country</u>.</p>
 
   <h2>Why Switzerland is an island</h2>
 
@@ -302,13 +318,13 @@
   <p>Switzerland is 26 cantons that actually compete with each other for residents and companies. If a canton taxes or spends too much, it watches its tax base move twenty minutes down the valley to a cheaper neighbour. Zug built a whole economy doing exactly that. People usually talk about tax competition like it's a problem, but here it works more like a leash on government. Most decisions get pushed down to the smallest level that can handle them, and that level has to keep justifying itself against the canton next door. You end up with a public sector that's small, local, and pretty accountable.</p>
 
   <h3>A small state by European standards</h3>
-  <p>Switch the map over to <em>Government size</em> and everything flips. Switzerland goes pale and its neighbours go dark. Swiss government spends around <strong>31%</strong> of GDP. France is at <strong>56%</strong>, Italy and Austria somewhere around 51 to 56%, Germany <strong>50%</strong>. I'm not saying that's good or bad. France genuinely buys things with that money that the Swiss just pay for out of pocket instead. But it does mean a much bigger slice of Swiss output stays inside the private, market-priced economy, which is the part GDP measures cleanly. So some of the cliff at the border is real productivity, and some of it is just an accounting effect of where you happen to draw the line between public and private.</p>
+  <p>Switch the map over to <em>Government size</em> and everything flips. Switzerland goes <strong>pale</strong> and its neighbours go <strong>dark</strong>. Swiss government spends around <strong>31%</strong> of GDP. France is at <strong>56%</strong>, Italy and Austria somewhere around 51 to 56%, Germany <strong>50%</strong>. I'm not saying that's good or bad. France genuinely buys things with that money that the Swiss just pay for out of pocket instead. But it does mean a much bigger slice of Swiss output stays inside the private, market-priced economy, which is the part GDP measures cleanly. So some of the cliff at the border is real productivity, and some of it is just an accounting effect of where you happen to draw the line between public and private.</p>
 
   <h3>A high-value-added economy</h3>
   <p>The Swiss don't make a lot of stuff. They make expensive stuff. Pharma and specialty chemicals are clustered in Basel, which is the main reason Basel-Stadt is such an outlier even for Switzerland. Banking and commodity trading live in Zürich and Geneva, and precision machines and instruments are spread across the Mittelland. All of these throw off huge value per worker. If your whole economy sits at the top of every value chain, a high GDP per capita kind of falls out automatically.</p>
 
   <h3>The franc, and credibility</h3>
-  <p>Switzerland kept its own currency and a central bank that takes stability very seriously. The franc is a safe-haven asset, so when the world gets scared, money flows into it and pushes it up. That alone makes every Swiss number look big once you convert it to euros. The deeper effect is that low, predictable inflation keeps the cost of capital down and rewards people who invest for the long haul. Being boring and trustworthy with your money turns out to be worth a lot.</p>
+  <p>Switzerland kept its own currency and a central bank that takes stability very seriously. The franc is a safe-haven asset, so when the world gets scared, money flows into it and pushes it up. That alone makes every Swiss number look big once you convert it to euros. The deeper effect is that low, predictable inflation keeps the cost of capital down and rewards people who invest for the long haul. <u>Being boring and trustworthy with your money turns out to be worth a lot.</u></p>
 
   <h3>Institutions that don't surprise you</h3>
   <p>Direct democracy, a stable political system, strong rule of law, regulation that's light and doesn't change on you every year, and a labour-capital relationship that's unusually calm. None of it is exciting. But put it all together and doing business in Switzerland becomes about as low-risk as a country gets, and money is very sensitive to risk. It goes where it gets treated predictably, and then it stays put.</p>
@@ -319,12 +335,12 @@
 
   <p>Back in 1850 Switzerland was a poor, mountainous, landlocked place whose main exports were cheese, embroidery, and mercenaries. In real terms it was middle of the European pack, actually <em>behind</em> Belgium and the Netherlands, which had industrialised earlier. Drag the slider back to the mid-1800s and the whole map goes pale. Almost everyone was poor in absolute terms, and the spread between rich and poor regions was small. There just wasn't a cliff yet.</p>
 
-  <p>What came after happened in steps, not all at once. The 1848 federal constitution turned a loose alliance into an actual country with one currency, one internal market, and institutions you could trust. Then industry showed up: machines, watches, and the chemical-dye houses in Basel that eventually became the big pharma names. The Swiss National Bank arrived in 1907 and anchored the franc. And then the brutal accelerant, <strong>the two World Wars</strong>. Switzerland stayed neutral and physically untouched while its neighbours got bombed flat. Watch the slider go across 1914 to 1945 and the island finally shows up. A lot of that has less to do with Switzerland racing ahead and more to do with everyone around it collapsing and then rebuilding from scratch. The post-war decades did the rest, with the safe-haven franc, banking, pharma, and precision manufacturing locking the lead in.</p>
+  <p>What came after happened in steps, not all at once. The 1848 federal constitution turned a loose alliance into an actual country with one currency, one internal market, and institutions you could trust. Then industry showed up: machines, watches, and the chemical-dye houses in Basel that eventually became the big pharma names. The Swiss National Bank arrived in 1907 and anchored the franc. And then the brutal accelerant, <strong>the two World Wars</strong>. Switzerland stayed neutral and physically untouched while its neighbours got bombed flat. Watch the slider go across 1914 to 1945 and the island finally shows up. A lot of that has less to do with Switzerland racing ahead and more to do with <strong>everyone around it collapsing</strong> and then rebuilding from scratch. The post-war decades did the rest, with the safe-haven franc, banking, pharma, and precision manufacturing locking the lead in.</p>
 
   <p>So the fair version of that gut feeling is something like this. The wealth itself built up slowly, over a very long time. The <em>cliff</em> at the border is mostly a 20th-century thing, shaped by war, by being trusted with money, and by Switzerland's choice to plug into Europe's markets while never dissolving into its taxes and currency.</p>
 
   <blockquote>
-    <p>One thing I won't hide. Only the 2022 layer is real per-region data. Every earlier year on the slider is <em>modeled</em>. What I actually do is take each country's real GDP-per-capita trajectory (from the Maddison Project) and project today's regional pattern back along it. So it's a picture of how each country moved over time, not an honest measurement of, say, Lombardy in 1913. Trust the overall shape of the story. Don't trust the per-region numbers in the old years.</p>
+    <p>One thing I won't hide. Only the 2022 layer is real per-region data. Every earlier year on the slider is <em>modeled</em>. What I actually do is take each country's real GDP-per-capita trajectory (from the Maddison Project) and project today's regional pattern back along it. So it's a picture of how each country moved over time, not an honest measurement of, say, Lombardy in 1913. <strong>Trust the overall shape</strong> of the story. <strong>Don't trust the per-region numbers</strong> in the old years.</p>
   </blockquote>
 
   <h2>Why every other border is smooth</h2>
@@ -341,7 +357,7 @@
 
   <p><strong>Where the workers actually sleep.</strong> GDP gets counted where the work happens. Population gets counted where people are registered. Something like 350,000 cross-border commuters (the <em>frontaliers</em>) pour into Geneva, Ticino, and Basel every day from France and Italy. Their output lands on the Swiss side, but they live, spend, and get counted across the line. So the per-capita figure for the border cantons gets pumped up while the French and Italian regions feeding them get dragged down. The sharpest cliffs on this map are partly that: a tightly connected <em>labour</em> market sitting on top of a hard <em>tax</em> border.</p>
 
-  <p>Neither of those undoes the basic picture. Switzerland really is richer than its neighbours in a deep, structural way, for all the reasons above. But it helps to read this as a map of where the lines got drawn, the tax ones, the currency ones, the regulatory ones, as much as a map of who's "richer." The gap is the whole point. Most of Europe spent seventy years sanding its borders down into gentle slopes. Switzerland kept one of them as a wall, and you can basically see it from space.</p>
+  <p>Neither of those undoes the basic picture. Switzerland really is richer than its neighbours in a deep, structural way, for all the reasons above. But it helps to read this as a map of where the lines got drawn, the tax ones, the currency ones, the regulatory ones, as much as a map of who's "richer." <strong>The gap is the whole point.</strong> Most of Europe spent seventy years sanding its borders down into gentle slopes. Switzerland kept one of them as a wall, and you can <u>basically see it from space</u>.</p>
 
   <hr>
 
@@ -539,7 +555,6 @@ const euPairs = [
 // ═══════════════════════════════════════════════
 const NUTS_URL  = "https://raw.githubusercontent.com/eurostat/Nuts2json/master/pub/v2/2021/4326/20M/nutsrg_2.json";
 const SWISS_URL = "https://cdn.jsdelivr.net/npm/swiss-maps@4/2021/ch-combined.json";
-const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const fmt = n => "€" + d3.format(",")(Math.round(n));
 const color = d3.scaleSequentialLog(d3.interpolateYlOrRd).domain([15000, 210000]).clamp(true);
@@ -552,8 +567,8 @@ const tooltip = document.getElementById("map-tooltip");
 const frame = document.querySelector(".map-canvas-wrap");
 
 let projection, path, zoomLayer, zoom;
-let regionsG, swissG, lakesG, bordersG, pairsG, baseG;
-let nutsFeatures = [], cantonFeatures = [], chOutline = null, worldBorders = null, worldLand = null, lakeFeatures = [];
+let regionsG, swissG, lakesG, bordersG, pairsG;
+let nutsFeatures = [], cantonFeatures = [], chOutline = null, nationBorders = null, lakeFeatures = [];
 let metric = "gdp";        // "gdp" | "gov"
 let pairsOn = false;
 let year = 2022;           // historical slider
@@ -566,8 +581,8 @@ let swissPts = [], euPts = [];
 // view box dims (internal coords)
 let W = 900, H = 600;
 
-Promise.all([ d3.json(NUTS_URL), d3.json(SWISS_URL), d3.json(WORLD_URL) ])
-  .then(([nuts, swiss, world]) => {
+Promise.all([ d3.json(NUTS_URL), d3.json(SWISS_URL) ])
+  .then(([nuts, swiss]) => {
     nutsFeatures = nuts.features.filter(f => f.properties && f.properties.id);
 
     const cantonFC = topojson.feature(swiss, swiss.objects.cantons);
@@ -575,8 +590,16 @@ Promise.all([ d3.json(NUTS_URL), d3.json(SWISS_URL), d3.json(WORLD_URL) ])
     chOutline = topojson.feature(swiss, swiss.objects.country);
     lakeFeatures = swiss.objects.lakes ? topojson.feature(swiss, swiss.objects.lakes).features : [];
 
-    worldLand = topojson.feature(world, world.objects.countries);
-    worldBorders = topojson.mesh(world, world.objects.countries, (a,b) => a !== b);
+    // National borders derived from the NUTS geometry itself, so they sit
+    // exactly on the region edges (the old world-atlas lines were a coarser
+    // geometry and floated off the regions). CH is excluded here; its perimeter
+    // is drawn from the precise swiss-maps outline so it matches the cantons.
+    const nutsTopo = topojson.topology({ n: { type: "FeatureCollection", features: nutsFeatures } });
+    const cc = g => (g && g.properties && g.properties.id ? g.properties.id.slice(0,2) : "");
+    nationBorders = topojson.mesh(nutsTopo, nutsTopo.objects.n, (a, b) => {
+      const ca = cc(a), cb = cc(b);
+      return ca !== cb && ca !== "CH" && cb !== "CH" && ca !== "LI" && cb !== "LI";
+    });
 
     statusEl.style.display = "none";
     build();
@@ -608,15 +631,11 @@ function fillFor(kind, d) {
 // ═══════════════════════════════════════════════
 function build() {
   zoomLayer = svg.append("g").attr("id","zoom-layer");
-  baseG    = zoomLayer.append("g");           // dark land context
   regionsG = zoomLayer.append("g");
   swissG   = zoomLayer.append("g");
   lakesG   = zoomLayer.append("g");
   bordersG = zoomLayer.append("g");
   pairsG   = zoomLayer.append("g");
-
-  // base land (non-data countries as dark context)
-  baseG.append("path").attr("class","base-land").datum(worldLand);
 
   // NUTS regions
   regionsG.selectAll("path").data(nutsFeatures).join("path")
@@ -635,8 +654,8 @@ function build() {
   // lakes
   lakesG.selectAll("path").data(lakeFeatures).join("path").attr("class","lake");
 
-  // national borders (white) + precise CH outline on top
-  bordersG.append("path").attr("class","nation-border").datum(worldBorders);
+  // national borders (white, from NUTS) + precise CH outline on top
+  bordersG.append("path").attr("class","nation-border").datum(nationBorders);
   bordersG.append("path").attr("class","ch-outline").datum(chOutline);
 
   // zoom
@@ -680,11 +699,9 @@ function layout() {
   projection = d3.geoMercator().fitExtent([[10,10],[W-10,H-10]], frameBox);
   path = d3.geoPath(projection);
 
-  zoomLayer.selectAll("path.region, path.base-land, path.lake, path.nation-border, path.ch-outline").attr("d", path);
   regionsG.selectAll("path").attr("d", path);
   swissG.selectAll("path").attr("d", path);
   lakesG.selectAll("path").attr("d", path);
-  baseG.selectAll("path").attr("d", path);
   bordersG.selectAll("path").attr("d", path);
 
   computeCentroids();
