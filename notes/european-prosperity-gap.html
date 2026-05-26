@@ -299,7 +299,7 @@
       <div class="legend-ticks" id="legend-ticks"></div>
     </div>
   </div>
-  <p class="map-cap">Sources: Eurostat regional GDP (NUTS 2, 2022) and Swiss Federal Statistical Office cantonal GDP, converted at 1&nbsp;CHF&nbsp;=&nbsp;0.985&nbsp;EUR. These are nominal GDP per capita, not adjusted for price levels. There's more on what that does and doesn't mean further down.</p>
+  <p class="map-cap">Sources: Eurostat regional GDP (NUTS 2, 2022) and Swiss Federal Statistical Office cantonal GDP, converted at 1&nbsp;CHF&nbsp;=&nbsp;0.985&nbsp;EUR. These are nominal GDP per capita, not adjusted for price levels. The time slider's national trajectories come from the Maddison Project Database 2020. There's more on what all of this does and doesn't mean further down.</p>
 </section>
 
 <article class="note-article" style="padding-top: 56px;">
@@ -340,7 +340,7 @@
   <p>So the fair version of that gut feeling is something like this. The wealth itself built up slowly, over a very long time. The <em>cliff</em> at the border is mostly a 20th-century thing, shaped by war, by being trusted with money, and by Switzerland's choice to plug into Europe's markets while never dissolving into its taxes and currency.</p>
 
   <blockquote>
-    <p>One thing I won't hide. Only the 2022 layer is real per-region data. Every earlier year on the slider is <em>modeled</em>. What I actually do is take each country's real GDP-per-capita trajectory (from the Maddison Project) and project today's regional pattern back along it. So it's a picture of how each country moved over time, not an honest measurement of, say, Lombardy in 1913. <strong>Trust the overall shape</strong> of the story. <strong>Don't trust the per-region numbers</strong> in the old years.</p>
+    <p>One thing I won't hide. Only the 2022 layer is real per-region data, from Eurostat and the Swiss FSO. Every earlier year on the slider is partly <em>modeled</em>. The national trajectories themselves are real: I pulled them straight from the <strong>Maddison Project Database 2020</strong> (in constant international dollars). What's modeled is the split <em>inside</em> each country, where I project today's regional pattern back along that real national arc. So the national rise and fall you're watching is real history. The per-region detail underneath it is a reasonable guess at best, and definitely not a real read on, say, Lombardy in 1913. <strong>Trust the overall shape</strong> of the story. <strong>Don't trust the per-region numbers</strong> in the old years.</p>
   </blockquote>
 
   <h2>Why every other border is smooth</h2>
@@ -490,20 +490,23 @@ const govSpend = { CH: 31, DE: 50, FR: 56, IT: 51, AT: 56 };
 const countryName = { CH:"Switzerland", DE:"Germany", FR:"France", IT:"Italy", AT:"Austria", ES:"Spain", BE:"Belgium", NL:"Netherlands" };
 const SWISS_AVG = 89000, EU_AVG = 30000;
 
-// ── Historical layer (MODELLED) ──
-// Real national GDP per capita, 2011 int$ (Maddison Project, approximate).
-// Pre-2022 region values are projected: regionValue2022 × nat(year)/nat(2022).
-// Only 2022 is real per-region (Eurostat/FSO). The rest illustrates the long arc.
-const histYears = [1850, 1870, 1900, 1913, 1929, 1950, 1973, 1990, 2008, 2022];
+// ── Historical layer ──
+// Real national GDP per capita, in constant 2011 international dollars (PPP),
+// straight from the Maddison Project Database 2020 (Bolt & van Zanden), via
+// Our World in Data. These national trajectories are real.
+// Pre-2022 region values are then modeled: regionValue2022 × nat(year)/nat(2018),
+// i.e. today's regional pattern projected back along each country's real arc.
+// Only the 2022 layer is real per-region data (Eurostat / Swiss FSO).
+const histYears = [1850, 1870, 1900, 1913, 1929, 1950, 1973, 1990, 2008, 2018];
 const histIndex = {
-  CH: [2100, 2750, 4500, 5900, 8700, 9100, 18800, 26000, 38000, 57000],
-  DE: [1900, 2200, 3700, 5000, 5400, 5400, 14000, 19000, 33000, 46000],
-  FR: [1900, 2000, 3500, 4400, 5800, 5900, 16000, 21000, 31000, 38000],
-  IT: [1600, 1900, 2600, 3300, 3300, 3900, 13000, 19000, 28000, 34000],
-  AT: [1650, 1900, 3000, 4100, 4300, 4100, 13000, 20000, 33000, 46000],
-  ES: [1250, 1400, 2100, 2700, 3500, 2600,  9000, 14000, 25000, 31000],
-  BE: [2900, 3300, 4800, 5600, 5500, 6000, 15000, 20000, 32000, 42000],
-  NL: [2700, 3200, 4100, 4900, 6300, 6000, 15000, 21000, 35000, 48000]
+  CH: [2443, 2839, 4266, 5256, 7494, 8939, 16271, 32403, 44674, 46435],
+  DE: [1428, 1839, 3648, 4049, 5728, 3881, 13152, 17894, 30496, 32246],
+  FR: [1876, 1876, 2876, 3452, 4853, 5270, 11999, 17952, 28169, 30738],
+  IT: [1500, 1733, 2507, 3343, 4554, 4784, 12086, 23332, 34873, 37156],
+  AT: [2630, 2970, 4594, 5523, 5896, 5907, 17908, 26930, 40965, 43032],
+  ES: [1258, 1464, 2085, 2889, 3889, 2189,  9823, 15557, 31574, 30561],
+  BE: [2944, 4291, 5947, 6727, 8056, 8706, 19399, 27412, 38117, 40472],
+  NL: [2757, 3131, 4204, 5518, 7525, 7462, 17288, 23147, 47619, 52292]
 };
 function natAt(country, yr) {
   const arr = histIndex[country] || histIndex.DE;
@@ -517,12 +520,13 @@ function natAt(country, yr) {
   }
   return arr[arr.length-1];
 }
-// factor that scales a 2022 value back to year `yr`
-function natFactor(country, yr) { return natAt(country, yr) / natAt(country, 2022); }
+// factor that scales a 2022 value back to year `yr` (normalised to the latest
+// real Maddison year, 2018, which we treat as ~the 2022 baseline)
+function natFactor(country, yr) { return natAt(country, yr) / natAt(country, 2018); }
 // displayed (year-adjusted) value for a region
 function valAt(country, baseGdp) { return year === 2022 ? baseGdp : baseGdp * natFactor(country, year); }
 
-// policy / event highlights — sorted ascending; latest threshold <= current wins
+// policy / event highlights, sorted ascending; latest threshold <= current wins
 const highlights = [
   { y:0,    t:"A poor, rural confederation. Belgium and the Netherlands are richer. The main exports are cheese, textiles and mercenaries." },
   { y:1848, t:"<b>1848, the federal state.</b> One currency, one internal market, a customs union, institutions you can trust. This is the base everything later gets built on." },
