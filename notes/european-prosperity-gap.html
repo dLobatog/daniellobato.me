@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Swiss prosperity island — Daniel Lobato</title>
+<meta name="description" content="An interactive map of GDP per capita across European regions, and why crossing into Switzerland is a bigger economic jump than crossing the length of Italy.">
+<link rel="stylesheet" href="notes.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<style>
+  /* ─── MAP MODULE ─── */
+  .map-stage {
+    max-width: 1200px;
+    margin: 8px auto 0;
+    padding: 0 24px;
+  }
+
+  .map-frame {
+    position: relative;
+    background: #14142a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+  }
+
+  .map-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .map-toolbar .mt-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    margin-right: auto;
+  }
+
+  .map-btn {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--fg-dim);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+  }
+  .map-btn:hover { color: var(--fg); border-color: rgba(255,255,255,0.3); }
+  .map-btn.active {
+    color: #14142a;
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+
+  .map-body {
+    display: grid;
+    grid-template-columns: 1fr 290px;
+  }
+
+  .map-canvas-wrap {
+    position: relative;
+    min-height: 420px;
+  }
+
+  #prosperity-map { display: block; width: 100%; height: auto; cursor: grab; }
+  #prosperity-map.grabbing { cursor: grabbing; }
+
+  .region { stroke: rgba(150,150,160,0.35); stroke-width: 0.4px; transition: opacity 0.18s, stroke 0.18s; }
+  .region.dim { opacity: 0.4; }
+  .region.hot { stroke: #fff; stroke-width: 1.4px; }
+  .nodata { fill: #2c2c3e; }
+  .nation-border { fill: none; stroke: #fff; stroke-width: 0.9px; stroke-linejoin: round; opacity: 0.85; pointer-events: none; }
+  .ch-outline { fill: none; stroke: #fff; stroke-width: 1.6px; stroke-linejoin: round; pointer-events: none; }
+  .base-land { fill: #1f1f33; stroke: none; }
+  .lake { fill: #14142a; stroke: none; pointer-events: none; }
+
+  .pair-line { fill: none; pointer-events: none; }
+  .pair-line.swiss { stroke: #ff5a3c; }
+  .pair-line.eu { stroke: #6ea5c9; }
+  .pair-dot { pointer-events: none; }
+  .pair-label {
+    font-family: var(--mono);
+    font-weight: 600;
+    pointer-events: none;
+    paint-order: stroke;
+    stroke: #0b0b16;
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .pair-label.swiss { fill: #ffb199; font-size: 12px; }
+  .pair-label.eu { fill: #bcd6e8; font-size: 10px; }
+
+  /* tooltip */
+  #map-tooltip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 20;
+    min-width: 170px;
+    max-width: 240px;
+    background: rgba(11,11,22,0.95);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 10px 12px;
+    opacity: 0;
+    transition: opacity 0.12s;
+    backdrop-filter: blur(6px);
+  }
+  #map-tooltip.show { opacity: 1; }
+  #map-tooltip .tt-name { font-family: var(--serif); font-size: 1.05rem; color: var(--fg); line-height: 1.2; }
+  #map-tooltip .tt-gdp { font-family: var(--mono); font-size: 1.2rem; color: var(--accent); margin: 4px 0 2px; }
+  #map-tooltip .tt-sub { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.04em; color: var(--fg-dim); text-transform: uppercase; }
+  #map-tooltip .tt-ratio { font-family: var(--serif); font-size: 0.9rem; color: #ff8a6e; margin-top: 7px; line-height: 1.35; }
+  #map-tooltip .tt-spark { display: flex; align-items: flex-end; gap: 4px; height: 34px; margin-top: 9px; }
+  #map-tooltip .tt-spark .sp { width: 14px; border-radius: 2px 2px 0 0; }
+  #map-tooltip .tt-spark .sp-lbl { font-family: var(--mono); font-size: 0.5rem; color: var(--fg-dim); text-align: center; margin-top: 3px; }
+  #map-tooltip .tt-lock { font-family: var(--mono); font-size: 0.55rem; color: var(--accent2); margin-top: 8px; letter-spacing: 0.05em; }
+
+  /* side panel */
+  .map-panel {
+    border-left: 1px solid rgba(255,255,255,0.06);
+    padding: 18px 18px 22px;
+    background: rgba(255,255,255,0.015);
+    font-family: var(--mono);
+  }
+  .mp-hint { font-size: 0.68rem; color: var(--fg-dim); line-height: 1.5; }
+  .mp-region { font-family: var(--serif); font-size: 1.5rem; color: var(--fg); line-height: 1.15; }
+  .mp-country { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-dim); margin-top: 2px; }
+  .mp-gdp { font-size: 1.9rem; color: var(--accent); margin: 14px 0 2px; }
+  .mp-gdp-lbl { font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-dim); }
+
+  .mp-bars { margin: 20px 0 8px; }
+  .mp-bar-row { margin-bottom: 11px; }
+  .mp-bar-top { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--fg-dim); margin-bottom: 4px; letter-spacing: 0.04em; }
+  .mp-bar-track { height: 9px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; }
+  .mp-bar-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
+  .mp-bar-fill.region { background: var(--accent); }
+  .mp-bar-fill.swiss { background: #ff5a3c; }
+  .mp-bar-fill.eu { background: #6ea5c9; }
+
+  .mp-gov { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .mp-gov-val { font-size: 1.5rem; color: var(--fg); }
+  .mp-gov-lbl { font-size: 0.58rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-dim); margin-top: 2px; line-height: 1.4; }
+
+  /* legend */
+  .map-legend { padding: 16px 20px 20px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .legend-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 8px; }
+  .legend-bar { height: 12px; border-radius: 6px; }
+  .legend-ticks { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 0.58rem; color: var(--fg-dim); }
+  .legend-ticks span { position: relative; }
+
+  #map-status {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 0.8rem; color: var(--fg-dim); text-align: center; padding: 24px; z-index: 5;
+  }
+
+  .map-cap { font-family: var(--mono); font-size: 0.68rem; color: var(--fg-dim); text-align: center; margin: 14px auto 0; max-width: 1200px; padding: 0 24px; line-height: 1.6; }
+
+  /* timeline */
+  .map-timeline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.015);
+  }
+  .map-btn.play { min-width: 78px; }
+  .map-btn.play.on { color: #14142a; background: #ff5a3c; border-color: #ff5a3c; font-weight: 500; }
+  .tl-slider-wrap { flex: 1; min-width: 140px; }
+  #year-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px; border-radius: 3px; outline: none; cursor: pointer;
+    background: linear-gradient(to right, #6ea5c9, var(--accent), #ff5a3c);
+  }
+  #year-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; border: 2px solid #ff5a3c; cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(255,90,60,0.25);
+  }
+  #year-slider::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; border: 2px solid #ff5a3c; cursor: pointer;
+  }
+  .tl-ticks { display: flex; justify-content: space-between; margin-top: 4px; font-family: var(--mono); font-size: 0.52rem; color: var(--fg-dim); }
+  .tl-year { font-family: var(--mono); font-size: 1.4rem; color: var(--accent); min-width: 62px; text-align: center; font-weight: 500; }
+  .tl-highlight { font-family: var(--serif); font-size: 0.92rem; color: var(--fg); line-height: 1.3; flex: 1.4; min-width: 200px; }
+  .tl-highlight b { color: #ff8a6e; font-weight: 600; }
+
+  @media (max-width: 860px) {
+    .map-body { grid-template-columns: 1fr; }
+    .map-panel { border-left: none; border-top: 1px solid rgba(255,255,255,0.06); }
+    .map-timeline { flex-wrap: wrap; }
+    .tl-highlight { order: 5; flex-basis: 100%; }
+  }
+</style>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+  <span class="note-tag" data-tag="Economics">Economics</span>
+</nav>
+
+<article class="note-article" style="padding-bottom: 32px;">
+  <header>
+    <span class="note-icon">🇨🇭</span>
+    <h1>The Swiss prosperity island</h1>
+  </header>
+
+  <p>I spent two years working at CERN, living on the French side of the border and crossing into Geneva most mornings. The drive is fifteen minutes. The line on the map is invisible. The economics on either side of it are not.</p>
+
+  <p>Crossing from the Pays de Gex into the canton of Geneva is a bigger jump in measured prosperity than driving the entire length of Italy from Sicily to Lombardy. That always struck me as strange. Borders are supposed to be lines, not walls — and most European borders <em>are</em> just lines, with wealth fading smoothly across them. Switzerland is the exception. It sits in the middle of the continent like an island, abruptly and dramatically richer than everything it touches.</p>
+
+  <p>Here is that island. Hover any region for its GDP per capita; the color scale is logarithmic, because otherwise Switzerland's deep reds would wash out every gradient in the European Union around it. Drag the time slider — or hit <em>Play</em> — to watch the island form across 170 years.</p>
+</article>
+
+<section class="map-stage">
+  <div class="map-frame">
+    <div class="map-toolbar">
+      <span class="mt-title">GDP per capita · NUTS 2 regions &amp; Swiss cantons</span>
+      <button class="map-btn" id="btn-metric" type="button" title="Switch the fill between prosperity and government size">Show: GDP per capita</button>
+      <button class="map-btn" id="btn-pairs" type="button">Highlight border pairs</button>
+      <button class="map-btn" id="btn-reset" type="button">Reset view</button>
+    </div>
+    <div class="map-timeline" id="map-timeline">
+      <button class="map-btn play" id="btn-play" type="button" aria-label="Play through the years">▶ Play</button>
+      <div class="tl-slider-wrap">
+        <input type="range" id="year-slider" min="1850" max="2022" step="1" value="2022" aria-label="Year">
+        <div class="tl-ticks" id="tl-ticks"></div>
+      </div>
+      <div class="tl-year" id="tl-year">2022</div>
+      <div class="tl-highlight" id="tl-highlight">Today's snapshot — the only year with real Eurostat / FSO regional data.</div>
+    </div>
+    <div class="map-body">
+      <div class="map-canvas-wrap">
+        <svg id="prosperity-map" role="img" aria-label="Choropleth map of GDP per capita across European regions"></svg>
+        <div id="map-tooltip"></div>
+        <div id="map-status">Loading European regions…</div>
+      </div>
+      <aside class="map-panel" id="map-panel">
+        <div class="mp-hint" id="mp-hint">Hover a region to inspect it. Click to lock the readout. Scroll to zoom, drag to pan.</div>
+        <div id="mp-detail" style="display:none;">
+          <div class="mp-region" id="mp-region">—</div>
+          <div class="mp-country" id="mp-country">—</div>
+          <div class="mp-gdp" id="mp-gdp">—</div>
+          <div class="mp-gdp-lbl" id="mp-gdp-lbl">GDP per capita (EUR, 2022)</div>
+          <div class="mp-bars">
+            <div class="mp-bar-row">
+              <div class="mp-bar-top"><span id="mp-b1-name">This region</span><span id="mp-b1-val"></span></div>
+              <div class="mp-bar-track"><div class="mp-bar-fill region" id="mp-b1"></div></div>
+            </div>
+            <div class="mp-bar-row">
+              <div class="mp-bar-top"><span>Swiss average</span><span id="mp-b2-val">€89,000</span></div>
+              <div class="mp-bar-track"><div class="mp-bar-fill swiss" id="mp-b2"></div></div>
+            </div>
+            <div class="mp-bar-row">
+              <div class="mp-bar-top"><span>EU average</span><span id="mp-b3-val">€30,000</span></div>
+              <div class="mp-bar-track"><div class="mp-bar-fill eu" id="mp-b3"></div></div>
+            </div>
+          </div>
+          <div class="mp-gov">
+            <div class="mp-gov-val" id="mp-gov-val">—</div>
+            <div class="mp-gov-lbl" id="mp-gov-lbl">Government spending, % of GDP</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+    <div class="map-legend">
+      <div class="legend-label" id="legend-label">GDP per capita (EUR, 2022)</div>
+      <div class="legend-bar" id="legend-bar"></div>
+      <div class="legend-ticks" id="legend-ticks"></div>
+    </div>
+  </div>
+  <p class="map-cap">Sources: Eurostat regional GDP (NUTS 2, 2022) and Swiss Federal Statistical Office cantonal GDP, converted at 1&nbsp;CHF&nbsp;=&nbsp;0.985&nbsp;EUR. Figures are nominal GDP per capita, not adjusted for price levels — see the note on what these numbers do and don't mean below.</p>
+</section>
+
+<article class="note-article" style="padding-top: 56px;">
+
+  <h2>Read the map first</h2>
+
+  <p>Look at the warm core in the middle. Basel-Stadt glows at €207,000 per head; Zug at €190,000. Now look immediately across the Rhine into Germany: Freiburg, at €36,600, is the pale yellow of an ordinary European region. Same river, same language, same Black Forest weather — and a <strong>5.7×</strong> step in measured output per person. Flip on <em>Highlight border pairs</em> and the contrast becomes a ledger: thick red lines for the cliffs at the Swiss frontier, thin blue lines everywhere else, where the ratios sit near 1.0.</p>
+
+  <p>That asymmetry is the whole story. The Italian north–south divide, which Italians have argued about for 160 years, is roughly a 2× gap end to end. Crossing into Ticino from Lombardy is 2.8×. The border does more than the country.</p>
+
+  <h2>Why Switzerland is an island</h2>
+
+  <p>There is no single cause. There is a stack of mutually reinforcing ones, and the interesting thing is how they compound.</p>
+
+  <h3>Federalism as a competitive market</h3>
+  <p>Switzerland is 26 cantons that genuinely compete for residents and firms. A canton that overtaxes or overspends watches its tax base drive twenty minutes down the valley to a cheaper neighbour — Zug built an entire economy on exactly this. Tax competition is usually discussed as a bug; here it functions as a discipline. Government is pushed down to the smallest unit that can plausibly handle a task, and that unit has to justify itself against the one next door. The result is a public sector that is small, local, and unusually accountable.</p>
+
+  <h3>A small state by European standards</h3>
+  <p>Switch the map to <em>Government size</em> and the picture inverts: Switzerland turns pale while its neighbours darken. Swiss general government spends about <strong>31%</strong> of GDP. France spends <strong>56%</strong>, Italy and Austria around <strong>51–56%</strong>, Germany <strong>50%</strong>. That is not a moral verdict — France buys things with that money that the Swiss pay for privately — but it means a far larger share of Swiss output stays inside the private, market-priced economy that GDP measures well. Part of the cliff at the border is real productivity, and part is an accounting artifact of where the line between "public" and "private" is drawn.</p>
+
+  <h3>A high-value-added economy</h3>
+  <p>The Swiss don't make many things; they make expensive ones. Pharma and specialty chemicals cluster in Basel (which is why Basel-Stadt is an outlier even by Swiss standards), banking and commodity trading in Zürich and Geneva, precision instruments and machines across the Mittelland. These are sectors with enormous value added per worker. A country that specializes in the top of every value chain will show a high GDP per capita almost by construction.</p>
+
+  <h3>The franc, and credibility</h3>
+  <p>Switzerland kept its own currency and a central bank with a near-religious commitment to stability. The franc is a global safe-haven asset: when the world is frightened, money flows <em>into</em> it, pushing it up. A strong, trusted currency makes every Swiss nominal figure look large when converted to euros — and, more deeply, low and predictable inflation lowers the cost of capital and rewards long-horizon investment. Credibility is itself a productive asset.</p>
+
+  <h3>Institutions that don't surprise you</h3>
+  <p>Direct democracy, deep political stability, strong rule of law, light and predictable regulation, and a famously cooperative relationship between labour and capital. None of these is flashy. Together they lower the risk premium on doing business in Switzerland to about as close to zero as a country gets, and capital is exquisitely sensitive to risk. Money goes where it is treated predictably, and stays.</p>
+
+  <h2>The gap wasn't always there</h2>
+
+  <p>It's tempting to assume Switzerland was always rich, or — the opposite story I hear a lot — that it was dirt-poor until some clever policy flipped a switch. Neither is quite right, and the slider on the map is there to show why.</p>
+
+  <p>In 1850 Switzerland was a poor, mountainous, landlocked confederation whose biggest exports were cheese, embroidery, and mercenaries. In real terms it sat in the European middle of the pack — and <em>behind</em> Belgium and the Netherlands, which had industrialised first. Drag the slider back to the mid-19th century and the whole map goes pale: in absolute terms, almost everyone was poor, and the rich-poor spread between regions was small. There was no cliff to see.</p>
+
+  <p>What happened next wasn't one switch but a sequence. The 1848 federal constitution turned a loose alliance into a real state with one currency, one internal market, and credible institutions. Industrialisation followed — machines, watches, and the Basel chemical-dye houses that would become the global pharma giants. The Swiss National Bank arrived in 1907, anchoring the franc. And then the decisive, brutal accelerant: <strong>the two World Wars</strong>. Switzerland stayed neutral and physically intact while the capital stock of every neighbour was bombed flat. Watch the slider cross 1914–1945 and the island finally appears — not because Switzerland suddenly surged, but because everyone around it collapsed and then had to rebuild. The post-war decades — safe-haven franc, banking, pharma, precision manufacturing — locked the lead in.</p>
+
+  <p>So the honest version of your intuition is this: Switzerland's <em>wealth</em> is a long, compounding arc, but the <em>discontinuity at the border</em> — the cliff — is largely a 20th-century artifact, carved by war, monetary credibility, and the decision to integrate with Europe's markets without dissolving into its fiscal and monetary union.</p>
+
+  <blockquote>
+    <p>A caveat I won't bury: only the 2022 layer is real per-region data. Every earlier year on the slider is <em>modeled</em> — I take each country's actual GDP-per-capita trajectory (Maddison Project historical estimates) and project today's regional pattern back along it. It's an illustration of the national arc, not a measurement of, say, Lombardy in 1913. The shape of the story is real; the per-region precision in old years is not.</p>
+  </blockquote>
+
+  <h2>Why every other border is smooth</h2>
+
+  <p>The flat blue lines on the map are not an accident — they are the European Union working exactly as designed. The single market erased the economic meaning of the internal borders: goods, capital, services, and above all <em>people</em> move freely. When a worker can move to where wages are highest without a visa, and a firm can hire across the line without friction, prices and wages arbitrage toward each other. Add a shared currency across most of the bloc, decades of cohesion and structural funds aimed explicitly at convergence, and harmonized regulation, and you get exactly what the map shows: South Tyrol and Tyrol at 1.0×, Antwerp and North Brabant at 1.0×, the Basque Country and Aquitaine at 1.1×. Borders you can't feel.</p>
+
+  <p>Switzerland is outside that machine. It is bound to the EU by a patchwork of bilateral treaties rather than membership, keeps its own money and its own rules, and — crucially — does <em>not</em> let labour freely arbitrage the wage gap away. You can commute in, but you can't simply move in. So the gap doesn't close. It just sits there at the border, year after year, as a cliff instead of a slope.</p>
+
+  <h2>What these numbers do and don't mean</h2>
+
+  <p>Two honest caveats, because the cliff is partly a measurement effect and it would be dishonest to oversell it.</p>
+
+  <p><strong>Prices, not just paychecks.</strong> These are <em>nominal</em> figures. Switzerland is also one of the most expensive places on earth — rent, groceries, a coffee. Adjust for purchasing power and the Swiss advantage shrinks a lot, though it does not vanish. A Geneva salary buys a Geneva life, not a Lisbon one.</p>
+
+  <p><strong>Where the workers sleep.</strong> GDP is counted where output happens; population where people are registered. Roughly 350,000 cross-border commuters (<em>frontaliers</em>) pour into Geneva, Ticino, and Basel every day from France and Italy. Their output lands in the Swiss numerator while they live — and spend, and are counted — across the line. That mechanically inflates the per-capita figure of the border cantons and deflates the French and Italian regions feeding them. The very sharpest cliffs on this map are, in part, an artifact of a deeply integrated <em>labour</em> market drawn on top of a hard <em>fiscal</em> border.</p>
+
+  <p>Neither caveat undoes the picture. Switzerland is genuinely, structurally richer than its neighbours, for the stacked institutional reasons above. But the map is best read as a map of where the lines are drawn — fiscal, monetary, regulatory — as much as a map of who is "richer." The discontinuity is the point. Most of Europe spent seventy years sanding its borders down into slopes. Switzerland kept one as a wall, and you can see it from space.</p>
+
+  <hr>
+
+  <p style="font-family: var(--mono); font-size: 0.8rem; color: var(--fg-dim);">Built with D3 v7 and TopoJSON. Geometry from Eurostat's Nuts2json and the swiss-maps project; a log color scale so the EU's internal variation survives next to Switzerland. The whole thing is one static HTML file — view source.</p>
+</article>
+
+<footer class="note-footer">
+  <a href="../index.html#notes-section">&larr; All Notes</a>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+const swissCantons = {
+  "BS": { name: "Basel-Stadt", gdp: 207000 },
+  "ZG": { name: "Zug", gdp: 190000 },
+  "GE": { name: "Geneva", gdp: 118000 },
+  "NE": { name: "Neuchâtel", gdp: 105000 },
+  "ZH": { name: "Zürich", gdp: 103000 },
+  "TI": { name: "Ticino", gdp: 101000 },
+  "SH": { name: "Schaffhausen", gdp: 99000 },
+  "SG": { name: "St. Gallen", gdp: 84000 },
+  "BE": { name: "Bern", gdp: 84000 },
+  "GR": { name: "Graubünden", gdp: 82000 },
+  "JU": { name: "Jura", gdp: 77000 },
+  "VD": { name: "Vaud", gdp: 77000 },
+  "BL": { name: "Basel-Landschaft", gdp: 77000 },
+  "LU": { name: "Lucerne", gdp: 74000 },
+  "SO": { name: "Solothurn", gdp: 73000 },
+  "TG": { name: "Thurgau", gdp: 69000 },
+  "AG": { name: "Aargau", gdp: 66000 },
+  "FR": { name: "Fribourg", gdp: 64000 },
+  "VS": { name: "Valais", gdp: 60000 },
+  "UR": { name: "Uri", gdp: 58000 },
+  "SZ": { name: "Schwyz", gdp: 70000 },
+  "OW": { name: "Obwalden", gdp: 74000 },
+  "NW": { name: "Nidwalden", gdp: 74000 },
+  "GL": { name: "Glarus", gdp: 74000 },
+  "AR": { name: "Appenzell A.Rh.", gdp: 66000 },
+  "AI": { name: "Appenzell I.Rh.", gdp: 74000 }
+};
+
+// FSO canton numbers (1-26, alphabetical) -> abbreviation
+const cantonNumToAbbr = {
+  1:"ZH", 2:"BE", 3:"LU", 4:"UR", 5:"SZ", 6:"OW", 7:"NW", 8:"GL", 9:"ZG",
+  10:"FR", 11:"SO", 12:"BS", 13:"BL", 14:"SH", 15:"AR", 16:"AI", 17:"SG",
+  18:"GR", 19:"AG", 20:"TG", 21:"TI", 22:"VD", 23:"VS", 24:"NE", 25:"GE", 26:"JU"
+};
+
+const nutsGDP = {
+  "DE13": { name: "Freiburg", gdp: 36600, country: "DE" },
+  "DE14": { name: "Tübingen", gdp: 41000, country: "DE" },
+  "DE11": { name: "Stuttgart", gdp: 50000, country: "DE" },
+  "DE27": { name: "Schwaben", gdp: 37800, country: "DE" },
+  "DE21": { name: "Oberbayern", gdp: 54600, country: "DE" },
+  "DE12": { name: "Karlsruhe", gdp: 42300, country: "DE" },
+  "DEA1": { name: "Düsseldorf", gdp: 40400, country: "DE" },
+  "DEA2": { name: "Köln", gdp: 41400, country: "DE" },
+  "DE60": { name: "Hamburg", gdp: 61800, country: "DE" },
+  "DE30": { name: "Berlin", gdp: 36600, country: "DE" },
+  "DE50": { name: "Bremen", gdp: 47900, country: "DE" },
+  "DE71": { name: "Darmstadt", gdp: 49400, country: "DE" },
+  "DE91": { name: "Braunschweig", gdp: 36800, country: "DE" },
+  "DE92": { name: "Hannover", gdp: 35600, country: "DE" },
+  "DE94": { name: "Weser-Ems", gdp: 33400, country: "DE" },
+  "DEA5": { name: "Arnsberg", gdp: 33600, country: "DE" },
+  "DEA3": { name: "Münster", gdp: 32100, country: "DE" },
+  "DED2": { name: "Dresden", gdp: 29700, country: "DE" },
+  "DEE0": { name: "Sachsen-Anhalt", gdp: 26600, country: "DE" },
+  "DEG0": { name: "Thüringen", gdp: 28300, country: "DE" },
+  "DE80": { name: "Meckl.-Vorpommern", gdp: 25800, country: "DE" },
+  "DE40": { name: "Brandenburg", gdp: 27600, country: "DE" },
+  "FRK2": { name: "Rhône-Alpes", gdp: 32800, country: "FR" },
+  "FRC2": { name: "Franche-Comté", gdp: 26100, country: "FR" },
+  "FRF1": { name: "Alsace", gdp: 30300, country: "FR" },
+  "FR10": { name: "Île-de-France", gdp: 56000, country: "FR" },
+  "FRL0": { name: "PACA", gdp: 30800, country: "FR" },
+  "FRI1": { name: "Aquitaine", gdp: 29600, country: "FR" },
+  "FRJ2": { name: "Midi-Pyrénées", gdp: 30600, country: "FR" },
+  "FRJ1": { name: "Languedoc-Rouss.", gdp: 24400, country: "FR" },
+  "FRE1": { name: "Nord-Pas-de-Calais", gdp: 26600, country: "FR" },
+  "FRF2": { name: "Champagne-Ardenne", gdp: 26900, country: "FR" },
+  "FRD1": { name: "Basse-Normandie", gdp: 26400, country: "FR" },
+  "FRC1": { name: "Bourgogne", gdp: 27000, country: "FR" },
+  "ITC4": { name: "Lombardia", gdp: 36600, country: "IT" },
+  "ITC1": { name: "Piemonte", gdp: 29400, country: "IT" },
+  "ITH1": { name: "Südtirol", gdp: 42600, country: "IT" },
+  "ITC2": { name: "Valle d'Aosta", gdp: 34900, country: "IT" },
+  "ITC3": { name: "Liguria", gdp: 30800, country: "IT" },
+  "ITH3": { name: "Veneto", gdp: 31700, country: "IT" },
+  "ITH5": { name: "Emilia-Romagna", gdp: 34600, country: "IT" },
+  "ITI1": { name: "Toscana", gdp: 30000, country: "IT" },
+  "ITI4": { name: "Lazio", gdp: 31600, country: "IT" },
+  "ITF1": { name: "Abruzzo", gdp: 24100, country: "IT" },
+  "ITF3": { name: "Campania", gdp: 18300, country: "IT" },
+  "ITG1": { name: "Sicilia", gdp: 17200, country: "IT" },
+  "ITF4": { name: "Puglia", gdp: 17800, country: "IT" },
+  "ITF6": { name: "Calabria", gdp: 16800, country: "IT" },
+  "AT34": { name: "Vorarlberg", gdp: 44700, country: "AT" },
+  "AT33": { name: "Tirol", gdp: 43700, country: "AT" },
+  "AT32": { name: "Salzburg", gdp: 48700, country: "AT" },
+  "AT31": { name: "Oberösterreich", gdp: 41100, country: "AT" },
+  "AT22": { name: "Steiermark", gdp: 35800, country: "AT" },
+  "AT13": { name: "Wien", gdp: 48600, country: "AT" },
+  "AT21": { name: "Kärnten", gdp: 34300, country: "AT" },
+  "AT12": { name: "Niederösterreich", gdp: 33100, country: "AT" },
+  "AT11": { name: "Burgenland", gdp: 28000, country: "AT" },
+  "ES21": { name: "País Vasco", gdp: 31800, country: "ES" },
+  "ES22": { name: "Navarra", gdp: 30000, country: "ES" },
+  "ES51": { name: "Cataluña", gdp: 28800, country: "ES" },
+  "ES24": { name: "Aragón", gdp: 26100, country: "ES" },
+  "ES30": { name: "Madrid", gdp: 32800, country: "ES" },
+  "ES61": { name: "Andalucía", gdp: 17800, country: "ES" },
+  "BE21": { name: "Antwerpen", gdp: 44200, country: "BE" },
+  "BE25": { name: "West-Vlaanderen", gdp: 36800, country: "BE" },
+  "BE10": { name: "Bruxelles", gdp: 63800, country: "BE" },
+  "BE32": { name: "Hainaut", gdp: 24100, country: "BE" },
+  "BE22": { name: "Limburg (BE)", gdp: 30900, country: "BE" },
+  "BE24": { name: "Vlaams-Brabant", gdp: 40400, country: "BE" },
+  "NL41": { name: "Noord-Brabant", gdp: 43100, country: "NL" },
+  "NL42": { name: "Limburg (NL)", gdp: 35200, country: "NL" },
+  "NL31": { name: "Utrecht", gdp: 48000, country: "NL" },
+  "NL32": { name: "Noord-Holland", gdp: 53000, country: "NL" },
+  "NL21": { name: "Overijssel", gdp: 34100, country: "NL" },
+  "NL33": { name: "Zuid-Holland", gdp: 41400, country: "NL" }
+};
+
+const govSpend = { CH: 31, DE: 50, FR: 56, IT: 51, AT: 56 };
+const countryName = { CH:"Switzerland", DE:"Germany", FR:"France", IT:"Italy", AT:"Austria", ES:"Spain", BE:"Belgium", NL:"Netherlands" };
+const SWISS_AVG = 89000, EU_AVG = 30000;
+
+// ── Historical layer (MODELLED) ──
+// Real national GDP per capita, 2011 int$ (Maddison Project, approximate).
+// Pre-2022 region values are projected: regionValue2022 × nat(year)/nat(2022).
+// Only 2022 is real per-region (Eurostat/FSO). The rest illustrates the long arc.
+const histYears = [1850, 1870, 1900, 1913, 1929, 1950, 1973, 1990, 2008, 2022];
+const histIndex = {
+  CH: [2100, 2750, 4500, 5900, 8700, 9100, 18800, 26000, 38000, 57000],
+  DE: [1900, 2200, 3700, 5000, 5400, 5400, 14000, 19000, 33000, 46000],
+  FR: [1900, 2000, 3500, 4400, 5800, 5900, 16000, 21000, 31000, 38000],
+  IT: [1600, 1900, 2600, 3300, 3300, 3900, 13000, 19000, 28000, 34000],
+  AT: [1650, 1900, 3000, 4100, 4300, 4100, 13000, 20000, 33000, 46000],
+  ES: [1250, 1400, 2100, 2700, 3500, 2600,  9000, 14000, 25000, 31000],
+  BE: [2900, 3300, 4800, 5600, 5500, 6000, 15000, 20000, 32000, 42000],
+  NL: [2700, 3200, 4100, 4900, 6300, 6000, 15000, 21000, 35000, 48000]
+};
+function natAt(country, yr) {
+  const arr = histIndex[country] || histIndex.DE;
+  if (yr <= histYears[0]) return arr[0];
+  if (yr >= histYears[histYears.length-1]) return arr[arr.length-1];
+  for (let i=0;i<histYears.length-1;i++){
+    if (yr >= histYears[i] && yr <= histYears[i+1]) {
+      const t = (yr - histYears[i]) / (histYears[i+1] - histYears[i]);
+      return arr[i] + t*(arr[i+1]-arr[i]);
+    }
+  }
+  return arr[arr.length-1];
+}
+// factor that scales a 2022 value back to year `yr`
+function natFactor(country, yr) { return natAt(country, yr) / natAt(country, 2022); }
+// displayed (year-adjusted) value for a region
+function valAt(country, baseGdp) { return year === 2022 ? baseGdp : baseGdp * natFactor(country, year); }
+
+// policy / event highlights — sorted ascending; latest threshold <= current wins
+const highlights = [
+  { y:0,    t:"A poor, rural confederation — Belgium and the Netherlands are richer. Switzerland exports mainly cheese, textiles and mercenaries." },
+  { y:1848, t:"<b>1848 — the federal state.</b> One currency, one internal market, a customs union, stable institutions: the foundation everything else is built on." },
+  { y:1900, t:"<b>Industrial take-off.</b> Machines, chemicals and dyes (Basel), watches and early banking pull Switzerland up to the European frontier." },
+  { y:1907, t:"<b>1907 — Swiss National Bank.</b> A central bank and a credible, stable franc. Monetary predictability becomes a national asset." },
+  { y:1914, t:"<b>1914–45 — neutral and intact.</b> Two World Wars flatten the neighbours' capital stock; Switzerland is spared. The gap explodes — not because it surged, but because they collapsed." },
+  { y:1950, t:"<b>Post-war divergence.</b> Undamaged industry, the 1934 banking-secrecy law and a safe-haven franc make Switzerland a financial and pharma powerhouse." },
+  { y:1990, t:"<b>1990s — the bilateral path.</b> Switzerland binds to the EU by treaties, not membership: free trade and cross-border <i>commuting</i>, but no free <i>movement-in</i> to arbitrage the wage gap away." },
+  { y:2022, t:"<b>2022 — today.</b> The only year with real Eurostat / FSO regional data. The cliffs at the border are now structural." }
+];
+function highlightFor(yr){
+  let best = highlights[0];
+  for (const h of highlights) if (yr >= h.y) best = h;
+  return best;
+}
+
+// border pairs: [swissAbbrOrNutsId, otherNutsId, ratioLabel]
+const swissPairs = [
+  ["BS","DE13","5.7×"], ["GE","FRK2","3.6×"], ["TI","ITC4","2.8×"],
+  ["SH","DE27","2.6×"], ["VD","FRC2","2.9×"], ["SG","AT34","1.9×"], ["GR","ITH1","1.9×"]
+];
+const euPairs = [
+  ["ITH1","AT33","1.0×"], ["BE21","NL41","1.0×"], ["ES21","FRI1","1.1×"],
+  ["FRL0","ITC3","1.0×"], ["FRK2","ITC1","1.1×"], ["BE25","FRE1","1.4×"],
+  ["FRF1","DE13","1.2×"], ["DE21","AT32","1.1×"]
+];
+
+// ═══════════════════════════════════════════════
+//  SETUP
+// ═══════════════════════════════════════════════
+const NUTS_URL  = "https://raw.githubusercontent.com/eurostat/Nuts2json/master/pub/v2/2021/4326/20M/nutsrg_2.json";
+const SWISS_URL = "https://cdn.jsdelivr.net/npm/swiss-maps@4/2021/ch-combined.json";
+const WORLD_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+const fmt = n => "€" + d3.format(",")(Math.round(n));
+const color = d3.scaleSequentialLog(d3.interpolateYlOrRd).domain([15000, 210000]).clamp(true);
+const govColor = d3.scaleSequential(d3.interpolateBlues).domain([25, 60]).clamp(true);
+function euFactor(yr){ return (natFactor("DE",yr)+natFactor("FR",yr)+natFactor("IT",yr))/3; }
+
+const svg = d3.select("#prosperity-map");
+const statusEl = document.getElementById("map-status");
+const tooltip = document.getElementById("map-tooltip");
+const frame = document.querySelector(".map-canvas-wrap");
+
+let projection, path, zoomLayer, zoom;
+let regionsG, swissG, lakesG, bordersG, pairsG, baseG;
+let nutsFeatures = [], cantonFeatures = [], chOutline = null, worldBorders = null, worldLand = null, lakeFeatures = [];
+let metric = "gdp";        // "gdp" | "gov"
+let pairsOn = false;
+let year = 2022;           // historical slider
+let playTimer = null;
+let locked = null;         // locked datum
+let lastDatum = null;      // last hovered/locked datum (for year refresh)
+let centroids = {};        // key -> [lon,lat]
+let swissPts = [], euPts = [];
+
+// view box dims (internal coords)
+let W = 900, H = 600;
+
+Promise.all([ d3.json(NUTS_URL), d3.json(SWISS_URL), d3.json(WORLD_URL) ])
+  .then(([nuts, swiss, world]) => {
+    nutsFeatures = nuts.features.filter(f => f.properties && f.properties.id);
+
+    const cantonFC = topojson.feature(swiss, swiss.objects.cantons);
+    cantonFeatures = cantonFC.features;
+    chOutline = topojson.feature(swiss, swiss.objects.country);
+    lakeFeatures = swiss.objects.lakes ? topojson.feature(swiss, swiss.objects.lakes).features : [];
+
+    worldLand = topojson.feature(world, world.objects.countries);
+    worldBorders = topojson.mesh(world, world.objects.countries, (a,b) => a !== b);
+
+    statusEl.style.display = "none";
+    build();
+  })
+  .catch(err => {
+    console.error(err);
+    statusEl.textContent = "Couldn't load the map data (the geometry is fetched live from public CDNs — check your connection and retry).";
+  });
+
+function cantonGdp(num) {
+  const ab = cantonNumToAbbr[+num];
+  return ab && swissCantons[ab] ? swissCantons[ab] : null;
+}
+
+function fillFor(kind, d) {
+  if (metric === "gov") {
+    let g;
+    if (kind === "ch") g = govSpend.CH;
+    else g = govSpend[ (nutsGDP[d.properties.id]||{}).country ];
+    return (g == null) ? "#2c2c3e" : govColor(g);
+  }
+  if (kind === "ch") { const c = cantonGdp(d.id); return c ? color(valAt("CH", c.gdp)) : "#2c2c3e"; }
+  const r = nutsGDP[d.properties.id];
+  return r ? color(valAt(r.country, r.gdp)) : "#2c2c3e";
+}
+
+// ═══════════════════════════════════════════════
+//  BUILD
+// ═══════════════════════════════════════════════
+function build() {
+  zoomLayer = svg.append("g").attr("id","zoom-layer");
+  baseG    = zoomLayer.append("g");           // dark land context
+  regionsG = zoomLayer.append("g");
+  swissG   = zoomLayer.append("g");
+  lakesG   = zoomLayer.append("g");
+  bordersG = zoomLayer.append("g");
+  pairsG   = zoomLayer.append("g");
+
+  // base land (non-data countries as dark context)
+  baseG.append("path").attr("class","base-land").datum(worldLand);
+
+  // NUTS regions
+  regionsG.selectAll("path").data(nutsFeatures).join("path")
+    .attr("class", d => "region" + (nutsGDP[d.properties.id] ? "" : " nodata"))
+    .on("mousemove", (e,d) => onHover(e, nutsDatum(d)))
+    .on("mouseleave", onLeave)
+    .on("click", (e,d) => onClick(nutsDatum(d)));
+
+  // Swiss cantons
+  swissG.selectAll("path").data(cantonFeatures).join("path")
+    .attr("class", d => "region" + (cantonGdp(d.id) ? "" : " nodata"))
+    .on("mousemove", (e,d) => onHover(e, cantonDatum(d)))
+    .on("mouseleave", onLeave)
+    .on("click", (e,d) => onClick(cantonDatum(d)));
+
+  // lakes
+  lakesG.selectAll("path").data(lakeFeatures).join("path").attr("class","lake");
+
+  // national borders (white) + precise CH outline on top
+  bordersG.append("path").attr("class","nation-border").datum(worldBorders);
+  bordersG.append("path").attr("class","ch-outline").datum(chOutline);
+
+  // zoom
+  zoom = d3.zoom().scaleExtent([1, 12]).on("zoom", (e) => {
+    zoomLayer.attr("transform", e.transform);
+    zoomLayer.selectAll(".nation-border").attr("stroke-width", 0.9 / e.transform.k);
+    zoomLayer.selectAll(".ch-outline").attr("stroke-width", 1.6 / e.transform.k);
+    zoomLayer.selectAll(".region").attr("stroke-width", function(){ return (d3.select(this).classed("hot") ? 1.4 : 0.4) / e.transform.k; });
+    zoomLayer.selectAll(".pair-line").attr("stroke-width", function(){ return (d3.select(this).classed("swiss") ? 3.2 : 1.6) / e.transform.k; });
+  });
+  svg.call(zoom);
+  svg.on("mousedown", () => svg.classed("grabbing", true));
+  window.addEventListener("mouseup", () => svg.classed("grabbing", false));
+
+  buildLegend();
+  buildTicks();
+  layout();
+  applyFill();
+  window.addEventListener("resize", debounce(() => { layout(); if (pairsOn) drawPairs(); }, 150));
+
+  // flash the Swiss border to draw the eye
+  setTimeout(flashSwiss, 350);
+}
+
+function nutsDatum(f){ const r = nutsGDP[f.properties.id]; return r ? { kind:"eu", key:f.properties.id, name:r.name, gdp:r.gdp, country:r.country, feat:f } : { kind:"eu", key:f.properties.id, name:f.properties.na, gdp:null, country:f.properties.id.slice(0,2), feat:f }; }
+function cantonDatum(f){ const ab = cantonNumToAbbr[+f.id]; const c = swissCantons[ab]; return c ? { kind:"ch", key:ab, name:c.name, gdp:c.gdp, country:"CH", feat:f } : { kind:"ch", key:ab, name:"—", gdp:null, country:"CH", feat:f }; }
+
+// ═══════════════════════════════════════════════
+//  LAYOUT (responsive)
+// ═══════════════════════════════════════════════
+function layout() {
+  const cw = frame.clientWidth || 900;
+  W = cw; H = Math.round(cw * 0.66);
+  svg.attr("viewBox", `0 0 ${W} ${H}`).attr("width", W).attr("height", H);
+
+  // frame central Europe; Switzerland centered.
+  // Use a MultiPoint (no ring winding -> no globe-complement gotcha).
+  const frameBox = { type:"MultiPoint", coordinates:[
+    [-2.2,41.2],[18.5,41.2],[18.5,53.2],[-2.2,53.2],[8,47],[2,46],[14,48]
+  ]};
+  projection = d3.geoMercator().fitExtent([[10,10],[W-10,H-10]], frameBox);
+  path = d3.geoPath(projection);
+
+  zoomLayer.selectAll("path.region, path.base-land, path.lake, path.nation-border, path.ch-outline").attr("d", path);
+  regionsG.selectAll("path").attr("d", path);
+  swissG.selectAll("path").attr("d", path);
+  lakesG.selectAll("path").attr("d", path);
+  baseG.selectAll("path").attr("d", path);
+  bordersG.selectAll("path").attr("d", path);
+
+  computeCentroids();
+  if (pairsOn) drawPairs();
+}
+
+function computeCentroids() {
+  centroids = {}; swissPts = []; euPts = [];
+  cantonFeatures.forEach(f => {
+    const ab = cantonNumToAbbr[+f.id]; const c = swissCantons[ab];
+    const ct = path.centroid(f);
+    centroids["CH:"+ab] = ct;
+    if (c) swissPts.push({ key:ab, name:c.name, gdp:c.gdp, lonlat: d3.geoCentroid(f), xy: ct });
+  });
+  nutsFeatures.forEach(f => {
+    const r = nutsGDP[f.properties.id];
+    const ct = path.centroid(f);
+    centroids["EU:"+f.properties.id] = ct;
+    if (r) euPts.push({ key:f.properties.id, name:r.name, gdp:r.gdp, country:r.country, lonlat: d3.geoCentroid(f), xy: ct });
+  });
+}
+
+function nearestOf(list, lonlat) {
+  let best = null, bd = Infinity;
+  const latr = lonlat[1] * Math.PI/180, cos = Math.cos(latr);
+  for (const p of list) {
+    const dx = (p.lonlat[0]-lonlat[0]) * cos, dy = (p.lonlat[1]-lonlat[1]);
+    const dd = dx*dx + dy*dy;
+    if (dd < bd) { bd = dd; best = p; }
+  }
+  return best;
+}
+
+// ═══════════════════════════════════════════════
+//  FILL + LEGEND
+// ═══════════════════════════════════════════════
+function applyFill() {
+  regionsG.selectAll("path").attr("fill", d => fillFor("eu", d));
+  swissG.selectAll("path").attr("fill", d => fillFor("ch", d));
+  buildLegend();
+}
+
+function buildLegend() {
+  const bar = document.getElementById("legend-bar");
+  const ticksEl = document.getElementById("legend-ticks");
+  const labEl = document.getElementById("legend-label");
+  ticksEl.innerHTML = "";
+  if (metric === "gov") {
+    labEl.textContent = "Government spending (% of GDP)";
+    const stops = d3.range(0,1.001,0.05).map(t => govColor(25 + t*35));
+    bar.style.background = `linear-gradient(to right, ${stops.join(",")})`;
+    [25,30,40,50,56,60].forEach(v => { const s=document.createElement("span"); s.textContent=v+"%"; ticksEl.appendChild(s); });
+  } else {
+    labEl.textContent = "GDP per capita (EUR, 2022)";
+    const stops = d3.range(0,1.001,0.04).map(t => color(15000 * Math.pow(210000/15000, t)));
+    bar.style.background = `linear-gradient(to right, ${stops.join(",")})`;
+    [20,40,60,80,100,150,200].forEach(v => { const s=document.createElement("span"); s.textContent=v+"k"; ticksEl.appendChild(s); });
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  INTERACTION
+// ═══════════════════════════════════════════════
+function onHover(e, d) {
+  if (locked) return;
+  showFor(d, e);
+}
+function onLeave() {
+  if (locked) return;
+  tooltip.classList.remove("show");
+  svg.selectAll(".region").classed("hot", false);
+}
+function onClick(d) {
+  if (locked && locked.kind === d.kind && locked.key === d.key) { locked = null; tooltip.classList.remove("show"); svg.selectAll(".region").classed("hot", false); return; }
+  locked = d;
+  showFor(d, null, true);
+}
+
+function showFor(d, e, isLock) {
+  lastDatum = d;
+  // highlight
+  svg.selectAll(".region").classed("hot", false);
+  highlightFeature(d);
+
+  if (d.gdp == null) { tooltip.classList.remove("show"); fillPanel(d, null); return; }
+
+  const v = valAt(d.country, d.gdp);                // year-adjusted value
+  const histNote = year !== 2022 ? ` · ${year} (modeled)` : "";
+
+  // ratio vs the other side (year-adjusted)
+  const lonlat = d3.geoCentroid(d.feat);
+  let ratioTxt = "";
+  if (d.kind === "ch") {
+    const n = nearestOf(euPts, lonlat);
+    if (n) ratioTxt = `${(v/valAt(n.country,n.gdp)).toFixed(1)}× the nearest EU region (${n.name}, ${n.country})`;
+  } else {
+    const n = nearestOf(swissPts, lonlat);
+    if (n) ratioTxt = `Nearest Swiss canton (${n.name}) is ${(valAt("CH",n.gdp)/v).toFixed(1)}× richer`;
+  }
+
+  // tooltip
+  const hereCtry = valAt(d.country, countryAvg(d));
+  const hereCH = valAt("CH", SWISS_AVG);
+  const maxV = Math.max(v, hereCH);
+  const spark = [
+    { lbl: "Here", v: v, c: "var(--accent)" },
+    { lbl: "Ctry", v: hereCtry, c: "#9a96c9" },
+    { lbl: "CH", v: hereCH, c: "#ff5a3c" }
+  ];
+  const sparkH = 30;
+  tooltip.innerHTML =
+    `<div class="tt-name">${d.name}</div>` +
+    `<div class="tt-gdp">${fmt(v)}</div>` +
+    `<div class="tt-sub">${countryName[d.country]||d.country} · GDP / capita${histNote}</div>` +
+    (ratioTxt ? `<div class="tt-ratio">${ratioTxt}</div>` : "") +
+    `<div class="tt-spark">` + spark.map(s =>
+      `<div style="text-align:center"><div class="sp" style="height:${Math.max(3, s.v/maxV*sparkH)}px;background:${s.c}"></div><div class="sp-lbl">${s.lbl}</div></div>`
+    ).join("") + `</div>` +
+    (isLock ? `<div class="tt-lock">● locked — click again to release</div>` : "");
+
+  if (e) positionTooltip(e);
+  else { const xy = path.centroid(d.feat); if (xy) positionTooltipAt(xy); }
+  tooltip.classList.add("show");
+
+  fillPanel(d, ratioTxt);
+}
+
+function highlightFeature(d) {
+  const sel = (d.kind === "ch" ? swissG : regionsG).selectAll("path");
+  sel.classed("hot", function(p){
+    if (d.kind === "ch") return cantonNumToAbbr[+p.id] === d.key;
+    return p.properties.id === d.key;
+  });
+}
+
+function countryAvg(d) {
+  if (d.country === "CH") return SWISS_AVG;
+  const vals = Object.values(nutsGDP).filter(r => r.country === d.country).map(r => r.gdp);
+  return vals.length ? d3.mean(vals) : d.gdp;
+}
+
+function positionTooltip(e) {
+  const r = frame.getBoundingClientRect();
+  let x = e.clientX - r.left + 16, y = e.clientY - r.top + 12;
+  const tw = tooltip.offsetWidth || 200, th = tooltip.offsetHeight || 120;
+  if (x + tw > r.width) x = e.clientX - r.left - tw - 16;
+  if (y + th > r.height) y = r.height - th - 8;
+  if (y < 4) y = 4;
+  tooltip.style.left = x + "px"; tooltip.style.top = y + "px";
+}
+function positionTooltipAt(xy) {
+  const t = d3.zoomTransform(svg.node());
+  const px = t.applyX(xy[0]), py = t.applyY(xy[1]);
+  const tw = tooltip.offsetWidth || 200;
+  let x = px + 14, y = py + 10;
+  if (x + tw > frame.clientWidth) x = px - tw - 14;
+  tooltip.style.left = x + "px"; tooltip.style.top = y + "px";
+}
+
+function fillPanel(d, ratioTxt) {
+  document.getElementById("mp-hint").style.display = "none";
+  document.getElementById("mp-detail").style.display = "block";
+  document.getElementById("mp-region").textContent = d.name;
+  document.getElementById("mp-country").textContent = (countryName[d.country]||d.country) + (d.kind==="ch" ? " · canton" : " · NUTS 2");
+
+  if (d.gdp == null) {
+    document.getElementById("mp-gdp").textContent = "no data";
+    document.getElementById("mp-b1").style.width = "0%";
+    document.getElementById("mp-b2").style.width = "0%";
+    document.getElementById("mp-b3").style.width = "0%";
+    document.getElementById("mp-b1-val").textContent = "—";
+    document.getElementById("mp-gdp-lbl").textContent = "GDP per capita (EUR, 2022)";
+  } else {
+    const v = valAt(d.country, d.gdp);
+    const sw = valAt("CH", SWISS_AVG);
+    const eu = EU_AVG * (year === 2022 ? 1 : euFactor(year));
+    document.getElementById("mp-gdp").textContent = fmt(v);
+    document.getElementById("mp-gdp-lbl").textContent = year === 2022
+      ? "GDP per capita (EUR, 2022)"
+      : "GDP per capita · " + year + " (modeled, 2022-€ basis)";
+    const maxV = Math.max(v, sw, eu);
+    document.getElementById("mp-b1").style.width = (v/maxV*100) + "%";
+    document.getElementById("mp-b2").style.width = (sw/maxV*100) + "%";
+    document.getElementById("mp-b3").style.width = (eu/maxV*100) + "%";
+    document.getElementById("mp-b2-val").textContent = fmt(sw);
+    document.getElementById("mp-b3-val").textContent = fmt(eu);
+    document.getElementById("mp-b1-name").textContent = d.name.length > 16 ? "This region" : d.name;
+    document.getElementById("mp-b1-val").textContent = fmt(v);
+  }
+
+  const g = govSpend[d.country];
+  document.getElementById("mp-gov-val").textContent = (g==null) ? "n/a" : g + "%";
+  document.getElementById("mp-gov-lbl").textContent = (g==null)
+    ? "Government spending — not in dataset"
+    : "Government spending, % of GDP (" + (countryName[d.country]||d.country) + ")";
+}
+
+// ═══════════════════════════════════════════════
+//  BORDER PAIRS
+// ═══════════════════════════════════════════════
+function ptFor(key) {
+  // try swiss abbr first, then NUTS id
+  if (centroids["CH:"+key]) return centroids["CH:"+key];
+  if (centroids["EU:"+key]) return centroids["EU:"+key];
+  return null;
+}
+function drawPairs() {
+  pairsG.selectAll("*").remove();
+  if (!pairsOn) return;
+  const k = d3.zoomTransform(svg.node()).k || 1;
+  const draw = (list, cls, sw) => list.forEach(([a,b,lbl]) => {
+    const pa = ptFor(a), pb = ptFor(b);
+    if (!pa || !pb) return;
+    pairsG.append("line").attr("class","pair-line "+cls)
+      .attr("x1",pa[0]).attr("y1",pa[1]).attr("x2",pb[0]).attr("y2",pb[1])
+      .attr("stroke-width", sw / k).attr("stroke-linecap","round").attr("opacity",0.92);
+    [pa,pb].forEach(p => pairsG.append("circle").attr("class","pair-dot")
+      .attr("cx",p[0]).attr("cy",p[1]).attr("r", (cls==="swiss"?3.2:2.2)/k)
+      .attr("fill", cls==="swiss" ? "#ff5a3c" : "#6ea5c9"));
+    pairsG.append("text").attr("class","pair-label "+cls)
+      .attr("x",(pa[0]+pb[0])/2).attr("y",(pa[1]+pb[1])/2)
+      .attr("text-anchor","middle").attr("dy","-0.3em")
+      .attr("transform", `scale(${1})`)
+      .style("font-size", (cls==="swiss"?12:10)/k + "px")
+      .style("stroke-width", 3/k + "px")
+      .text(lbl);
+  });
+  draw(euPairs, "eu", 1.6);
+  draw(swissPairs, "swiss", 3.2);
+}
+
+// ═══════════════════════════════════════════════
+//  SWISS FLASH
+// ═══════════════════════════════════════════════
+function flashSwiss() {
+  const o = bordersG.select(".ch-outline");
+  let i = 0;
+  const pulse = () => {
+    if (i >= 3) { o.transition().duration(400).attr("stroke","#fff").attr("stroke-width", 1.6/(d3.zoomTransform(svg.node()).k||1)); return; }
+    o.transition().duration(260).attr("stroke","#ff5a3c").attr("stroke-width", 4/(d3.zoomTransform(svg.node()).k||1))
+      .transition().duration(260).attr("stroke","#fff").attr("stroke-width", 1.6/(d3.zoomTransform(svg.node()).k||1))
+      .on("end", () => { i++; pulse(); });
+  };
+  pulse();
+}
+
+// ═══════════════════════════════════════════════
+//  TIMELINE
+// ═══════════════════════════════════════════════
+const slider = document.getElementById("year-slider");
+const yearEl = document.getElementById("tl-year");
+const hlEl = document.getElementById("tl-highlight");
+const playBtn = document.getElementById("btn-play");
+
+function buildTicks() {
+  const el = document.getElementById("tl-ticks"); if (!el) return;
+  el.innerHTML = "";
+  [1850,1900,1950,2000,2022].forEach(y => { const s=document.createElement("span"); s.textContent=y; el.appendChild(s); });
+}
+
+function setYear(y, fromSlider) {
+  year = +y;
+  if (!fromSlider) slider.value = year;
+  yearEl.textContent = year;
+  hlEl.innerHTML = highlightFor(year).t;
+  applyFill();
+  if (pairsOn) drawPairs();
+  if (lastDatum) showFor(lastDatum, null, locked && locked.key === lastDatum.key);
+}
+
+slider.addEventListener("input", function(){ stopPlay(); setYear(this.value, true); });
+
+function stopPlay(){ if (playTimer){ clearInterval(playTimer); playTimer=null; playBtn.textContent="▶ Play"; playBtn.classList.remove("on"); } }
+function startPlay(){
+  playBtn.textContent="❚❚ Pause"; playBtn.classList.add("on");
+  if (year >= 2022) setYear(1850);
+  playTimer = setInterval(() => {
+    let next = year + 2;
+    if (next >= 2022) { setYear(2022); stopPlay(); return; }
+    setYear(next);
+  }, 90);
+}
+playBtn.addEventListener("click", () => { playTimer ? stopPlay() : startPlay(); });
+
+// ═══════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════
+document.getElementById("btn-metric").addEventListener("click", function(){
+  metric = (metric === "gdp") ? "gov" : "gdp";
+  this.textContent = metric === "gdp" ? "Show: GDP per capita" : "Show: Government size";
+  this.classList.toggle("active", metric === "gov");
+  // the year layer only applies to GDP; mute the timeline under "government size"
+  stopPlay();
+  document.getElementById("map-timeline").style.opacity = metric === "gov" ? 0.4 : 1;
+  slider.disabled = playBtn.disabled = (metric === "gov");
+  applyFill();
+  if (lastDatum) showFor(lastDatum, null, locked && locked.key === lastDatum.key);
+});
+document.getElementById("btn-pairs").addEventListener("click", function(){
+  pairsOn = !pairsOn;
+  this.classList.toggle("active", pairsOn);
+  drawPairs();
+});
+document.getElementById("btn-reset").addEventListener("click", function(){
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+  stopPlay(); setYear(2022);
+  locked = null; lastDatum = null; tooltip.classList.remove("show");
+  svg.selectAll(".region").classed("hot", false);
+  document.getElementById("mp-detail").style.display = "none";
+  document.getElementById("mp-hint").style.display = "block";
+});
+
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+</script>
+</body>
+</html>

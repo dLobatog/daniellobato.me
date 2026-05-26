@@ -65,6 +65,7 @@ body {
 
 .note-tag[data-tag="Machine Learning"] { color: var(--accent2); border-color: rgba(110,165,201,0.3); }
 .note-tag[data-tag="Technology"] { color: var(--accent); border-color: rgba(201,169,110,0.3); }
+.note-tag[data-tag="Economics"] { color: #6ec99a; border-color: rgba(110,201,154,0.3); }
 .note-tag[data-tag="Introspection"] { color: var(--accent3); border-color: rgba(201,110,138,0.3); }
 
 /* ─── ARTICLE ─── */
