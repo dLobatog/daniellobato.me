@@ -239,13 +239,13 @@
 
   <p>That little daily crossing, from the Pays de Gex into the canton of Geneva, is a <u>bigger jump in measured prosperity than driving the entire length of Italy</u>, Sicily all the way up to Lombardy. That always bugged me. On almost every other border in Europe the wealth just fades gently as you cross, so gently you'd never feel it. Switzerland doesn't do that. It sits in the middle of the continent like an island: suddenly, and kind of ridiculously, richer than everything around it.</p>
 
-  <p>Here it is. Hover any region to see its GDP per capita. The color scale is logarithmic, because if it weren't, Switzerland's deep reds would flatten all the variation in the EU around it into one shade of yellow. Drag the time slider, or hit <em>Play</em>, and you can watch the island form over 170 years.</p>
+  <p>Here it is. Hover any region to see its GDP per capita. The color scale is logarithmic, because if it weren't, Switzerland's deep reds would flatten all the variation in the EU around it into one shade of yellow. Drag the time slider, or hit <em>Play</em>, and you can watch the island form across five centuries. Before 1850 there's no regional data, so the map drops to a <strong>national view</strong> and colours whole countries instead.</p>
 </article>
 
 <section class="map-stage">
   <div class="map-frame">
     <div class="map-toolbar">
-      <span class="mt-title">GDP per capita · NUTS 2 regions &amp; Swiss cantons</span>
+      <span class="mt-title" id="mt-title">GDP per capita · NUTS 2 regions &amp; Swiss cantons</span>
       <button class="map-btn" id="btn-metric" type="button" title="Switch the fill between prosperity and government size">Show: GDP per capita</button>
       <button class="map-btn" id="btn-pairs" type="button">Highlight border pairs</button>
       <button class="map-btn" id="btn-reset" type="button">Reset view</button>
@@ -253,7 +253,7 @@
     <div class="map-timeline" id="map-timeline">
       <button class="map-btn play" id="btn-play" type="button" aria-label="Play through the years">▶ Play</button>
       <div class="tl-slider-wrap">
-        <input type="range" id="year-slider" min="1850" max="2022" step="1" value="2022" aria-label="Year">
+        <input type="range" id="year-slider" min="1500" max="2022" step="1" value="2022" aria-label="Year">
         <div class="tl-ticks" id="tl-ticks"></div>
       </div>
       <div class="tl-year" id="tl-year">2022</div>
@@ -272,7 +272,7 @@
           <div class="mp-country" id="mp-country">—</div>
           <div class="mp-gdp" id="mp-gdp">—</div>
           <div class="mp-gdp-lbl" id="mp-gdp-lbl">GDP per capita (EUR, 2022)</div>
-          <div class="mp-bars">
+          <div class="mp-bars" id="mp-bars">
             <div class="mp-bar-row">
               <div class="mp-bar-top"><span id="mp-b1-name">This region</span><span id="mp-b1-val"></span></div>
               <div class="mp-bar-track"><div class="mp-bar-fill region" id="mp-b1"></div></div>
@@ -286,7 +286,7 @@
               <div class="mp-bar-track"><div class="mp-bar-fill eu" id="mp-b3"></div></div>
             </div>
           </div>
-          <div class="mp-gov">
+          <div class="mp-gov" id="mp-govrow">
             <div class="mp-gov-val" id="mp-gov-val">—</div>
             <div class="mp-gov-lbl" id="mp-gov-lbl">Government spending, % of GDP</div>
           </div>
@@ -340,7 +340,7 @@
   <p>So the fair version of that gut feeling is something like this. The wealth itself built up slowly, over a very long time. The <em>cliff</em> at the border is mostly a 20th-century thing, shaped by war, by being trusted with money, and by Switzerland's choice to plug into Europe's markets while never dissolving into its taxes and currency.</p>
 
   <blockquote>
-    <p>One thing I won't hide. Only the 2022 layer is real per-region data, from Eurostat and the Swiss FSO. Every earlier year on the slider is partly <em>modeled</em>. The national trajectories themselves are real: I pulled them straight from the <strong>Maddison Project Database 2020</strong> (in constant international dollars). What's modeled is the split <em>inside</em> each country, where I project today's regional pattern back along that real national arc. So the national rise and fall you're watching is real history. The per-region detail underneath it is a reasonable guess at best, and definitely not a real read on, say, Lombardy in 1913. <strong>Trust the overall shape</strong> of the story. <strong>Don't trust the per-region numbers</strong> in the old years. And the slider stops at 1850 on the left for an honest reason: that's roughly where Switzerland's numbers begin. The Swiss series in Maddison only starts around 1851, basically the moment the 1848 federal state turned a loose bag of cantons into something you could measure. Italy and the Netherlands have estimates running back centuries further, but Switzerland doesn't, and Switzerland is the whole point here.</p>
+    <p>One thing I won't hide. Only the 2022 layer is real per-region data, from Eurostat and the Swiss FSO. Every earlier year on the slider is partly <em>modeled</em>. The national trajectories themselves are real: I pulled them straight from the <strong>Maddison Project Database 2020</strong> (in constant international dollars). What's modeled is the split <em>inside</em> each country, where I project today's regional pattern back along that real national arc. So the national rise and fall you're watching is real history. The per-region detail underneath it is a reasonable guess at best, and definitely not a real read on, say, Lombardy in 1913. <strong>Trust the overall shape</strong> of the story. <strong>Don't trust the per-region numbers</strong> in the old years. Before 1850 even that modeled split goes away: no country has regional figures that far back, so the map switches to a <strong>national view</strong> and colours whole countries by their real Maddison income. That part is honest, just coarser. The one real gap is Switzerland itself, which has no estimates at all before 1850, roughly the moment the 1848 federal state turned a loose bag of cantons into something you could measure. So in the deep-history view Switzerland sits blank while Italy, the Low Countries, and the rest carry the story, all the way back to 1500.</p>
   </blockquote>
 
   <h2>Why every other border is smooth</h2>
@@ -494,42 +494,61 @@ const SWISS_AVG = 89000, EU_AVG = 30000;
 // Real national GDP per capita, in constant 2011 international dollars (PPP),
 // straight from the Maddison Project Database 2020 (Bolt & van Zanden), via
 // Our World in Data. These national trajectories are real.
-// Pre-2022 region values are then modeled: regionValue2022 × nat(year)/nat(2018),
-// i.e. today's regional pattern projected back along each country's real arc.
-// Only the 2022 layer is real per-region data (Eurostat / Swiss FSO).
-const histYears = [1850, 1870, 1900, 1913, 1929, 1950, 1973, 1990, 2008, 2018];
-const histIndex = {
-  CH: [2443, 2839, 4266, 5256, 7494, 8939, 16271, 32403, 44674, 46435],
-  DE: [1428, 1839, 3648, 4049, 5728, 3881, 13152, 17894, 30496, 32246],
-  FR: [1876, 1876, 2876, 3452, 4853, 5270, 11999, 17952, 28169, 30738],
-  IT: [1500, 1733, 2507, 3343, 4554, 4784, 12086, 23332, 34873, 37156],
-  AT: [2630, 2970, 4594, 5523, 5896, 5907, 17908, 26930, 40965, 43032],
-  ES: [1258, 1464, 2085, 2889, 3889, 2189,  9823, 15557, 31574, 30561],
-  BE: [2944, 4291, 5947, 6727, 8056, 8706, 19399, 27412, 38117, 40472],
-  NL: [2757, 3131, 4204, 5518, 7525, 7462, 17288, 23147, 47619, 52292]
+// Benchmark years 1500-2018; each country's series begins when its data does
+// (Switzerland only from 1850, Austria from 1820). These national numbers are real.
+//
+// Two views, switched by the slider year:
+//   REGIONAL (>= 1850): scale today's regional pattern by each country's real
+//     national arc -> regionValue2022 × nat(year)/nat(2018).
+//   NATIONAL (< 1850): no regional data exists, so colour whole countries by
+//     their real national value. Countries with no data that year (and
+//     Switzerland before 1850) are drawn as no-data.
+const histSeries = {
+  CH: [[1850,2444], [1870,2954], [1900,6612], [1913,8172], [1929,9920], [1950,11541], [1973,26004], [1990,34250], [2008,56055], [2018,62185]],
+  DE: [[1500,1756], [1550,1500], [1600,1492], [1650,1531], [1700,1511], [1750,1762], [1800,1787], [1820,2041], [1850,2276], [1870,2931], [1900,4758], [1913,5815], [1929,6457], [1950,6186], [1973,19074], [1990,25391], [2008,40715], [2018,46377]],
+  FR: [[1500,1670], [1550,1432], [1600,1576], [1650,1559], [1700,1758], [1750,1743], [1800,1660], [1820,1809], [1850,2545], [1870,2990], [1900,4584], [1913,5555], [1929,7508], [1950,8266], [1973,20441], [1990,28129], [2008,36762], [2018,38555]],
+  IT: [[1500,2549], [1550,2340], [1600,2543], [1650,2396], [1700,2469], [1750,2485], [1800,2515], [1820,2523], [1850,2541], [1870,2826], [1900,3264], [1913,4057], [1929,4889], [1950,5582], [1973,16950], [1990,26003], [2008,35943], [2018,35150]],
+  AT: [[1820,1941], [1850,2630], [1870,2970], [1900,4594], [1913,5523], [1929,5896], [1950,5907], [1973,17908], [1990,26930], [2008,40965], [2018,43032]],
+  ES: [[1500,1118], [1550,1625], [1600,1295], [1650,1009], [1700,1280], [1750,1296], [1800,1318], [1820,1558], [1850,1703], [1870,1806], [1900,2672], [1913,3063], [1929,4169], [1950,3459], [1973,11630], [1990,19215], [2008,32844], [2018,34554]],
+  BE: [[1500,2338], [1550,2410], [1600,2533], [1650,2303], [1700,2192], [1750,2169], [1820,2358], [1850,2944], [1870,4291], [1900,5947], [1913,6727], [1929,8056], [1950,8706], [1973,19399], [1990,27412], [2008,38117], [2018,40472]],
+  NL: [[1500,2332], [1550,2884], [1600,4270], [1650,4316], [1700,3377], [1750,3777], [1800,4184], [1820,3006], [1850,3779], [1870,4422], [1900,5306], [1913,6454], [1929,9068], [1950,9558], [1973,20851], [1990,27515], [2008,44841], [2018,47529]]
 };
-function natAt(country, yr) {
-  const arr = histIndex[country] || histIndex.DE;
-  if (yr <= histYears[0]) return arr[0];
-  if (yr >= histYears[histYears.length-1]) return arr[arr.length-1];
-  for (let i=0;i<histYears.length-1;i++){
-    if (yr >= histYears[i] && yr <= histYears[i+1]) {
-      const t = (yr - histYears[i]) / (histYears[i+1] - histYears[i]);
-      return arr[i] + t*(arr[i+1]-arr[i]);
+const HIST_MIN = 1500, REGIONAL_FROM = 1850, HIST_NORM = 2018;
+
+// real national value at an arbitrary year (linear interp between benchmarks);
+// null before a country's series starts.
+function natRaw(c, yr) {
+  const s = histSeries[c];
+  if (!s) return null;
+  if (yr < s[0][0]) return null;
+  if (yr >= s[s.length-1][0]) return s[s.length-1][1];
+  for (let i=0;i<s.length-1;i++){
+    if (yr >= s[i][0] && yr <= s[i+1][0]) {
+      const t = (yr - s[i][0]) / (s[i+1][0] - s[i][0]);
+      return s[i][1] + t*(s[i+1][1] - s[i][1]);
     }
   }
-  return arr[arr.length-1];
+  return s[s.length-1][1];
 }
-// factor that scales a 2022 value back to year `yr` (normalised to the latest
-// real Maddison year, 2018, which we treat as ~the 2022 baseline)
-function natFactor(country, yr) { return natAt(country, yr) / natAt(country, 2018); }
-// displayed (year-adjusted) value for a region
-function valAt(country, baseGdp) { return year === 2022 ? baseGdp : baseGdp * natFactor(country, year); }
+// growth factor that scales a 2022 value back to `yr`, normalised to 2018
+function natFactor(c, yr) { const a = natRaw(c, yr), b = natRaw(c, HIST_NORM); return (a==null || !b) ? null : a/b; }
+// displayed (year-adjusted) regional value, or null if no data
+function valAt(country, baseGdp) {
+  if (year >= 2022) return baseGdp;
+  const f = natFactor(country, year);
+  return f==null ? null : baseGdp * f;
+}
+// are we showing the national (pre-1850) view?
+function isNational() { return metric === "gdp" && year < REGIONAL_FROM; }
+function ord(n){ return (n%10==1&&n%100!=11)?"st":(n%10==2&&n%100!=12)?"nd":(n%10==3&&n%100!=13)?"rd":"th"; }
 
 // policy / event highlights, sorted ascending; latest threshold <= current wins
 const highlights = [
-  { y:0,    t:"A poor, rural confederation. Belgium and the Netherlands are richer. The main exports are cheese, textiles and mercenaries." },
-  { y:1848, t:"<b>1848, the federal state.</b> One currency, one internal market, a customs union, institutions you can trust. This is the base everything later gets built on." },
+  { y:0,    t:"<b>1500, national view.</b> No regional or Swiss data exists this far back, so the map colours whole countries by their real national income. Renaissance Italy and the Low Countries are Europe's rich core; the Swiss cantons aren't measured yet." },
+  { y:1600, t:"<b>1600s, the Dutch Golden Age.</b> The Netherlands is the richest country in Europe, on trade, shipping and finance. Italy is sliding from its Renaissance peak and Spain is past its." },
+  { y:1700, t:"<b>1700s.</b> The Dutch lead cools and most of the pack is still stuck near subsistence. Everyone on the map is within roughly 2x of everyone else. The great divergence hasn't happened yet." },
+  { y:1800, t:"<b>Around 1800.</b> Still a pre-industrial world, and Switzerland has no numbers at all until 1850. Keep dragging and watch what happens when the regional data switches on." },
+  { y:1848, t:"<b>1848, the federal state.</b> One currency, one internal market, a customs union, institutions you can trust. From 1850 the map switches to regions and Switzerland finally appears." },
   { y:1900, t:"<b>Industry takes off.</b> Machines, chemicals and dyes in Basel, watches, and early banking pull Switzerland up toward the European frontier." },
   { y:1907, t:"<b>1907, the Swiss National Bank.</b> A central bank and a stable, credible franc. Predictable money turns into a national asset." },
   { y:1914, t:"<b>1914 to 1945, neutral and untouched.</b> Two World Wars flatten the neighbours while Switzerland is spared. The gap blows open, mostly because everyone around it collapses." },
@@ -563,6 +582,9 @@ const SWISS_URL = "https://cdn.jsdelivr.net/npm/swiss-maps@4/2021/ch-combined.js
 const fmt = n => "€" + d3.format(",")(Math.round(n));
 const color = d3.scaleSequentialLog(d3.interpolateYlOrRd).domain([15000, 210000]).clamp(true);
 const govColor = d3.scaleSequential(d3.interpolateBlues).domain([25, 60]).clamp(true);
+// national (pre-1850) view: real Maddison int$ on its own scale so the
+// pre-industrial spread is actually visible (range ~1000-4300 in this era).
+const histColor = d3.scaleSequentialLog(d3.interpolateYlOrRd).domain([900, 4400]).clamp(true);
 function euFactor(yr){ return (natFactor("DE",yr)+natFactor("FR",yr)+natFactor("IT",yr))/3; }
 
 const svg = d3.select("#prosperity-map");
@@ -625,9 +647,16 @@ function fillFor(kind, d) {
     else g = govSpend[ (nutsGDP[d.properties.id]||{}).country ];
     return (g == null) ? "#2c2c3e" : govColor(g);
   }
-  if (kind === "ch") { const c = cantonGdp(d.id); return c ? color(valAt("CH", c.gdp)) : "#2c2c3e"; }
+  if (isNational()) {
+    const c = (kind === "ch") ? "CH" : d.properties.id.slice(0,2);
+    const v = natRaw(c, year);
+    return v == null ? "#2c2c3e" : histColor(v);
+  }
+  if (kind === "ch") { const c = cantonGdp(d.id); const v = c ? valAt("CH", c.gdp) : null; return v == null ? "#2c2c3e" : color(v); }
   const r = nutsGDP[d.properties.id];
-  return r ? color(valAt(r.country, r.gdp)) : "#2c2c3e";
+  if (!r) return "#2c2c3e";
+  const v = valAt(r.country, r.gdp);
+  return v == null ? "#2c2c3e" : color(v);
 }
 
 // ═══════════════════════════════════════════════
@@ -758,6 +787,11 @@ function buildLegend() {
     const stops = d3.range(0,1.001,0.05).map(t => govColor(25 + t*35));
     bar.style.background = `linear-gradient(to right, ${stops.join(",")})`;
     [25,30,40,50,56,60].forEach(v => { const s=document.createElement("span"); s.textContent=v+"%"; ticksEl.appendChild(s); });
+  } else if (isNational()) {
+    labEl.textContent = "Real GDP per capita (Maddison, international $)";
+    const stops = d3.range(0,1.001,0.04).map(t => histColor(900 * Math.pow(4400/900, t)));
+    bar.style.background = `linear-gradient(to right, ${stops.join(",")})`;
+    ["$1k","$1.5k","$2k","$3k","$4k"].forEach(t => { const s=document.createElement("span"); s.textContent=t; ticksEl.appendChild(s); });
   } else {
     labEl.textContent = "GDP per capita (EUR, 2022)";
     const stops = d3.range(0,1.001,0.04).map(t => color(15000 * Math.pow(210000/15000, t)));
@@ -789,6 +823,26 @@ function showFor(d, e, isLock) {
   // highlight
   svg.selectAll(".region").classed("hot", false);
   highlightFeature(d);
+
+  // ── National (pre-1850) view: read the country, not the region ──
+  if (isNational()) {
+    const c = d.country;
+    const v = natRaw(c, year);
+    if (v == null) { tooltip.classList.remove("show"); fillPanelNat(d, null); return; }
+    const ranked = Object.keys(histSeries).map(k => ({k, v: natRaw(k, year)})).filter(o => o.v != null).sort((a,b)=>b.v-a.v);
+    const rank = ranked.findIndex(o => o.k === c) + 1;
+    const poorest = ranked[ranked.length-1];
+    tooltip.innerHTML =
+      `<div class="tt-name">${countryName[c] || c}</div>` +
+      `<div class="tt-gdp">$${d3.format(",")(Math.round(v))}</div>` +
+      `<div class="tt-sub">${year} · national · Maddison int$</div>` +
+      `<div class="tt-ratio">${rank}${ord(rank)} richest of ${ranked.length} shown, ${(v/poorest.v).toFixed(1)}× the poorest (${countryName[poorest.k]})</div>` +
+      (isLock ? `<div class="tt-lock">● locked. click again to release</div>` : "");
+    if (e) positionTooltip(e); else { const xy = path.centroid(d.feat); if (xy) positionTooltipAt(xy); }
+    tooltip.classList.add("show");
+    fillPanelNat(d, { c, v, ranked, rank });
+    return;
+  }
 
   if (d.gdp == null) { tooltip.classList.remove("show"); fillPanel(d, null); return; }
 
@@ -865,9 +919,39 @@ function positionTooltipAt(xy) {
   tooltip.style.left = x + "px"; tooltip.style.top = y + "px";
 }
 
+// national-view side panel: country value + where it ranks that year
+function fillPanelNat(d, info) {
+  document.getElementById("mp-hint").style.display = "none";
+  document.getElementById("mp-detail").style.display = "block";
+  document.getElementById("mp-bars").style.display = "none";
+  document.getElementById("mp-govrow").style.display = "block";
+  const region = document.getElementById("mp-region");
+  if (!info) {
+    region.textContent = countryName[d.country] || d.country;
+    document.getElementById("mp-country").textContent = year + " · national view";
+    document.getElementById("mp-gdp").textContent = "no data";
+    document.getElementById("mp-gdp-lbl").textContent = "this country has no estimate before " + (histSeries[d.country] ? histSeries[d.country][0][0] : "1500");
+    document.getElementById("mp-gov-val").textContent = "—";
+    document.getElementById("mp-gov-lbl").textContent = d.country === "CH"
+      ? "Switzerland's numbers start in 1850"
+      : "no Maddison estimate this year";
+    return;
+  }
+  const { c, v, ranked, rank } = info;
+  region.textContent = countryName[c] || c;
+  document.getElementById("mp-country").textContent = year + " · national view (Maddison)";
+  document.getElementById("mp-gdp").textContent = "$" + d3.format(",")(Math.round(v));
+  document.getElementById("mp-gdp-lbl").textContent = "Real GDP per capita, international $";
+  const richest = ranked[0];
+  document.getElementById("mp-gov-val").textContent = rank + ord(rank) + " of " + ranked.length;
+  document.getElementById("mp-gov-lbl").textContent = "richest this year: " + countryName[richest.k] + " ($" + d3.format(",")(Math.round(richest.v)) + ")";
+}
+
 function fillPanel(d, ratioTxt) {
   document.getElementById("mp-hint").style.display = "none";
   document.getElementById("mp-detail").style.display = "block";
+  document.getElementById("mp-bars").style.display = "";
+  document.getElementById("mp-govrow").style.display = "block";
   document.getElementById("mp-region").textContent = d.name;
   document.getElementById("mp-country").textContent = (countryName[d.country]||d.country) + (d.kind==="ch" ? " · canton" : " · NUTS 2");
 
@@ -914,7 +998,7 @@ function ptFor(key) {
 }
 function drawPairs() {
   pairsG.selectAll("*").remove();
-  if (!pairsOn) return;
+  if (!pairsOn || isNational()) return;   // border-pair ratios are a 2022 story
   const k = d3.zoomTransform(svg.node()).k || 1;
   const draw = (list, cls, sw) => list.forEach(([a,b,lbl]) => {
     const pa = ptFor(a), pb = ptFor(b);
@@ -963,7 +1047,16 @@ const playBtn = document.getElementById("btn-play");
 function buildTicks() {
   const el = document.getElementById("tl-ticks"); if (!el) return;
   el.innerHTML = "";
-  [1850,1900,1950,2000,2022].forEach(y => { const s=document.createElement("span"); s.textContent=y; el.appendChild(s); });
+  [1500,1600,1700,1800,1850,1900,1950,2022].forEach(y => { const s=document.createElement("span"); s.textContent=y; el.appendChild(s); });
+}
+
+function updateModeTitle() {
+  const mt = document.getElementById("mt-title"); if (!mt) return;
+  mt.textContent = metric === "gov"
+    ? "Government spending · % of GDP (2022)"
+    : isNational()
+      ? "National view · Maddison real GDP/capita · regional data begins 1850"
+      : "GDP per capita · NUTS 2 regions & Swiss cantons";
 }
 
 function setYear(y, fromSlider) {
@@ -971,8 +1064,9 @@ function setYear(y, fromSlider) {
   if (!fromSlider) slider.value = year;
   yearEl.textContent = year;
   hlEl.innerHTML = highlightFor(year).t;
+  updateModeTitle();
   applyFill();
-  if (pairsOn) drawPairs();
+  drawPairs();   // clears in national era, redraws in regional era
   if (lastDatum) showFor(lastDatum, null, locked && locked.key === lastDatum.key);
 }
 
@@ -981,12 +1075,13 @@ slider.addEventListener("input", function(){ stopPlay(); setYear(this.value, tru
 function stopPlay(){ if (playTimer){ clearInterval(playTimer); playTimer=null; playBtn.textContent="▶ Play"; playBtn.classList.remove("on"); } }
 function startPlay(){
   playBtn.textContent="❚❚ Pause"; playBtn.classList.add("on");
-  if (year >= 2022) setYear(1850);
+  if (year >= 2022) setYear(HIST_MIN);
   playTimer = setInterval(() => {
-    let next = year + 2;
+    // step faster through the sparse pre-1850 centuries, slower in the modern era
+    let next = year + (year < REGIONAL_FROM ? 6 : 2);
     if (next >= 2022) { setYear(2022); stopPlay(); return; }
     setYear(next);
-  }, 90);
+  }, 80);
 }
 playBtn.addEventListener("click", () => { playTimer ? stopPlay() : startPlay(); });
 
@@ -1001,7 +1096,9 @@ document.getElementById("btn-metric").addEventListener("click", function(){
   stopPlay();
   document.getElementById("map-timeline").style.opacity = metric === "gov" ? 0.4 : 1;
   slider.disabled = playBtn.disabled = (metric === "gov");
+  updateModeTitle();
   applyFill();
+  drawPairs();
   if (lastDatum) showFor(lastDatum, null, locked && locked.key === lastDatum.key);
 });
 document.getElementById("btn-pairs").addEventListener("click", function(){
