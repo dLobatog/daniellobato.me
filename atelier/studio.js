@@ -23,6 +23,7 @@ function ensureReactBundle() {
   return reactBundlePromise;
 }
 const pretextPreparedCache = new Map();
+const pretextRenderedNodes = new WeakMap();
 const pretextFontsReady =
   AtelierPretext && typeof document !== 'undefined' && document.fonts?.ready
     ? document.fonts.ready.then(() => {
@@ -650,7 +651,7 @@ const chapters = {
     eyebrow: 'Neural Network Basics',
     title: 'Neural networks stop feeling magical once each piece has a small job.',
     lede:
-      'This chapter is the missing bridge between classical ML and the current deep-learning chapter. The goal is to make neurons, activations, outputs, backpropagation, and optimization feel like one connected story instead of a bag of vocabulary words.',
+      'Build a prediction. Measure its error. Trace which weights caused it, then make one better prediction. Follow the numbers through the entire learning loop.',
     bestFor: 'First pass through neural networks / interview refresh',
     studyMove: 'Read each section as a tiny causal story: signal goes forward, blame comes backward, weights update.',
     sections: [
@@ -4546,12 +4547,18 @@ function getPretextPrepared(text, font) {
   return pretextPreparedCache.get(key);
 }
 
-function renderPretextLines(node, font, lineHeight) {
+function renderPretextLines(node) {
   if (!AtelierPretext || !node) return;
-  const source = (node.dataset.pretextSource || node.textContent || '').trim();
+  const previous = pretextRenderedNodes.get(node);
+  // Only reuse the source while the DOM is still our own generated line markup.
+  // Renderers replace text on interaction; that new text must win over the cache.
+  const source = (previous?.markup === node.innerHTML ? previous.source : node.textContent || '').trim();
   if (!source) return;
   const width = Math.floor(node.getBoundingClientRect().width);
   if (!width || width < 48) return;
+  const style = getComputedStyle(node);
+  const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.5;
   node.dataset.pretextSource = source;
   try {
     const prepared = getPretextPrepared(source, font);
@@ -4561,13 +4568,12 @@ function renderPretextLines(node, font, lineHeight) {
   } catch {
     node.textContent = source;
   }
+  pretextRenderedNodes.set(node, {source, markup: node.innerHTML});
 }
 
 function applyPretextTypography(root) {
   if (!AtelierPretext || !root) return;
-  root.querySelectorAll('.takeaway-line').forEach((node) => renderPretextLines(node, '400 31px "EB Garamond"', 38));
-  root.querySelectorAll('.hv-title').forEach((node) => renderPretextLines(node, '600 29px "EB Garamond"', 34));
-  root.querySelectorAll('.hv-note').forEach((node) => renderPretextLines(node, '400 18px "EB Garamond"', 27));
+  root.querySelectorAll('.takeaway-line, .hv-title, .hv-note').forEach(renderPretextLines);
 }
 
 function renderMathLines(formula) {
@@ -4924,8 +4930,8 @@ const formulaAnnotations = {
   ],
 };
 
-function renderFormulaAnnotations(sectionId) {
-  const entries = formulaAnnotations[sectionId];
+function renderFormulaAnnotations(sectionId, annotations) {
+  const entries = annotations || formulaAnnotations[sectionId];
   if (!entries || !entries.length) return '';
   return `
     <div class="formula-annotations">
@@ -4973,9 +4979,13 @@ function binaryCrossEntropy(p, q) {
 }
 
 function renderChapterPage(chapterKey) {
-  const chapter = chapters[chapterKey];
+  const originalChapter = chapters[chapterKey];
   const root = document.getElementById('chapter-root');
-  if (!chapter || !root) return;
+  if (!originalChapter || !root) return;
+  // A lesson owns its worked example, formulas, code, and interaction together.
+  const chapter = {...originalChapter, sections: originalChapter.sections.map(section => ({
+    ...section, ...window.AtelierLessons?.getContent(section.viz),
+  }))};
 
   const navMeta = document.querySelector('[data-nav-meta]');
   const eyebrow = document.querySelector('[data-chapter-eyebrow]');
@@ -5012,6 +5022,11 @@ function renderChapterPage(chapterKey) {
   });
 
   renderMathBlocks(root);
+  // Sections are generated after parsing, so initial deep links need an anchor pass.
+  let anchorId = location.hash.slice(1);
+  try { anchorId = decodeURIComponent(anchorId); } catch (_) { /* Ignore malformed external hashes. */ }
+  const anchor = document.getElementById(anchorId);
+  if (anchor && root.contains(anchor)) requestAnimationFrame(() => anchor.scrollIntoView({block: 'start', behavior: 'instant'}));
 }
 
 function renderChapterGuide(chapterKey) {
@@ -5168,7 +5183,7 @@ function renderMathTool(math, sectionId) {
         <div class="formula-card">
           ${math.title ? `<p class="tool-kicker">${math.title}</p>` : ''}
           ${renderMathLines(math.formula)}
-          ${renderFormulaAnnotations(sectionId)}
+          ${renderFormulaAnnotations(sectionId, math.annotations)}
           ${math.note ? `<p class="tool-note">${math.note}</p>` : ''}
         </div>
       </div>
@@ -5507,7 +5522,8 @@ function mountVisualization(card, section) {
     document.body.classList.add('viz-expanded-open');
     expandButton?.setAttribute('aria-expanded', 'true');
     render();
-    overlayClose.focus();
+    overlayDialog.scrollTop = 0;
+    overlayClose.focus({ preventScroll: true });
   }
 
   overlay.__close = closeOverlay;
@@ -5668,6 +5684,7 @@ function mountVisualization(card, section) {
     isMounted = false;
     // Unmount any React root so framer-motion animations stop running.
     if (stageRoot) {
+      window.AtelierLessons?.unmount?.(section.viz, stageRoot);
       if (window.AtelierReactViz && typeof window.AtelierReactViz.unmount === 'function') {
         try { window.AtelierReactViz.unmount(stageRoot); } catch (_) {}
       }

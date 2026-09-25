@@ -156,7 +156,20 @@
     }
     paint(instance);
   }
-  const api = {has:kind => ['bayes','entropy','expectation'].includes(kind), render, bayes, entropy, crossEntropy, expectation};
+  function moduleFor(kind) {
+    return typeof window !== 'undefined' && window.AtelierLessonModules?.find(entry => entry.has(kind));
+  }
+  const api = {
+    has: kind => ['bayes','entropy','expectation'].includes(kind) || Boolean(moduleFor(kind)),
+    render(kind, root) {
+      const lessonModule = moduleFor(kind);
+      if (lessonModule) return lessonModule.render(kind, root);
+      return render(kind, root);
+    },
+    getContent: kind => moduleFor(kind)?.content[kind],
+    unmount: (kind, root) => moduleFor(kind)?.unmount?.(root),
+    bayes, entropy, crossEntropy, expectation,
+  };
   if (typeof window !== 'undefined') window.AtelierLessons = api;
   if (typeof module !== 'undefined') module.exports = api;
 })();
