@@ -399,3 +399,317 @@ test('Mobile sizing regression guard rejects either original collapsing declarat
   assert.throws(() => assertVerticalFlowSizing(css.replace(/flex:\s*0\s+0\s+auto\s*;/g, 'flex: 1 1 0;')), /must not shrink/);
   assert.throws(() => assertVerticalFlowSizing(css.replace(/min-height:\s*min-content\s*;/g, 'min-height: 0;')), /must fit/);
 });
+
+function primaryAction(kind, state) {
+  const html = lab.render(kind, state);
+  const match = html.match(/<button class="dl-primary"[^>]*data-action="([^"]+)" data-value="([^"]*)"/);
+  assert.ok(match, kind);
+  return lab.reduce(kind, state, match[1], match[2]);
+}
+
+function visibleCausal(kind, state) {
+  const stage = lab.render(kind, state).split('<details')[0];
+  const block = stage.match(/<div class="dl-causal"[\s\S]*?<\/div>/);
+  assert.ok(block, `${kind}: substituted equation must remain outside disclosures`);
+  return {
+    html: block[0],
+    before: block[0].match(/<span data-before>(.*?)<\/span>/)[1],
+    after: block[0].match(/<span data-after>(.*?)<\/span>/)[1],
+  };
+}
+
+test('All concepts expose a selected before/after, highlighted numerical term and causal reason', () => {
+  for (const kind of Object.keys(lab.content)) {
+    const initial = lab.initial(kind);
+    for (const state of [initial, primaryAction(kind, initial)]) {
+      const c = visibleCausal(kind, state);
+      assert.match(c.html, /data-causal-focus="[^"]+"/);
+      assert.match(c.html, /<output class="dl-linked-formula"/);
+      assert.match(c.html, /<mark>[^<]*[0-9][^<]*<\/mark>/);
+      assert.match(c.html, /class="dl-reason">[^<]+/);
+    }
+    assert.match(visibleCausal(kind, primaryAction(kind, initial)).html, /data-causal-phase="applied"/);
+  }
+});
+
+test('Last-change snapshots stay bounded, immutable, and survive opening calculations', () => {
+  let state = lab.initial('dqn');
+  for (let i = 0; i < 100; i++) {
+    const old = JSON.stringify(state);
+    const next = lab.reduce('dqn', state, 'update');
+    assert.equal(JSON.stringify(state), old);
+    assert.equal(next.lastChange.action, 'update');
+    assert.equal(next.lastChange.before.lastChange, undefined);
+    state = next;
+  }
+  assert.ok(JSON.stringify(state).length < 2000);
+  const event = state.lastChange;
+  state = lab.reduce('dqn', state, 'disclosure', 'calculation');
+  assert.deepEqual(state.lastChange, event);
+  state = lab.reduce('dqn', state, 'select', '3');
+  assert.equal(state.lastChange, undefined, 'A new replay item must not show the previous item\'s update');
+});
+
+test('MDP, Bellman, TD and Q first actions change actual state or learned quantities', () => {
+  const mdp = primaryAction('mdp', lab.initial('mdp'));
+  assert.equal(mdp.state, 1);
+  assert.equal(mdp.path.length, 1);
+  const mdpDisplay = visibleCausal('mdp', mdp);
+  assert.equal(mdpDisplay.before, 'Fresh session'); assert.equal(mdpDisplay.after, 'Engaged session');
+
+  const value = primaryAction('value-functions', lab.initial('value-functions'));
+  near(lab.valueTrace(value.step, value.gamma).at(-1)[0], 3.6);
+  assert.equal(visibleCausal('value-functions', value).before, '1.000');
+  assert.equal(visibleCausal('value-functions', value).after, '3.600');
+
+  let td = primaryAction('td-learning', lab.initial('td-learning'));
+  assert.deepEqual(lab.tdTrace(td.step).values, [0, 2, 0]);
+  assert.equal(visibleCausal('td-learning', td).after, '2.000');
+  assert.match(visibleCausal('td-learning', td).html, /V\(Engaged session\)/);
+  td = primaryAction('td-learning', td);
+  near(lab.tdTrace(td.step).values[0], 0.9);
+  assert.match(visibleCausal('td-learning', td).html, /V\(Fresh session\)/);
+
+  const q = primaryAction('q-learning', lab.initial('q-learning'));
+  near(q.q[0][1], 0.9);
+  assert.equal(visibleCausal('q-learning', q).before, '0.000');
+  assert.equal(visibleCausal('q-learning', q).after, '0.900');
+});
+
+test('DQN renders the applied loss decrease, then separately explains a target copy', () => {
+  const before = lab.initial('dqn'), after = primaryAction('dqn', before);
+  const oldLoss = lab.dqnUpdate(before.online, before.frozen, lab.TRANSITIONS[1]).loss;
+  const newLoss = lab.dqnUpdate(after.online, after.frozen, lab.TRANSITIONS[1]).loss;
+  assert.ok(newLoss < oldLoss);
+  assert.equal(visibleCausal('dqn', after).before, oldLoss.toFixed(3));
+  assert.equal(visibleCausal('dqn', after).after, newLoss.toFixed(3));
+  assert.deepEqual(after.frozen, before.frozen);
+  const copy = lab.reduce('dqn', after, 'copy');
+  assert.deepEqual(copy.online, after.online);
+  assert.equal(visibleCausal('dqn', copy).before, '1.800');
+  assert.equal(visibleCausal('dqn', copy).after, '1.917');
+  assert.match(visibleCausal('dqn', copy).html, /frozen target/);
+});
+
+test('Bandit selection and mean-update substitutions use pre-observation counts', () => {
+  const state = primaryAction('bandit', lab.initial('bandit'));
+  const run = lab.bandit(state.step, state.policy), item = run.history.at(-1);
+  const old = item.estimates[item.a];
+  near(item.scores[item.a], old + Math.sqrt(2 * Math.log(item.t - 1) / (item.count - 1)));
+  near(run.estimates[item.a], old + (item.reward - old) / item.count);
+  const view = visibleCausal('bandit', state);
+  assert.equal(view.before, old.toFixed(3));
+  assert.equal(view.after, run.estimates[item.a].toFixed(3));
+  assert.ok(view.html.includes(`sqrt(2 log(${item.t - 1}) / ${item.count - 1})`));
+});
+
+test('Diffusion retains the denoising step just applied and follows selected coordinates', () => {
+  let state = primaryAction('diffusion', lab.initial('diffusion'));
+  const trace = lab.diffusionTrace(false);
+  for (const coordinate of [0, 3, 7]) {
+    state = lab.reduce('diffusion', state, 'select', String(coordinate));
+    const view = visibleCausal('diffusion', state);
+    assert.equal(view.before, trace[0].x[coordinate].toFixed(3));
+    assert.equal(view.after, trace[1].x[coordinate].toFixed(3));
+    assert.ok(view.html.includes(`<mark>${trace[0].eps[coordinate].toFixed(3)}</mark>`));
+    assert.match(view.html, /t=6 to 5/);
+  }
+});
+
+test('Guidance and DPO actions change predictions and normalized policy values', () => {
+  const guidance = primaryAction('guidance', lab.initial('guidance'));
+  assert.equal(guidance.scale, 2);
+  const g = visibleCausal('guidance', guidance);
+  assert.equal(g.before, '[0.6, -0.1]'); assert.equal(g.after, '[1.4, -0.5]');
+  assert.match(g.html, /<mark>2<\/mark>/);
+  const before = lab.initial('dpo'), after = primaryAction('dpo', before), ref = [0.2, 0.5, 0.3];
+  const a = lab.dpo(before.logits, ref), b = lab.dpo(after.logits, ref);
+  assert.ok(b.probabilities[0] > a.probabilities[0]); assert.ok(b.probabilities[1] < a.probabilities[1]);
+  near(sum(b.probabilities), 1);
+  assert.equal(visibleCausal('dpo', after).before, a.loss.toFixed(3));
+  assert.equal(visibleCausal('dpo', after).after, b.loss.toFixed(3));
+});
+
+test('Reward-hacking probability change is an exact normalized exponential update', () => {
+  const state = primaryAction('reward-hacking', lab.initial('reward-hacking'));
+  for (const repaired of [false, true]) {
+    const before = lab.proxyExperiment(state.step - 1, repaired), after = lab.proxyExperiment(state.step, repaired);
+    const predicted = lab.exponentiatedStep(before.probabilities, before.rewards);
+    predicted.probabilities.forEach((p, i) => near(p, after.probabilities[i]));
+  }
+  const view = visibleCausal('reward-hacking', state);
+  assert.equal(view.before, lab.proxyExperiment(4).probabilities[2].toFixed(3));
+  assert.equal(view.after, lab.proxyExperiment(5).probabilities[2].toFixed(3));
+  assert.match(view.html, /On unseen \[\], this program gives 5, not 0/);
+});
+
+test('GRPO shows the winning clipping branch for positive and negative advantages', () => {
+  let state = primaryAction('grpo', lab.initial('grpo'));
+  let view = visibleCausal('grpo', state);
+  assert.equal(view.before, '1.160'); assert.equal(view.after, '1.200');
+  assert.match(view.html, /<mark>1\.200 x 1\.000<\/mark>/);
+  state = lab.reduce('grpo', state, 'select', '1');
+  view = visibleCausal('grpo', state);
+  assert.equal(view.before, '-0.840'); assert.equal(view.after, '-0.800');
+  assert.match(view.html, /<mark>0\.800 x -1\.000<\/mark>/);
+  state = lab.reduce('grpo', state, 'rewards', 'all-wrong');
+  assert.match(visibleCausal('grpo', state).html, /A = 0 \(all rewards equal\)/);
+  assert.doesNotMatch(visibleCausal('grpo', state).html, /NaN|Infinity/);
+});
+
+test('All existing optional quizzes ask counterfactual transfer rather than UI recall', () => {
+  for (const c of Object.values(lab.content)) {
+    assert.match(c.quiz.prompt, /\bif\b/i);
+    assert.doesNotMatch(c.quiz.prompt, /which button|(?:click|press|tap) (?:the )?(?:button|next|apply)/i);
+    assert.equal(c.quiz.options.filter(o => o.correct).length, 1);
+  }
+  near(lab.valueTrace(2, 0.2).at(-1)[0], 1);
+  assert.deepEqual(lab.guidedNoise([0.2, -0.5], [0.2, -0.5], 3), [0.2, -0.5]);
+  const ref = [0.2, 0.5, 0.3];
+  near(lab.dpo([0.2, 0.4, 0.4].map(Math.log), ref).loss, lab.dpo([0.1, 0.2, 0.7].map(Math.log), ref).loss);
+});
+
+test('MDP current-state marker visibly moves instead of only changing preview prose', () => {
+  let state = lab.initial('mdp');
+  for (const expected of ['Fresh session', 'Engaged session', 'Terminal']) {
+    const html = lab.render('mdp', state);
+    const markers = [...html.matchAll(/<div class="dl-flow-node ml-selected" aria-current="step">(.*?)<\/div>/g)];
+    assert.equal(markers.length, 1);
+    assert.ok(markers[0][1].includes(`<strong>${expected}</strong>`));
+    assert.match(markers[0][1], /Current state/);
+    state = lab.reduce('mdp', state, 'act');
+  }
+});
+
+test('Guidance legend describes only actual origin-to-prediction vectors', () => {
+  const html = lab.render('guidance', primaryAction('guidance', lab.initial('guidance')));
+  const svg = html.match(/<svg[\s\S]*?<\/svg>/)[0];
+  const conditional = [...svg.matchAll(/<path d="([^"]+)" class="dl-noisy"/g)];
+  assert.equal(conditional.length, 1, 'An extrapolation guide must not masquerade as the conditional vector');
+  assert.equal(conditional[0][1], 'M65 100L104 106.5');
+  assert.match(svg, /M65 100L156 132\.5/);
+});
+
+test('DPO displayed logits match current probability bars, not the next update preview', () => {
+  const before = lab.initial('dpo'), after = primaryAction('dpo', before);
+  for (const state of [before, after]) {
+    const html = lab.render('dpo', state);
+    assert.ok(html.includes(`Chosen logit</span><strong>${state.logits[0].toFixed(3)}</strong>`));
+    assert.ok(html.includes(`Rejected logit</span><strong>${state.logits[1].toFixed(3)}</strong>`));
+  }
+  assert.match(lab.render('dpo', before), /After update: -1\.082/);
+});
+
+test('GRPO keeps its group statistics visible without a duplicate advantage flow card', () => {
+  const html = lab.render('grpo', lab.initial('grpo')).split('<details')[0];
+  const flow = html.match(/<div class="dl-flow"[\s\S]*?(?=<div class="dl-causal")/)[0];
+  assert.equal([...flow.matchAll(/class="dl-flow-node/g)].length, 2);
+  assert.match(html, /Reward mean 0\.5/);
+  assert.match(html, /Population std 0\.5/);
+  assert.equal([...html.matchAll(/Relative advantage/g)].length, 4);
+});
+
+test('Secondary calculations use the same backup or copied target as the selected mechanism', () => {
+  for (const policy of ['optimal', 'uniform']) for (const selected of [0, 1]) {
+    const before = { ...lab.initial('value-functions'), policy, selected };
+    for (const state of [before, primaryAction('value-functions', before)]) {
+      const source = state.lastChange?.before || state;
+      const values = lab.valueTrace(source.step, state.gamma, policy).at(-1);
+      const qs = [0, 1].map(action => {
+        const t = lab.transition(selected, action);
+        return t.r + (t.done ? 0 : state.gamma * values[t.next]);
+      });
+      const expected = lab.backup(values, state.gamma, policy)[selected];
+      const operator = policy === 'optimal' ? 'max' : 'mean';
+      assert.ok(lab.render('value-functions', state).includes(`${operator}(${qs.map(x => x.toFixed(3)).join(', ')}) = ${expected.toFixed(3)}`));
+    }
+  }
+  const copied = lab.reduce('dqn', primaryAction('dqn', lab.initial('dqn')), 'copy');
+  const html = lab.render('dqn', copied);
+  assert.match(html, /y = 0 \+ 0\.9 x 2\.130 = 1\.917/);
+  assert.match(html, /previews the next training update; it has not been applied/);
+  const sarsa = lab.reduce('q-learning', lab.initial('q-learning'), 'method', 'sarsa');
+  assert.match(visibleCausal('q-learning', sarsa).html, /SARSA uses the recorded next action here/);
+  assert.doesNotMatch(visibleCausal('q-learning', sarsa).html, /not this max/);
+});
+
+// Opt in against the local static server; launches its own headless browser.
+test('browser: decision mechanisms fit their content before and after actions at four widths', {
+  skip: !process.env.DECISION_BROWSER_TEST,
+  timeout: 120000,
+}, async () => {
+  const path = require('node:path');
+  const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright-core');
+  const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
+  const base = process.env.ATELIER_BASE_URL || 'http://127.0.0.1:4174/atelier/';
+  const out = process.env.DECISION_SCREENSHOTS || '/tmp/atelier-causal-decision-final';
+  const chapters = {
+    'reinforcement-learning': ['mdp', 'value-functions', 'td-learning', 'q-learning', 'dqn', 'exploration'],
+    'generative-and-rl': ['diffusion', 'bandit'],
+    'alignment-depth': ['guidance', 'dpo', 'reward-hacking', 'grpo'],
+  };
+  const checks = [], errors = [];
+  fs.mkdirSync(out, { recursive: true });
+  try {
+    const page = await browser.newPage({ reducedMotion: 'reduce' });
+    page.on('pageerror', error => errors.push(error.message));
+    for (const width of [320, 390, 720, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const [chapter, ids] of Object.entries(chapters)) {
+        await page.goto(new URL(`${chapter}.html`, base).href, { waitUntil: 'networkidle' });
+        await page.evaluate(() => document.fonts.ready);
+        for (const id of ids) {
+          await page.locator(`.chapter-map a[href="#${id}"]`).click();
+          await page.locator(`#${id} .viz-expand-button`).click();
+          const dialog = page.locator('.viz-lightbox:not([hidden]) .viz-lightbox__dialog');
+          const lesson = dialog.locator('.ml-lab[data-family="decision-labs"]');
+          await lesson.waitFor({ state: 'visible' });
+          const dir = path.join(out, String(width), chapter);
+          if ([390, 1440].includes(width)) fs.mkdirSync(dir, { recursive: true });
+          for (const phase of ['before', 'after']) {
+            if (phase === 'after') await lesson.locator('.dl-primary').click();
+            await dialog.evaluate(el => { el.scrollTop = 0; });
+            await page.mouse.move(0, 0);
+            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+            const measured = await lesson.evaluate(el => {
+              const nodes = [...el.querySelectorAll('.dl-flow-node')].filter(node => node.getBoundingClientRect().width > 0);
+              const failures = nodes.filter(node => {
+                const box = node.getBoundingClientRect();
+                return node.scrollHeight > node.clientHeight + 2 || [...node.children].some(child => {
+                  const rect = child.getBoundingClientRect();
+                  return rect.top < box.top - 1 || rect.bottom > box.bottom + 1 || rect.left < box.left - 1 || rect.right > box.right + 1;
+                });
+              }).map(node => node.textContent.trim());
+              return {
+                width: el.clientWidth, scrollWidth: el.scrollWidth,
+                viewport: innerWidth, documentWidth: document.documentElement.scrollWidth,
+                nodeCount: nodes.length, failures,
+                formulaBottom: el.querySelector('.dl-linked-formula').getBoundingClientRect().bottom,
+              };
+            });
+            const label = `${width}/${chapter}/${id}/${phase}`;
+            checks.push({ label, ...measured });
+            assert.deepEqual(measured.failures, [], `${label}: text exceeds its flow node`);
+            assert.ok(measured.scrollWidth <= measured.width + 1, `${label}: stage overflow`);
+            assert.ok(measured.documentWidth <= width + 1, `${label}: page overflow`);
+            if (id === 'grpo' && width === 390) assert.ok(measured.formulaBottom < 900, `${label}: clipping equation below first screen (${measured.formulaBottom})`);
+            if (id === 'mdp') assert.match(await lesson.locator('[aria-current="step"]').innerText(), phase === 'before' ? /Fresh session/ : /Engaged session/);
+            if (phase === 'after') assert.equal(await lesson.locator('.dl-causal').getAttribute('data-causal-phase'), 'applied');
+            if ([390, 1440].includes(width)) await page.screenshot({ path: path.join(dir, `${id}${phase === 'after' ? '-after' : ''}.png`) });
+            if (phase === 'before' && [390, 1440].includes(width)) {
+              await dialog.evaluate(el => { el.scrollTop = el.scrollHeight; });
+              await page.screenshot({ path: path.join(dir, `${id}-bottom.png`) });
+              await dialog.evaluate(el => { el.scrollTop = 0; });
+            }
+          }
+          await page.keyboard.press('Escape');
+        }
+      }
+    }
+    assert.equal(checks.length, 96);
+    assert.deepEqual(errors, []);
+  } finally {
+    fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify({ checks, errors }, null, 2));
+    await browser.close();
+  }
+});

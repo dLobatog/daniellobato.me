@@ -154,6 +154,34 @@
 .tl-lab .tl-label-dots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; max-width: 185px; }
 .tl-lab .tl-label-dot { display: flex; justify-content: center; align-items: center; min-width: 0; min-height: 22px; border: 1px solid var(--lesson-border); border-radius: 3px; color: var(--lesson-muted); font-family: var(--mono); }
 .tl-lab .tl-click-dot { border-color: var(--lesson-blue); background: var(--lesson-soft); color: var(--lesson-blue); font-weight: 700; }
+.tl-lab .tl-linked-equation { margin: .8rem 0; max-width: 100%; }
+.tl-lab .tl-linked-equation > span { display: block; color: var(--lesson-muted); font: .85rem/1.45 var(--sans); margin-bottom: .3rem; }
+.tl-lab .tl-linked-equation code { display: block; font: .94rem/1.85 var(--mono); white-space: normal; overflow-wrap: anywhere; }
+.tl-lab .tl-linked-equation mark { background: var(--lesson-soft); color: var(--lesson-ink); border-bottom: 2px solid var(--lesson-orange); padding: .1rem .12rem; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.tl-lab .tl-causal-change { margin: .75rem 0 0; font-size: .94rem; line-height: 1.6; }
+.tl-lab .tl-causal-change .tl-before { color: var(--lesson-muted); font-family: var(--mono); }
+.tl-lab .tl-causal-change strong { color: var(--lesson-orange); font-family: var(--mono); }
+.tl-lab .tl-causal-reason { display: block; margin-top: .3rem; }
+.tl-lab .tl-muted-data { color: var(--lesson-muted); border-color: var(--lesson-border); }
+.tl-lab .tl-muted-data :is(.tl-bar-pair,.tl-weight-track,.tl-label-dots) { opacity: .35; }
+.tl-lab .tl-muted-data:is(:hover,:focus-visible) :is(.tl-bar-pair,.tl-weight-track,.tl-label-dots) { opacity: 1; }
+.tl-lab .tl-dim-point { opacity: .3; }
+.tl-lab .tl-before-point { fill: var(--lesson-surface); stroke: var(--lesson-muted); stroke-width: 1.5; }
+.tl-lab .tl-stroke-faint { opacity: .13; }
+.tl-lab svg [role="button"]:focus-visible .tl-dim-point { opacity: 1; }
+.tl-lab .tl-weight-lane { display: block; width: 100%; text-align: left; margin: .65rem 0; }
+.tl-lab .tl-weight-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem .7rem; margin-bottom: .5rem; }
+.tl-lab .tl-weight-track { display: block; }
+.tl-lab .tl-weight-key::after { content: 'Bar scale: weight 0 to 2'; font-size: .8rem; }
+.tl-lab .tl-leaf-gini { display: block; color: var(--lesson-muted); font: .85rem/1.5 var(--mono); }
+.tl-lab .tl-leaf-rows { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); }
+.tl-lab .tl-tile strong { overflow-wrap: anywhere; }
+.tl-lab .tl-moved-row { border-top: 3px solid var(--lesson-orange); }
+.tl-lab .tl-bar-pair { position: relative; }
+.tl-lab .tl-bar-pair .tl-old-prediction { position: absolute; left: 10%; width: 80%; max-width: none; height: 0; border-top: 2px dashed var(--lesson-muted); }
+.tl-lab .tl-blocked-source strong { text-decoration: line-through; color: var(--lesson-muted); }
+.tl-lab .tl-blocked-source > span:last-child { color: var(--lesson-orange); }
+.tl-lab .tl-correct-dot { outline: 2px solid var(--lesson-orange); outline-offset: -2px; }
 @container tabular-lab (max-width: 600px) {
   .tl-lab .tl-fit-layout { grid-template-columns: minmax(0, 1fr); gap: .4rem; }
   .tl-lab .tl-fit-layout .tl-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }

@@ -87,7 +87,7 @@
       const reward = outcomes[a][counts[a]];
       counts[a]++; wins[a] += reward;
       regret += Math.max(...ARM_MEANS) - ARM_MEANS[a];
-      history.push({ t: t + 1, a, reward, reason, estimates, scores, regret });
+      history.push({ t: t + 1, a, reward, reason, estimates, scores, regret, count: counts[a] });
     }
     return { counts, wins, estimates: counts.map((n, a) => n ? wins[a] / n : 0), history, regret };
   }
@@ -145,6 +145,11 @@
   const HELDOUT_CASES = [[], [1, 2, 3], [-2, 2], [10]];
   const EXTRA_CASES = [[-1, 1], [4, 3, 2], [8]];
   const accuracy = (program, cases) => mean(cases.map(xs => Number(program.run(xs) === xs.reduce((a, b) => a + b, 0))));
+  function exponentiatedStep(probabilities, rewards, eta = 2) {
+    const weights = probabilities.map((p, i) => p * Math.exp(eta * rewards[i]));
+    const normalizer = weights.reduce((a, b) => a + b, 0);
+    return { probabilities: weights.map(w => w / normalizer), normalizer };
+  }
   function proxyExperiment(round = 4, repaired = false) {
     const cases = repaired ? PUBLIC_CASES.concat(EXTRA_CASES) : PUBLIC_CASES;
     const rewards = PROGRAMS.map(p => accuracy(p, cases) - 0.05 * p.cost);
@@ -279,6 +284,23 @@
   };
   Object.entries(content).forEach(([kind, item]) => { item.what = mechanisms[kind]; });
 
+  const transferQuestions = {
+    mdp: ['If the follow-up reward vanished, would zero-reward depth still beat the quick click?', 'No: its return would be 0 instead of 1.', 'Changing the reachable reward changes the preferred sequence.', 'Yes: delayed actions are always better.', 'Delay is not intrinsically valuable; the reachable utility is.'],
+    'value-functions': ['Under the optimality backup, if gamma fell from 0.9 to 0.2, would depth still beat the immediate click?', 'No: 0 + 0.2 x 4 = 0.8, below 1.', 'Discounting changes the action ordering, not the immediate rewards.', 'Yes: the terminal reward is still 4.', 'Only discounted future utility enters the fresh-state backup.'],
+    'td-learning': ['If the next-state value were 0 instead of 2, what would a zero-reward TD update teach a fresh state valued at 0?', 'Nothing yet: the target and TD error would both be 0.', 'The downstream estimate is the only signal on that transition.', 'It would still learn the eventual reward 4 immediately.', 'One-step TD does not observe the whole future return.'],
+    'q-learning': ['If behavior chose relevance instead of the ad next, would the Q-learning target change with the same Q table?', 'No; the max is unchanged, but the SARSA target would change.', 'The methods differ in which next action supplies their bootstrap.', 'Both targets must change because the recorded action changed.', 'Q-learning does not use the sampled next action in its target.'],
+    dqn: ['If online weights changed but the target copy did not, would this same replay target change?', 'No; only copying weights can change its nonterminal bootstrap here.', 'The replay item, discount and frozen network are unchanged.', 'Yes; online predictions define both sides of the loss.', 'That would discard the separation provided by the target network.'],
+    bandit: ['If arm B receives another zero reward, do estimates for unpulled A and C also fall?', 'No; only B receives new outcome evidence.', 'Their counts and means stay fixed, although their UCB time bonuses may change.', 'Yes; all means must be renormalized like probabilities.', 'Arm means are separate reward-rate estimates, not a probability distribution over arms.'],
+    diffusion: ['If predicted noise on one coordinate is too positive, how does its reconstructed clean value change?', 'It becomes too small.', 'The clean estimate subtracts a positive multiple of the predicted noise.', 'It becomes too large because more noise is removed.', 'In x0_hat=(x_t-sqrt(1-alpha_bar)*eps_hat)/sqrt(alpha_bar), the noise coefficient is negative.'],
+    guidance: ['If conditional and unconditional predictions were identical, would raising guidance change the result?', 'No: the conditional-minus-unconditional direction would be zero.', 'Any scale multiplied by a zero vector produces no additional steering.', 'Yes; a larger scale always moves the sample.', 'Guidance scales a difference, not an independent force.'],
+    dpo: ['If chosen and rejected probabilities both halved while their reference stayed fixed, would this pair loss change?', 'No: their odds and reference-relative margin stay the same.', 'Both log-ratios fall by log(2), which cancels in their difference.', 'Yes; DPO directly penalizes any fall in chosen probability.', 'The pair objective depends on relative odds, not chosen probability alone.'],
+    'reward-hacking': ['If all program costs became equal but public tests stayed unchanged, would training distinguish the general sum from return 5?', 'No: both pass every public test, so their rewards would tie.', 'Removing the cost incentive does not repair the verifier blind spot.', 'Yes; the optimizer would infer correctness on unseen inputs.', 'The objective cannot supply evidence absent from its tests.'],
+    grpo: ['If all group rewards became 1 while policy probabilities stayed fixed, would the reward term still favor correct answers?', 'No: every relative advantage becomes zero; KL may still contribute.', 'A common reward contains no within-group preference signal.', 'Yes: every completion gets a positive advantage of 1.', 'Subtracting the group mean removes the common reward.'],
+  };
+  Object.entries(transferQuestions).forEach(([kind, [prompt, right, whyRight, wrong, whyWrong]]) => {
+    content[kind].quiz = { prompt, options: [{ text: right, correct: true, explanation: whyRight }, { text: wrong, correct: false, explanation: whyWrong }] };
+  });
+
   function initial(kind) {
     if (kind === 'mdp') return { state: 0, action: 1, path: [] };
     if (kind === 'value-functions') return { step: 1, gamma: 0.9, policy: 'optimal', selected: 0 };
@@ -293,7 +315,7 @@
     if (kind === 'grpo') return { step: 1, selected: 0, rewards: 'mixed', beta: 0.04 };
     return {};
   }
-  function reduce(kind, state, action, value) {
+  function reduceCore(kind, state, action, value) {
     if (action === 'reset') return initial(kind);
     const n = Number(value);
     const s = { ...state };
@@ -335,6 +357,34 @@
     return s;
   }
 
+  function reduce(kind, state, action, value) {
+    const next = reduceCore(kind, state, action, value);
+    if (action === 'reset') return next;
+    if (JSON.stringify(next) === JSON.stringify(state)) return state;
+    if (['next', 'update', 'act', 'copy', 'scale'].includes(action)) {
+      // Keep one bounded event, not a recursively growing history of prior states.
+      const { lastChange, ...before } = state;
+      next.lastChange = { action, before };
+    } else if (action !== 'disclosure' && !(action === 'select' && ['value-functions', 'diffusion', 'grpo', 'reward-hacking'].includes(kind))) {
+      delete next.lastChange;
+    }
+    return next;
+  }
+
+  function context(kind, s, action = 'next', value = '') {
+    if (s.lastChange) return { before: s.lastChange.before, after: s, action: s.lastChange.action, phase: 'applied' };
+    return { before: s, after: reduceCore(kind, s, action, value), action, phase: 'preview' };
+  }
+  function tdTrace(steps) {
+    let values = [0, 0, 0];
+    const history = [];
+    for (let i = 0; i < steps; i++) {
+      const t = TRANSITIONS[i % 2 ? 3 : 1], update = tdUpdate(values, t);
+      history.push({ t, ...update }); values = update.after;
+    }
+    return { values, history };
+  }
+
   const button = (label, action, value = '', selected = false, disabled = false) => `<button type="button" data-action="${escape(action)}" data-value="${escape(value)}"${selected ? ' class="ml-selected" aria-pressed="true"' : ''}${disabled ? ' disabled' : ''}>${escape(label)}</button>`;
   const controls = html => `<div class="ml-controls dl-controls">${html}</div>`;
   const stat = (label, value) => `<div class="ml-stat"><span>${escape(label)}</span><strong>${escape(value)}</strong></div>`;
@@ -346,6 +396,9 @@
   const select = (label, action, current, choices) => `<label class="dl-select">${escape(label)}<select data-action="${escape(action)}">${choices.map(([value, name]) => `<option value="${escape(value)}"${String(current) === String(value) ? ' selected' : ''}>${escape(name)}</option>`).join('')}</select></label>`;
   const table = (headers, rows, caption = '') => `<div class="ml-table dl-table" tabindex="0" role="region" aria-label="${escape(caption || headers.join(', '))}"><table>${caption ? `<caption>${escape(caption)}</caption>` : ''}<thead><tr>${headers.map(h => `<th scope="col">${escape(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   const stats = items => `<div class="dl-stats">${items.map(([label, value]) => stat(label, value)).join('')}</div>`;
+  function linked(label, before, after, lines, reason, phase = 'preview') {
+    return `<div class="dl-causal" data-causal-phase="${escape(phase)}" data-causal-focus="${escape(label)}"><p class="dl-change"><span>${phase === 'applied' ? 'Just changed' : phase === 'current' ? 'Selected comparison' : 'Next change'}: ${escape(label)}</span><strong><span data-before>${escape(before)}</span> &rarr; <span data-after>${escape(after)}</span></strong></p><output class="dl-linked-formula" aria-label="${escape(label)} calculation">${lines.map(parts => `<span class="dl-formula-line">${parts.map(part => Array.isArray(part) ? `<mark>${escape(part[0])}</mark>` : escape(part)).join('')}</span>`).join('')}</output><p class="dl-reason">${escape(reason)}</p></div>`;
+  }
   const disclosure = (s, name, label, html) => `<details class="dl-disclosure"${s[name + 'Open'] ? ' open' : ''}><summary data-action="disclosure" data-value="${escape(name)}">${escape(label)}</summary><div class="dl-disclosure-body">${html}</div></details>`;
   function scene(s, question, action, mechanism, calculation, settings = '', secondary = '') {
     return `<div class="dl-heading"><h3 class="ml-question">${escape(question)}</h3>${controls(action + secondary)}</div><div class="dl-mechanism">${mechanism}</div>` +
@@ -354,7 +407,7 @@
   }
   function node(label, value, caption = '', action = '', actionValue = '', selected = false) {
     const tag = action ? 'button' : 'div';
-    const attrs = action ? ` type="button" data-action="${escape(action)}" data-value="${escape(actionValue)}" aria-pressed="${selected}"` : '';
+    const attrs = action ? ` type="button" data-action="${escape(action)}" data-value="${escape(actionValue)}" aria-pressed="${selected}"` : selected ? ' aria-current="step"' : '';
     return `<${tag} class="dl-flow-node${selected ? ' ml-selected' : ''}"${attrs}><span class="dl-node-label">${escape(label)}</span><strong>${escape(value)}</strong><span class="dl-node-caption">${escape(caption)}</span></${tag}>`;
   }
   const flow = (nodes, arrows = []) => `<div class="dl-flow" role="group" aria-label="Mechanism trace">${nodes.map((n, i) => (i ? `<span class="dl-flow-arrow" aria-hidden="true">${arrows[i - 1] === 'left' ? '&larr;' : '&rarr;'}</span>` : '') + n).join('')}</div>`;
@@ -372,66 +425,76 @@
   }
   function mdpView(s) {
     const t = s.state < 2 ? transition(s.state, s.action) : null;
+    const c = context('mdp', s, 'act');
+    const shown = c.before.state < 2 ? transition(c.before.state, c.before.action) : null;
     const total = s.path.reduce((sum, p, i) => sum + 0.9 ** i * p.r, 0);
-    const mechanism = t ? flow([
-      node('Current state', STATES[s.state], 'Choose an action below'),
-      node(ACTIONS[t.s][t.a], `Reward ${t.r}`, 'Deterministic transition'),
-      node('Next state', STATES[t.next], t.done ? 'Session ends' : 'Relevant follow-up now reachable'),
-    ]) + controls(ACTIONS[s.state].map((name, a) => button(name, 'action', a, a === s.action)).join('')) :
+    const beforeReturn = c.before.path.reduce((sum, p, i) => sum + 0.9 ** i * p.r, 0);
+    const contribution = shown ? 0.9 ** c.before.path.length * shown.r : 0;
+    const mechanism = shown ? flow([
+      node('Before the action', STATES[shown.s], c.phase === 'applied' ? 'Previous state' : 'Current state', '', '', c.phase !== 'applied'),
+      node(ACTIONS[shown.s][shown.a], `Reward ${shown.r}`, c.phase === 'applied' ? 'Action just taken' : 'Selected action'),
+      node('After the action', STATES[shown.next], c.phase === 'applied' ? 'Current state' : 'Reached by this action', '', '', c.phase === 'applied'),
+    ]) + linked('reachable state', STATES[shown.s], STATES[shown.next], [[`G = ${f(beforeReturn)} + 0.9^${c.before.path.length} x `, [f(shown.r)], ` = ${f(beforeReturn + contribution)}`]], shown.done ? 'Terminal ends future utility. This reward is added once, at its episode discount.' : 'The zero reward does not improve return yet. It changes the available next action: a relevant follow-up can now earn 4.', c.phase) :
       flow(s.path.length ? s.path.map(p => node(ACTIONS[p.s][p.a], `Reward ${p.r}`, STATES[p.next])) : [node('Terminal', 'No more actions', 'Future value is zero')]);
     return scene(s, 'Can a zero-reward recommendation lead to a better session?',
       t ? primary(`Take ${ACTIONS[t.s][t.a].toLowerCase()}`, 'act') : primary('Start another session', 'reset'),
-      mechanism + note(s.path.length ? `Return so far: ${f(total)}. ${s.state === 2 ? 'This episode is finished.' : 'Your action changed which recommendation comes next.'}` : 'Depth then relevant follow-up returns 3.6; a quick click ends the session for 1. Hand-defined utility, not measured engagement.'),
+      mechanism + note('Deterministic toy transitions; utility is hand-defined, not measured engagement.'),
       s.path.map(transitionSummary).join('') + equation(`Return = sum of reward x 0.9^step = ${f(total)}`) + note('Two-decision, fully observed toy. Every displayed transition has probability 1.'),
-      controls(STATES.map((name, i) => button(`Start at ${name.toLowerCase()}`, 'state', i, s.state === i)).join('')));
+      (t ? controls(ACTIONS[s.state].map((name, a) => button(name, 'action', a, a === s.action)).join('')) : '') + controls(STATES.map((name, i) => button(`Start at ${name.toLowerCase()}`, 'state', i, s.state === i)).join('')));
   }
   function valueView(s) {
-    const trace = valueTrace(s.step, s.gamma, s.policy), v = trace.at(-1), old = trace[Math.max(0, trace.length - 2)];
+    const c = context('value-functions', s), trace = valueTrace(s.step, s.gamma, s.policy), v = trace.at(-1);
+    const old = valueTrace(c.before.step, s.gamma, s.policy).at(-1), after = backup(old, s.gamma, s.policy);
     const qs = [0, 1].map(a => { const t = transition(s.selected, a); return t.r + (t.done ? 0 : s.gamma * old[t.next]); });
-    const upcoming = backup(v, s.gamma, s.policy);
+    const operator = s.policy === 'optimal' ? 'max' : 'mean';
+    const focusedReward = s.selected === 0 ? 0 : 4, nextValue = s.selected === 0 ? old[1] : 0;
     return scene(s, 'How does a future reward become valuable now?', advance(s, 4, 'Next: back up values'),
-      flow([node('Fresh session value', f(v[0]), `Next sweep: ${f(upcoming[0])}`, 'select', 0, s.selected === 0), node('Engaged session value', f(v[1]), 'Feeds the earlier state', 'select', 1, s.selected === 1), node('Relevant follow-up', 'Reward 4', 'Then terminal value 0')], ['left', 'left']) +
-      note(`Sweep ${s.step}: ${s.policy === 'optimal' ? 'take the best action' : 'average a fixed 50/50 policy'}. Each backup reads the previous sweep; discount ${s.gamma}.`),
-      (s.step ? table(['Action', 'Reward', 'Old next V', 'Backup'], [0, 1].map(a => { const t = transition(s.selected, a); return [escape(ACTIONS[s.selected][a]), f(t.r), f(t.done ? 0 : old[t.next]), f(qs[a])]; })) + equation(`${s.policy === 'optimal' ? 'max' : 'mean'}(${qs.map(x => f(x)).join(', ')}) = ${f(v[s.selected])}`) : note('Initial estimates are all zero.')) + table(['Sweep', 'Fresh V', 'Engaged V'], trace.map((row, i) => [String(i), f(row[0]), f(row[1])]), 'Exact synchronous history'),
+      flow([node('Fresh session value', f(v[0]), 'Tap to follow the delayed backup', 'select', 0, s.selected === 0), node('Engaged session value', f(v[1]), 'Tap to inspect the terminal payoff', 'select', 1, s.selected === 1), node('Relevant follow-up', 'Reward 4', 'Then terminal value 0')], ['left', 'left']) +
+      linked(`V(${STATES[s.selected]})`, f(old[s.selected]), f(after[s.selected]), [[`Q(action 1) = ${focusedReward} + ${s.gamma} x `, [f(nextValue)], ` = ${f(qs[1])}`], [`V = ${operator}(${f(qs[0])}, ${f(qs[1])}) = `, [f(after[s.selected])]]], s.selected === 0 ? 'The next-state estimate is what carries delayed utility backward. The immediate quick-click reward remains 1.' : 'The terminal mask supplies zero future value; the follow-up reward is direct evidence.', c.phase),
+      (s.step ? table(['Action', 'Reward', 'Old next V', 'Backup'], [0, 1].map(a => { const t = transition(s.selected, a); return [escape(ACTIONS[s.selected][a]), f(t.r), f(t.done ? 0 : old[t.next]), f(qs[a])]; })) + equation(`${s.policy === 'optimal' ? 'max' : 'mean'}(${qs.map(x => f(x)).join(', ')}) = ${f(after[s.selected])}`) : note('Initial estimates are all zero.')) + table(['Sweep', 'Fresh V', 'Engaged V'], trace.map((row, i) => [String(i), f(row[0]), f(row[1])]), 'Exact synchronous history'),
       controls(select('Backup operator', 'policy', s.policy, [['optimal', 'Optimal: max actions'], ['uniform', 'Fixed policy: 50/50 actions']]) + select('Discount gamma', 'gamma', s.gamma, [[0.2, '0.2: short horizon'], [0.9, '0.9: delayed utility'], [1, '1: finite, undiscounted']])), previous(s));
   }
   function tdView(s) {
-    let v = [0, 0, 0]; const history = [];
-    for (let i = 0; i < s.step; i++) { const t = TRANSITIONS[i % 2 ? 3 : 1]; const result = tdUpdate(v, t); history.push({ t, ...result }); v = result.after; }
-    const next = TRANSITIONS[s.step % 2 ? 3 : 1], preview = tdUpdate(v, next);
-    return scene(s, 'What can one observed reward teach us before an episode is over?', advance(s, 12, 'Next: apply sampled update'),
-      flow([node(ACTIONS[next.s][next.a], `Reward ${next.r}`, next.done ? 'Terminal: no bootstrap' : `Next-state estimate ${f(v[next.next])}`), node('TD target', f(preview.target), 'Reward + estimated future'), node(STATES[next.s], `${f(preview.before)} to ${f(preview.updated)}`, 'Preview: move halfway to target')]) +
-      bars([['Fresh value', v[0]], ['Engaged value', v[1]]], 4) + note(`${s.step} updates applied. Only the visited state changes; the policy always chooses depth, then relevant follow-up.`),
+    const c = context('td-learning', s), { values: v, history } = tdTrace(s.step), old = tdTrace(c.before.step).values;
+    const next = TRANSITIONS[c.before.step % 2 ? 3 : 1], preview = tdUpdate(old, next);
+    return scene(s, 'What can one reward teach before the episode is over?', advance(s, 12, 'Learn from one transition'),
+      flow([node(ACTIONS[next.s][next.a], `Reward ${next.r}`, next.done ? 'Terminal: no bootstrap' : `Next-state estimate ${f(old[next.next])}`), node('TD target', f(preview.target), 'Reward + estimated future'), node(STATES[next.s], f(c.phase === 'applied' ? preview.updated : preview.before), c.phase === 'applied' ? 'Updated by this transition' : 'Current value before learning')]) +
+      linked(`V(${STATES[next.s]})`, f(preview.before), f(preview.updated), [[`target = ${next.r} + 0.9 x ${f(next.done ? 0 : old[next.next])} = ${f(preview.target)}`], [`V = ${f(preview.before)} + 0.5 x `, [`(${f(preview.target)} - ${f(preview.before)})`], ` = ${f(preview.updated)}`]], next.done ? 'This terminal reward updates engaged, not fresh. The earlier state must wait for a later sampled transition.' : 'No new reward arrived. The learned next-state estimate alone now changes the earlier state.', c.phase) +
+      `<div class="dl-secondary-evidence">${bars([['Fresh value', v[0]], ['Engaged value', v[1]]], 4)}</div>`,
       transitionSummary(next) + equation(`target = ${next.r} + 0.9 x ${f(next.done ? 0 : v[next.next])} = ${f(preview.target)}`) + equation(`V: ${f(preview.before)} + 0.5 x ${f(preview.error)} = ${f(preview.updated)}`) + table(['Update', 'State', 'Before', 'Target', 'After'], history.slice(-6).map((h, i) => [String(Math.max(0, history.length - 6) + i + 1), escape(STATES[h.t.s]), f(h.before), f(h.target), f(h.updated)]), 'Last six actual TD updates'), '', previous(s));
   }
   function qView(s) {
-    const t = TRANSITIONS[s.selected], result = qUpdate(s.q, t, 0.5, 0.9, s.method), other = qUpdate(s.q, t, 0.5, 0.9, s.method === 'q' ? 'sarsa' : 'q');
-    return scene(s, 'Must we learn the same next action that behavior chose?', primary('Apply Q update', 'update'),
-      flow([node(t.done ? 'Terminal' : s.method === 'q' ? 'Best next action' : 'Sampled next action', f(result.bootstrap), t.done ? 'No future reward' : s.method === 'q' ? 'Max over both estimates' : 'Behavior selected the ad'), node('Target', f(result.target), `Immediate reward ${t.r}`), node(ACTIONS[t.s][t.a], `${f(result.before)} to ${f(result.updated)}`, 'Preview: update one Q estimate')]) +
-      (t.done ? '' : `<div class="dl-choice-nodes">${[0, 1].map(a => node(ACTIONS[1][a], f(s.q[1][a]), a === 0 ? 'Behavior chose this' : 'Greedy choice at initialization', 'select', a + 2, false)).join('')}</div>`) +
-      note(`${s.updates} updates applied. ${s.method === 'q' ? 'Q-learning uses the maximum next estimate.' : 'SARSA uses the recorded next action.'} Tap an action node to inspect its terminal transition.`),
+    const c = context('q-learning', s, 'update'), t = TRANSITIONS[s.selected], result = qUpdate(c.before.q, t, 0.5, 0.9, s.method), other = qUpdate(c.before.q, t, 0.5, 0.9, s.method === 'q' ? 'sarsa' : 'q');
+    return scene(s, 'Can we learn a better action than the one we took?', primary('Learn from this transition', 'update'),
+      flow([node(t.done ? 'Terminal' : s.method === 'q' ? 'Best next action' : 'Sampled next action', f(result.bootstrap), t.done ? 'No future reward' : s.method === 'q' ? 'Max, not the recorded ad' : 'Behavior selected the ad'), node('Target', f(result.target), `Other method: ${f(other.target)}`), node(ACTIONS[t.s][t.a], f(s.q[t.s][t.a]), c.phase === 'applied' ? 'Changed cell; all other cells stay fixed' : 'Selected cell before learning')]) +
+      linked(`Q(${STATES[t.s]}, ${ACTIONS[t.s][t.a]})`, f(result.before), f(result.updated), [[`target = ${t.r} + 0.9 x `, [t.done ? '0 (terminal)' : s.method === 'q' ? `max(${c.before.q[t.next].map(x => f(x)).join(', ')})` : f(c.before.q[t.next][0])], ` = ${f(result.target)}`], [`Q = ${f(result.before)} + 0.5 x (${f(result.target)} - ${f(result.before)}) = ${f(result.updated)}`]], t.done ? 'Terminal transitions make Q-learning and SARSA agree: both discard the next-state bootstrap.' : s.method === 'q' ? 'Same reward and next state, different backup policy. Changing the recorded next action would affect SARSA, not this max.' : 'SARSA uses the recorded next action here. Changing it would change this target, while the max-based alternative would stay fixed.', c.phase) +
+      (t.done ? '' : `<div class="dl-choice-nodes">${[0, 1].map(a => node(ACTIONS[1][a], f(s.q[1][a]), a === 0 ? 'Recorded behavior' : 'Greedy next action', 'select', a + 2, a === (s.method === 'q' ? 1 : 0))).join('')}</div>`),
       transitionSummary(t) + equation(`target = ${t.r} + 0.9 x ${f(result.bootstrap)} = ${f(result.target)}`) + equation(`Q: ${f(result.before)} + 0.5 x ${f(result.error)} = ${f(result.updated)}`) + stat('Other method target on the same table', f(other.target)) + table(['State', 'Action 0', 'Action 1'], [0, 1].map(i => [escape(STATES[i]), f(s.q[i][0]), f(s.q[i][1])])),
       controls(select('Backup', 'method', s.method, [['q', 'Q-learning: max next'], ['sarsa', 'SARSA: sampled ad next']])) + transitionChoices(s.selected));
   }
   function dqnView(s) {
-    const t = TRANSITIONS[s.selected], r = dqnUpdate(s.online, s.frozen, t);
-    return scene(s, 'Can the prediction improve while its target stays still?', primary('Apply one SGD step', 'update'),
-      flow([node('Online prediction', f(r.pred), `After SGD: ${f(linearQ(r.after, t.s)[t.a])}`), node('Squared-error loss', f(r.loss), `${s.updates} online updates`), node('Frozen target', f(r.target), 'Tap to copy online weights', 'copy')], ['right', 'left']) +
-      note(`Replay: ${ACTIONS[t.s][t.a]} from ${STATES[t.s].toLowerCase()}. ${s.copies} target copies. Two shared linear features, not a deep network.`),
-      transitionSummary(t) + equation(`y = ${t.r} + 0.9 x ${f(r.next)} = ${f(r.target)}`) + equation(`L = 0.5 x (${f(r.pred)} - ${f(r.target)})^2 = ${f(r.loss)}`) + equation(`w_new = w + 0.1 x ${f(r.error)} x [${features(t.s).join(', ')}]`) + table(['State / features', 'Online a0 / a1', 'Frozen a0 / a1'], [0, 1].map(i => [`${escape(STATES[i])} [1,${i}]`, linearQ(s.online, i).map(x => f(x)).join(' / '), linearQ(s.frozen, i).map(x => f(x)).join(' / ')])) + table(['Action weights', 'Online [bias,slope]', 'Frozen [bias,slope]'], [0, 1].map(i => [String(i), s.online[i].map(x => f(x)).join(', '), s.frozen[i].map(x => f(x)).join(', ')])),
+    const c = context('dqn', s, 'update'), t = TRANSITIONS[s.selected], r = dqnUpdate(c.before.online, c.before.frozen, t), after = dqnUpdate(c.after.online, c.after.frozen, t), live = dqnUpdate(s.online, s.frozen, t);
+    const inspected = c.action === 'copy' ? after : r;
+    return scene(s, 'Can the prediction improve while its target stays still?', primary('Train on this replay item', 'update'),
+      flow([node('Online prediction', f(live.pred), 'Shared linear weights'), node('Squared-error loss', f(live.loss), `Replay: ${ACTIONS[t.s][t.a]}`), node('Frozen target', f(live.target), 'Tap to copy online weights', 'copy')], ['right', 'left']) +
+      (c.action === 'copy' ? linked('frozen target', f(r.target), f(after.target), [[`target = ${t.r} + 0.9 x `, [f(after.next)], ` = ${f(after.target)}`]], 'Copying changes the bootstrap, not the online prediction. Subsequent learning now chases this new target.', c.phase) :
+        linked('replay loss', f(r.loss), f(after.loss), [[`Q after = ${f(r.pred)} + 0.1 x `, [f(r.error)], ` x ${dot(features(t.s), features(t.s))} = ${f(after.pred)}`], [`L after = 0.5 x (${f(after.pred)} - ${f(r.target)})^2 = ${f(after.loss)}`]], `The target stays ${f(r.target)} because its weights are frozen. The shared bias also changes the other state's prediction; this is not a table.`, c.phase)) +
+      note('Two-feature linear DQN mechanism, not a deep network. One selected replay item replaces a random minibatch.'),
+      transitionSummary(t) + (c.action === 'copy' ? note('Copied weights only. The calculation below previews the next training update; it has not been applied.') : '') + equation(`y = ${t.r} + 0.9 x ${f(inspected.next)} = ${f(inspected.target)}`) + equation(`L = 0.5 x (${f(inspected.pred)} - ${f(inspected.target)})^2 = ${f(inspected.loss)}`) + equation(`w_new = w + 0.1 x ${f(inspected.error)} x [${features(t.s).join(', ')}]`) + table(['State / features', 'Online a0 / a1', 'Frozen a0 / a1'], [0, 1].map(i => [`${escape(STATES[i])} [1,${i}]`, linearQ(s.online, i).map(x => f(x)).join(' / '), linearQ(s.frozen, i).map(x => f(x)).join(' / ')])) + table(['Action weights', 'Online [bias,slope]', 'Frozen [bias,slope]'], [0, 1].map(i => [String(i), s.online[i].map(x => f(x)).join(', '), s.frozen[i].map(x => f(x)).join(', ')])),
       transitionChoices(s.selected));
   }
   function banditView(s) {
     const run = bandit(s.step, s.policy), item = run.history[Math.min(s.selected, s.step - 1)];
     const observed = run.history.slice(0, item.t).filter(h => h.a === item.a);
     const updated = mean(observed.map(h => h.reward));
+    const selectionLine = s.policy === 'ucb' && item.t > 3 ? [[`UCB = ${f(item.estimates[item.a])} + `, [`sqrt(2 log(${item.t - 1}) / ${item.count - 1})`], ` = ${f(item.scores[item.a])}`]] : [];
     const armNodes = `<div class="dl-choice-nodes dl-three">${ARM_MEANS.map((_, a) => {
       const last = run.history.map(h => h.a).lastIndexOf(a);
       return node(`Arm ${String.fromCharCode(65 + a)}`, `${f(run.estimates[a] * 100, 0)}% estimated`, `${run.counts[a]} pulls; tap to inspect last reward`, 'select', last, item.a === a);
     }).join('')}</div>`;
-    return scene(s, 'Which recommendation should we try when estimates are uncertain?', advance(s, 120, 'Next: choose and observe'),
-      armNodes + flow([node(`Pull ${item.t}: arm ${String.fromCharCode(65 + item.a)}`, f(item.estimates[item.a]), 'Estimate before observing'), node('Observed feedback', `Reward ${item.reward}`, item.reason), node('Updated estimate', f(updated), 'Only this arm learns')]) +
-      note(`${s.step} pulls with ${s.policy === 'ucb' ? 'UCB1' : s.policy === 'epsilon' ? 'epsilon-greedy' : 'greedy'}. An early zero is not proof that an arm is bad.`),
+    return scene(s, 'Which recommendation should we try when estimates are uncertain?', advance(s, 120, 'Try one recommendation'),
+      flow([node(`Pull ${item.t}: arm ${String.fromCharCode(65 + item.a)}`, f(item.estimates[item.a]), 'Estimate before observing'), node('Observed feedback', `Reward ${item.reward}`, item.reason), node('Updated estimate', f(updated), 'Only this arm learns')]) +
+      linked(`arm ${String.fromCharCode(65 + item.a)} mean`, f(item.estimates[item.a]), f(updated), selectionLine.concat([[`mean = ${f(item.estimates[item.a])} + `, [`(${item.reward} - ${f(item.estimates[item.a])}) / ${item.count}`], ` = ${f(updated)}`]]), `This is pull ${item.count} of this arm. The other means do not change; their uncertainty bonuses can still change as time passes.`, s.lastChange ? 'applied' : 'current') + armNodes,
       table(['Arm', 'Pulls', 'Wins', 'Estimate', 'Hidden truth'], ARM_MEANS.map((p, a) => [String.fromCharCode(65 + a), String(run.counts[a]), String(run.wins[a]), f(run.estimates[a]), f(p)])) + stats([['Pseudo-regret', f(run.regret)], ['Observed reward sum', run.wins.reduce((a, b) => a + b, 0)]]) + table(['Arm', 'Estimate before pull', 'Selection index'], item.estimates.map((q, a) => [String.fromCharCode(65 + a), f(q), Number.isFinite(item.scores[a]) ? f(item.scores[a]) : 'unpulled: first priority'])) + `<div class="dl-history" aria-label="Inspect observed pulls">${run.history.map((h, i) => button(`${h.t}: ${String.fromCharCode(65 + h.a)} / r=${h.reward}`, 'select', i, i === item.t - 1)).join('')}</div>` + note('Seed 19; same nth-pull outcome per arm across policies. Selection never sees hidden means. Ties choose the first arm. One seed is not a statistical policy comparison.'),
       controls(select('Selection policy', 'policy', s.policy, [['ucb', 'UCB1'], ['greedy', 'Greedy after initial coverage'], ['epsilon', 'Epsilon-greedy (0.15)']])), previous(s, 3));
   }
@@ -439,16 +502,17 @@
     const all = clean.concat(noisy, current), low = Math.min(-1.5, ...all), high = Math.max(1.5, ...all);
     const x = i => 25 + i * 36, y = v => 170 - (v - low) / (high - low) * 145;
     const path = values => values.map((v, i) => `${i ? 'L' : 'M'}${x(i)},${y(v)}`).join(' ');
-    return `<svg class="dl-vector" viewBox="0 0 302 202" role="group" aria-label="Eight vector coordinates: clean dashed, original noisy dotted, current solid"><path d="M15 ${y(0)}H288" class="dl-axis"/><path d="${path(clean)}" class="dl-clean"/><path d="${path(noisy)}" class="dl-noisy"/><path d="${path(current)}" class="dl-current"/>${current.map((v, i) => `<g role="button" tabindex="0" data-action="select" data-value="${i}" aria-label="Inspect coordinate ${i}, current value ${f(v)}"><circle cx="${x(i)}" cy="${y(v)}" r="15" fill="transparent"/><circle cx="${x(i)}" cy="${y(v)}" r="${i === selected ? 6 : 3}" class="dl-point"/></g><text x="${x(i)}" y="193" text-anchor="middle">${i}</text>`).join('')}</svg>`;
+    return `<svg class="dl-vector" viewBox="0 0 302 202" role="group" aria-label="Eight vector coordinates: clean dashed, previous vector dotted, current solid"><path d="M15 ${y(0)}H288" class="dl-axis"/><path d="${path(clean)}" class="dl-clean"/><path d="${path(noisy)}" class="dl-noisy"/><path d="${path(current)}" class="dl-current"/>${current.map((v, i) => `<g role="button" tabindex="0" data-action="select" data-value="${i}" aria-label="Inspect coordinate ${i}, current value ${f(v)}"${i !== selected ? ' class="dl-dim-point"' : ''}><circle cx="${x(i)}" cy="${y(v)}" r="15" fill="transparent"/><circle cx="${x(i)}" cy="${y(v)}" r="${i === selected ? 6 : 3}" class="dl-point"/></g><text x="${x(i)}" y="193" text-anchor="middle">${i}</text>`).join('')}</svg>`;
   }
   function diffusionView(s) {
-    const trace = diffusionTrace(s.biased), row = trace[s.step], i = s.selected;
+    const c = context('diffusion', s), trace = diffusionTrace(s.biased), row = trace[s.step], input = trace[c.before.step], i = s.selected;
     const mse = mean(row.x.map((v, j) => (v - CLEAN[j]) ** 2));
-    return scene(s, 'What does one denoising step actually change?', advance(s, 6, 'Next: denoise one step'),
-      vectorPlot(CLEAN, trace[0].x, row.x, i) + `<div class="dl-legend"><span class="dl-key-clean">Dashed: clean vector</span><span class="dl-key-noisy">Dotted: noisy start</span><span class="dl-key-current">Solid: current vector</span></div>` +
-      flow([node(`Coordinate ${i}, t=${row.t}`, f(row.x[i]), 'Tap a plotted point to inspect'), node('Noise prediction', row.t ? f(row.eps[i]) : 'Finished', s.biased ? 'Oracle + fixed bias' : 'Oracle knows clean vector'), node('Next coordinate', f(row.previous[i]), row.t ? `Schedule moves to t=${row.t - 1}` : 'No further step')]) +
-      note('This is oracle reconstruction, not learned generation. The sampler uses an explicit noise schedule, not smoothing.'),
-      stats([['alpha-bar(t)', f(ALPHAS[row.t])], ['MSE to known x0', f(mse)]]) + table(['Quantity', 'Value'], [['Clean x0 (oracle access)', f(CLEAN[i])], ['Current x_t', f(row.x[i])], ['Predicted epsilon', f(row.eps[i])], ['Reconstructed x0', f(row.x0[i])], ['Next x_(t-1)', f(row.previous[i])]]) + table(['t', 'beta_t', 'alpha-bar_t'], BETAS.map((b, j) => [String(j + 1), f(b), f(ALPHAS[j + 1])]), 'Explicit forward noise schedule'),
+    const a = ALPHAS[input.t], prevA = ALPHAS[Math.max(0, input.t - 1)];
+    return scene(s, 'What does one denoising step actually change?', advance(s, 6, 'Remove one step of noise'),
+      vectorPlot(CLEAN, input.x, row.x, i) + `<div class="dl-legend"><span class="dl-key-clean">Dashed: clean</span><span class="dl-key-noisy">Dotted: before this step</span><span class="dl-key-current">Solid: current</span></div>` +
+      linked(`coordinate ${i}, t=${input.t} to ${Math.max(0, input.t - 1)}`, f(input.x[i]), f(input.previous[i]), [[`x0_hat = (${f(input.x[i])} - ${f(Math.sqrt(1 - a))} x `, [f(input.eps[i])], `) / ${f(Math.sqrt(a))} = ${f(input.x0[i])}`], [`x_prev = ${f(Math.sqrt(prevA))} x ${f(input.x0[i])} + ${f(Math.sqrt(1 - prevA))} x ${f(input.eps[i])} = ${f(input.previous[i])}`]], 'Subtract predicted noise, then recombine at the previous schedule. Oracle access to the clean vector supplies the prediction; this is not learned generation.', c.phase) +
+      flow([node('Selected coordinate', f(row.x[i]), `Tap another plotted coordinate`), node('Noise predictor', s.biased ? 'Oracle + bias' : 'Oracle', `Prediction used: ${f(input.eps[i])}`)]),
+      stats([['alpha-bar at selected input', f(ALPHAS[input.t])], ['Current MSE to known x0', f(mse)]]) + table(['Quantity', 'Value'], [['Clean x0 (oracle access)', f(CLEAN[i])], ['Selected step input x_t', f(input.x[i])], ['Predicted epsilon used', f(input.eps[i])], ['Reconstructed x0', f(input.x0[i])], ['Output x_(t-1)', f(input.previous[i])]]) + table(['t', 'beta_t', 'alpha-bar_t'], BETAS.map((b, j) => [String(j + 1), f(b), f(ALPHAS[j + 1])]), 'Explicit forward noise schedule'),
       controls(select('Noise predictor', 'bias', s.biased, [[false, 'Oracle: clean x0 is known'], [true, 'Oracle + fixed prediction bias']])), previous(s));
   }
   function guidanceView(s) {
@@ -457,45 +521,55 @@
     const px = v => 65 + v * 65, py = v => 100 - v * 65;
     const line = (v, klass) => `<path d="M65 100L${px(v[0])} ${py(v[1])}" class="${klass}"/><circle cx="${px(v[0])}" cy="${py(v[1])}" r="5" class="${klass}"/>`;
     const scales = [0, 0.5, 1, 2, 3], next = scales[(scales.indexOf(s.scale) + 1) % scales.length];
-    return scene(s, 'Does stronger guidance average predictions or go beyond them?', primary(s.scale === 3 ? 'Compare with no guidance' : `Increase guidance to ${next}`, 'scale', next),
-      `<svg class="dl-vector" viewBox="0 0 300 210" role="img" aria-label="Unconditional, conditional and guided noise vectors with a shared origin"><path d="M20 100H285M65 15V190" class="dl-axis"/><path d="M${px(u[0])} ${py(u[1])}L${px(2.2)} ${py(-0.9)}" class="dl-noisy"/>${line(u, 'dl-clean')}${line(c, 'dl-noisy')}${line(g, 'dl-current')}<text x="274" y="122">e1</text><text x="75" y="23">e2</text></svg>` +
+    const oldScale = s.lastChange?.before.scale ?? 0, oldG = guidedNoise(u, c, oldScale);
+    return scene(s, 'Does stronger guidance average predictions or go beyond them?', primary(s.scale === 3 ? 'Compare with no guidance' : 'Strengthen the prompt direction', 'scale', next),
+      `<svg class="dl-vector" viewBox="0 0 300 210" role="img" aria-label="Unconditional, conditional and guided noise vectors with a shared origin"><path d="M20 100H285M65 15V190" class="dl-axis"/>${line(u, 'dl-clean')}${line(c, 'dl-noisy')}${line(g, 'dl-current')}<text x="274" y="122">e1</text><text x="75" y="23">e2</text></svg>` +
       `<div class="dl-legend"><span class="dl-key-clean">Dashed: unconditional</span><span class="dl-key-noisy">Dotted: conditional</span><span class="dl-key-current">Solid: guided</span></div>` +
-      stats([['Guidance scale', s.scale], ['Guided noise vector', `[${g.map(x => f(x, 1)).join(', ')}]`]]) + note(s.scale > 1 ? 'The guided vector goes beyond the conditional prediction. Extrapolation is not a guarantee of better quality.' : 'Scale 0 is unconditional. Scale 1 is exactly the conditional prediction. Fixed toy model outputs.'),
+      linked('guided noise vector', `[${oldG.map(x => f(x, 1)).join(', ')}]`, `[${g.map(x => f(x, 1)).join(', ')}]`, u.map((v, i) => [`eps[${i}] = ${v} + `, [String(s.scale)], ` x (${c[i]} - (${v})) = ${f(g[i])}`]), s.scale > 1 ? 'Only the difference direction is amplified. A scale above 1 extrapolates beyond the conditional output; it does not certify quality.' : s.scale === 1 ? 'At scale 1, guided and conditional vectors coincide. Increasing scale follows their difference from the unconditional prediction.' : 'The same noisy input and fixed model outputs are held constant. If the two predictions matched, this change of scale would do nothing.', s.lastChange ? 'applied' : 'current'),
       table(['Vector', 'Coordinate 0', 'Coordinate 1'], [['Unconditional', ...u.map(x => f(x))], ['Conditional', ...c.map(x => f(x))], ['Guided', ...g.map(x => f(x))], ['Reconstructed x0', ...clean.map(x => f(x))]]) + equation(`epsilon = u + ${s.scale} x (c - u)`) + note('Both predictions use x_t=[0.7,0.2] and alpha-bar=0.4. No network is trained here.'),
       controls(scales.map(v => button(`Scale ${v}`, 'scale', v, s.scale === v)).join('')));
   }
   function dpoView(s) {
-    const ref = [0.2, 0.5, 0.3], r = dpo(s.logits, ref, s.beta), next = dpo(dpoStep(s.logits, ref, s.beta), ref, s.beta);
-    return scene(s, 'How does one preference change the answers a model favors?', primary('Apply one preference update', 'update'),
+    const c = context('dpo', s, 'update'), ref = [0.2, 0.5, 0.3], r = dpo(s.logits, ref, s.beta), before = dpo(c.before.logits, ref, s.beta), after = dpo(c.after.logits, ref, s.beta);
+    return scene(s, 'How does one preference change the answers a model favors?', primary('Favor the chosen answer', 'update'),
       `<p class="dl-context">Claim to assess: better offline NDCG proves user benefit.</p>` +
       probability('Chosen: "No; validate online."', r.probabilities[0], ref[0], 'Increase its odds relative to the rejected answer.') +
       probability('Rejected: "Yes, guaranteed."', r.probabilities[1], ref[1]) +
-      probability('Other completions', r.probabilities[2], ref[2]) +
-      flow([node('Reference-adjusted loss', f(r.loss), 'Ticks above mark frozen reference'), node('After next update', f(next.loss), `Learning rate 0.5; ${s.step} updates applied`)]) + note('Three-outcome categorical policy. The objective compares chosen/rejected odds against the reference, not chosen probability alone.'),
+      linked('DPO pair loss', f(before.loss), f(after.loss), [[`m = log-ratio(chosen) - log-ratio(rejected) = ${f(after.logRatios[0])} - (${f(after.logRatios[1])}) = `, [f(after.margin)]], [`L = -log sigmoid(${s.beta} x ${f(after.margin)}) = ${f(after.loss)}`]], `The chosen logit moves by ${f(c.after.logits[0] - c.before.logits[0])}; the rejected logit moves oppositely. Reference ticks do not move. This loss compares odds, not absolute chosen probability.`, c.phase) +
+      flow([node('Chosen logit', f(s.logits[0]), c.phase === 'applied' ? `Before: ${f(c.before.logits[0])}` : `After update: ${f(c.after.logits[0])}`), node('Rejected logit', f(s.logits[1]), c.phase === 'applied' ? `Before: ${f(c.before.logits[1])}` : `After update: ${f(c.after.logits[1])}`)]) + `<div class="dl-secondary-evidence">${probability('Other completions', r.probabilities[2], ref[2], 'Zero direct logit gradient; softmax still renormalizes its probability.')}</div>`,
       table(['Completion', 'Policy p', 'Reference p', 'log(p/ref)'], ['Chosen', 'Rejected', 'Other'].map((name, i) => [name, f(r.probabilities[i]), f(ref[i]), f(r.logRatios[i])])) + equation(`m = ${f(r.logRatios[0])} - (${f(r.logRatios[1])}) = ${f(r.margin)}`) + equation(`z = beta x m = ${f(r.z)}`) + equation(`dL/d(chosen logit) = ${f(r.gradient)}`) + note('Rejected-logit gradient has opposite sign; other-logit gradient is zero. Softmax keeps probabilities normalized.'),
       controls(select('Beta', 'beta', s.beta, [[0.1, '0.1'], [0.5, '0.5'], [1, '1.0']]) + button('Set policy = reference', 'reference')));
   }
   function rewardView(s) {
-    const r = proxyExperiment(s.step, s.repaired), base = proxyExperiment(0, s.repaired), selected = PROGRAMS[s.selected];
+    const r = proxyExperiment(s.step, s.repaired), beforeRound = s.lastChange?.before.step ?? Math.max(0, s.step - 1), base = proxyExperiment(beforeRound, s.repaired), selected = PROGRAMS[s.selected];
     const cases = s.repaired ? PUBLIC_CASES.concat(EXTRA_CASES) : PUBLIC_CASES;
-    return scene(s, 'Why can a rising test score produce worse code?', advance(s, 12, 'Next: optimize the test reward'),
-      `<div class="dl-choice-nodes dl-three">${PROGRAMS.map((p, i) => node(p.name, `${f(r.probabilities[i] * 100, 1)}% selected`, p.code, 'select', i, s.selected === i)).join('')}</div>` +
+    const eta = 2 * (s.step - beforeRound), update = exponentiatedStep(base.probabilities, r.rewards, eta);
+    const failing = HELDOUT_CASES.find(xs => selected.run(xs) !== xs.reduce((a, b) => a + b, 0));
+    const auditReason = failing ? `On unseen ${JSON.stringify(failing)}, this program gives ${Number.isFinite(selected.run(failing)) ? selected.run(failing) : 'an error'}, not ${failing.reduce((a, b) => a + b, 0)}.` : 'This program passes all four held-out cases; that evidence is not used by training.';
+    return scene(s, 'Why can a rising reward produce worse code?', advance(s, 12, 'Optimize for one more round'),
       flow([node('Training tests passed', `${Math.round(accuracy(selected, cases) * cases.length)}/${cases.length}`, 'Reward also favors lower cost'), node('Selected program', selected.code, `${selected.cost} declared cost units`), node('Unseen tests passed', `${Math.round(r.heldout[s.selected] * 4)}/4`, 'Not used in the update')]) +
-      probability('Expected proxy reward', r.proxy, base.proxy, '', false) + probability('Held-out correctness', r.audit, base.audit) + note(`Round ${s.step}. Ticks mark the untrained baseline. ${s.repaired ? 'Additional, independent training inputs now test variable lengths.' : 'Both public tests sum to 5, so the cheap constant exploits the verifier.'}`),
+      linked(`${selected.name} selection probability`, f(base.probabilities[s.selected]), f(r.probabilities[s.selected]), [[`reward = ${f(accuracy(selected, cases))} - 0.05 x ${selected.cost} = `, [f(r.rewards[s.selected])]], [`p = ${f(base.probabilities[s.selected])} x exp(${eta} x ${f(r.rewards[s.selected])}) / ${f(update.normalizer)} = ${f(update.probabilities[s.selected])}`]], auditReason, s.lastChange ? 'applied' : 'current') +
+      probability('Expected proxy reward', r.proxy, base.proxy, '', false) + probability('Held-out correctness', r.audit, base.audit) +
+      `<div class="dl-choice-nodes dl-three">${PROGRAMS.map((p, i) => node(p.name, `${f(r.probabilities[i] * 100, 1)}% selected`, p.code, 'select', i, s.selected === i)).join('')}</div>` + note(`Round ${s.step}; ticks mark round ${beforeRound}. ${s.repaired ? 'Extra training inputs are independent of the audit.' : 'Both public tests sum to 5. Lower cost wins the proxy, not unseen correctness.'}`),
       table(['Program', 'Proxy reward', 'Probability', 'Held-out pass'], PROGRAMS.map((p, i) => [button(p.name, 'select', i, i === s.selected), f(r.rewards[i]), f(r.probabilities[i]), f(r.heldout[i])])) + table(['Input', 'Expected', 'Actual', 'Split'], cases.map(xs => [escape(JSON.stringify(xs)), String(xs.reduce((a, b) => a + b, 0)), Number.isFinite(selected.run(xs)) ? String(selected.run(xs)) : 'error', 'Train']).concat(HELDOUT_CASES.map(xs => [escape(JSON.stringify(xs)), String(xs.reduce((a, b) => a + b, 0)), Number.isFinite(selected.run(xs)) ? String(selected.run(xs)) : 'error', 'Audit']))) + note('Repair recomputes the trace with additional training cases. Audit inputs never enter the reward.'),
       controls(button('Original public tests', 'repair', false, !s.repaired) + button('Add independent training edge cases', 'repair', true, s.repaired)), previous(s));
   }
   function grpoView(s) {
     const answers = ['2', '4', '+2', '-2'];
     const rewards = s.rewards === 'mixed' ? [1, 0, 1, 0] : Array(4).fill(s.rewards === 'all-correct' ? 1 : 0);
-    const group = groupAdvantages(rewards), probabilities = [[0.25, 0.25, 0.25, 0.25], [0.29, 0.21, 0.29, 0.21], [0.35, 0.15, 0.35, 0.15], [0.15, 0.35, 0.15, 0.35]][s.step];
+    const policies = [[0.25, 0.25, 0.25, 0.25], [0.29, 0.21, 0.29, 0.21], [0.35, 0.15, 0.35, 0.15], [0.15, 0.35, 0.15, 0.35]];
+    const group = groupAdvantages(rewards), probabilities = policies[s.step], beforePolicy = policies[s.lastChange?.before.step ?? Math.max(0, s.step - 1)];
     const ref = [0.2, 0.3, 0.2, 0.3];
     const terms = probabilities.map((p, i) => grpoTerm(group.advantages[i], p, 0.25, ref[i], s.beta)), t = terms[s.selected];
-    return scene(s, 'When does making a rewarded answer likelier stop helping?', advance(s, 3, s.step === 1 ? 'Next: push past the clipping limit' : 'Next: inspect policy snapshot'),
+    const oldTerm = grpoTerm(group.advantages[s.selected], beforePolicy[s.selected], 0.25, ref[s.selected], s.beta);
+    const advantageLine = group.std === 0 ? [['A = 0 (all rewards equal)']] : [`A = (${rewards[s.selected]} - ${f(group.mean)}) / ${f(group.std)} = ${f(group.advantages[s.selected])}`];
+    const rawTerm = `${f(t.ratio)} x ${f(group.advantages[s.selected])}`, clippedTerm = `${f(t.clippedRatio)} x ${f(group.advantages[s.selected])}`;
+    return scene(s, 'When does making a rewarded answer likelier stop helping?', advance(s, 3, s.step === 1 ? 'Make rewarded answers likelier' : s.step === 2 ? 'Reverse the probability shift' : 'Compare a small probability shift'),
       `<p class="dl-context">One prompt: positive root of x^2 = 4. Tap an answer.</p><div class="dl-choice-nodes dl-four">${answers.map((answer, i) => node(`Answer ${answer}`, `Reward ${rewards[i]}`, `Relative advantage ${f(group.advantages[i], 1)}`, 'select', i, s.selected === i)).join('')}</div>` +
-      flow([node(`Selected answer ${answers[s.selected]}`, f(group.advantages[s.selected], 1), `Group mean ${f(group.mean, 1)}, std ${f(group.std, 1)}`), node('Probability ratio', f(t.ratio, 2), `Current ${f(probabilities[s.selected])} / old 0.250`), node('Clipped reward term', f(t.surrogate), t.active ? `Unclipped: ${f(t.raw)}; limit active` : `Unclipped: ${f(t.raw)}; no clipping`)]) +
-      note(group.std === 0 ? 'Equal verifier scores: no reward-advantage signal. Only the KL contribution can change.' : t.active ? 'The reward-improving move is clipped. A still larger ratio no longer improves this sample reward term.' : s.step === 3 ? 'Wrong-direction moves are still penalized. Clipping is not a hard bound on probabilities.' : 'This move is inside the clipping window. Next compares a stronger probability shift.') +
-      stats([['Reference KL penalty', f(s.beta * t.kl)], ['Sample objective', f(t.objective)]]) + note('Fixed one-token policy snapshots, not optimizer steps.'),
+      `<div class="dl-legend"><span>Reward mean ${f(group.mean, 1)}</span><span>Population std ${f(group.std, 1)}</span></div>` +
+      flow([node('Probability ratio', f(t.ratio, 2), `Current ${f(probabilities[s.selected])} / old 0.250`), node('Clipped reward term', f(t.surrogate), t.active ? `Unclipped: ${f(t.raw)}; limit active` : `Unclipped: ${f(t.raw)}; no clipping`)]) +
+      linked(`answer ${answers[s.selected]} reward term`, f(oldTerm.surrogate), f(t.surrogate), [advantageLine, ['min(', t.active ? rawTerm : [rawTerm], ', ', t.active ? [clippedTerm] : clippedTerm, `) = ${f(t.surrogate)}`], [`J = ${f(t.surrogate)} - ${s.beta} x ${f(t.kl)} = ${f(t.objective)}`]], group.std === 0 ? 'Equal scores give no reward-advantage signal. KL may still penalize reference drift.' : t.active ? `The raw term reaches ${f(t.raw)}, but the clipped branch wins. Further reward-improving movement cannot improve this sample surrogate.` : s.step === 3 ? 'The unfavorable move remains in the minimum. Clipping does not forgive worsening the policy.' : 'The raw branch wins inside the clipping window. The next snapshot crosses the limit.', s.lastChange ? 'applied' : 'current') +
+      note('Fixed one-token snapshots, not optimizer steps. Population std; old-policy ratios and reference KL have distinct roles.'),
       table(['Answer', 'Reward', 'Advantage', 'Current p'], answers.map((answer, i) => [button(answer, 'select', i, i === s.selected), f(rewards[i]), f(group.advantages[i]), f(probabilities[i])])) + stats([['Reward mean', f(group.mean)], ['Population std', f(group.std)], ['Mean objective J', f(mean(terms.map(x => x.objective)))]] ) + table(['Quantity', 'Value'], [['Rollout probability (old)', '0.250'], ['Reference probability', f(ref[s.selected])], ['Current / old ratio', f(t.ratio)], ['Unclipped ratio x advantage', f(t.raw)], ['Clamped ratio x advantage', f(t.clipped)], ['Minimum surrogate', f(t.surrogate)], ['Sample KL term', f(t.kl)], ['Surrogate - beta * KL', f(t.objective)]]) + note('Old is uniform; reference is not. Population std with a zero-variance guard. The mean sample KL term is not exact full-distribution KL.'),
       controls(select('Reward group', 'rewards', s.rewards, [['mixed', 'Mixed correctness'], ['all-correct', 'Saturated verifier: all rewards 1'], ['all-wrong', 'Failed verifier: all rewards 0']]) + select('KL coefficient', 'beta', s.beta, [[0, '0: no KL'], [0.04, '0.04'], [0.2, '0.20']])), previous(s));
   }
@@ -504,7 +578,7 @@
     const view = views[kind];
     return view ? `<div class="dl-root">${view(state)}</div>` : '';
   }
-  const api = { transition, backup, valueTrace, tdUpdate, qUpdate, features, linearQ, dqnUpdate, random, bandit, gaussianVector, forwardNoise, ddimStep, diffusionTrace, guidedNoise, softmax, dpo, dpoStep, accuracy, proxyExperiment, groupAdvantages, grpoTerm, content, initial, reduce, render, TRANSITIONS, CLEAN, BETAS, ALPHAS, ARM_MEANS, PROGRAMS, PUBLIC_CASES, HELDOUT_CASES };
+  const api = { transition, backup, valueTrace, tdUpdate, tdTrace, qUpdate, features, linearQ, dqnUpdate, random, bandit, gaussianVector, forwardNoise, ddimStep, diffusionTrace, guidedNoise, softmax, dpo, dpoStep, accuracy, exponentiatedStep, proxyExperiment, groupAdvantages, grpoTerm, content, initial, reduce, context, render, TRANSITIONS, CLEAN, BETAS, ALPHAS, ARM_MEANS, PROGRAMS, PUBLIC_CASES, HELDOUT_CASES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') {
     if (!window.AtelierLab) throw new Error('Load atelier/lab-core.js before decision-labs.js');

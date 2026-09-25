@@ -187,7 +187,7 @@
   .nf-parameter-name { flex-basis: 100%; }
   .nf-parameter-gradient, .nf-parameter-update { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
   .nf-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .nf-choices > button { padding: 8px 6px; font-size: .9em; }
+  .nf-choices > button { padding: 8px 6px; font-size: 1em; }
   .nf-contribution { padding: 14px; }
   .nf-experiment-button { width: 100%; }
   .nf-navigation { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; }

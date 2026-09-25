@@ -49,6 +49,7 @@
 .dl-root .dl-flow { display: flex; align-items: center; gap: .45rem; margin-block: .85rem; min-width: 0; }
 .dl-root .dl-flow-node { display: grid; align-content: center; gap: .35rem; flex: 1 1 0; min-width: 0; min-height: 116px; padding: .8rem; border: 1px solid var(--lesson-border); border-radius: .55rem; background: var(--lesson-surface); text-align: left; color: var(--lesson-ink); overflow-wrap: anywhere; }
 .dl-root .dl-flow-node > strong { font: 600 clamp(1rem, 1.6vw, 1.25rem)/1.25 var(--mono); }
+.dl-root .dl-flow-node[aria-current="step"] { border-color: var(--lesson-blue); box-shadow: inset 4px 0 var(--lesson-blue); }
 .dl-root .dl-node-label { font-size: .8rem; font-weight: 600; line-height: 1.35; }
 .dl-root .dl-node-caption { font-size: .76rem; line-height: 1.4; color: var(--lesson-muted); }
 .dl-root .dl-flow-arrow { flex: 0 0 auto; color: var(--lesson-blue); font: 1.6rem var(--sans); }
@@ -74,6 +75,19 @@
 .dl-root .dl-disclosure > summary::marker { color: var(--lesson-blue); }
 .dl-root .dl-disclosure-body { padding: 0 .15rem .75rem; min-width: 0; }
 .dl-root .dl-vector [role="button"] { cursor: pointer; }
+.dl-root .dl-causal { min-width: 0; margin: .6rem 0 .9rem; }
+.dl-root .dl-change { display: flex; flex-wrap: wrap; gap: .3rem .8rem; justify-content: space-between; align-items: baseline; margin: 0 0 .35rem; font-size: .8rem; }
+.dl-root .dl-change > strong { color: var(--lesson-blue); font: 600 .95rem/1.4 var(--mono); overflow-wrap: anywhere; }
+.dl-root .dl-linked-formula { display: block; font: .82rem/1.65 var(--mono); overflow-wrap: anywhere; }
+.dl-root .dl-formula-line { display: block; }
+.dl-root .dl-linked-formula mark { background: color-mix(in srgb, var(--lesson-blue) 12%, var(--lesson-surface)); color: var(--lesson-ink); border-bottom: 2px solid var(--lesson-blue); padding: .06rem .1rem; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.dl-root .dl-reason { font-size: .85rem; line-height: 1.5; margin: .4rem 0 0; max-width: 72ch; }
+.dl-root .dl-choice-nodes:has(.ml-selected) .dl-flow-node:not(.ml-selected) { background: transparent; border-color: transparent; color: var(--lesson-muted); }
+.dl-root .dl-choice-nodes .dl-flow-node:not(.ml-selected):is(:hover, :focus-visible) { border-color: var(--lesson-blue); color: var(--lesson-ink); }
+.dl-root .dl-secondary-evidence { color: var(--lesson-muted); }
+.dl-root .dl-secondary-evidence .dl-track i, .dl-root .dl-secondary-evidence .dl-probability-track > i { background: var(--lesson-muted); }
+.dl-root .dl-dim-point { opacity: .4; }
+.dl-root .dl-dim-point:is(:hover, :focus-visible) { opacity: 1; }
 @media (max-width: 680px) {
   .dl-root .ml-grid { grid-template-columns: minmax(0, 1fr); }
   .dl-root .dl-panel { padding: .75rem; }
@@ -82,6 +96,7 @@
   .dl-root .dl-select { width: 100%; }
   .dl-root .dl-bar-row { gap: .4rem; }
   .dl-root .dl-choice-nodes.dl-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dl-root .dl-choice-nodes.dl-four .dl-flow-node { min-height: 0; padding: .6rem; }
 }
 @media (max-width: 520px) {
   .dl-root .dl-flow { flex-direction: column; gap: .25rem; align-items: stretch; }

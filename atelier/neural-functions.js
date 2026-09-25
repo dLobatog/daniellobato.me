@@ -103,14 +103,17 @@
 
   function activationMarkup(s) {
     return `<div class="lesson fn-lesson fn-activation">
-      <header class="fn-heading"><p class="fn-kicker">Same input. Different response.</p><h3>What does an activation change?</h3><p>A neuron makes a score <strong>z</strong>. Watch both its output and the gradient that can pass back through it.</p></header>
-      <div class="fn-toolbar">
+      <header class="fn-heading"><h3>Can a confident neuron stop learning?</h3><p>Push the same input into the flat part of each curve. Watch how much gradient survives.</p></header>
+      <div class="fn-first-action">${button('z', s.z>=4?1:4, s.z>=4?'Bring the input back to +1':'Push the input to +4')}<span>Shared input <strong>z = ${signed(s.z)}</strong></span></div>
+      <div class="fn-gradient-comparison" aria-label="Gradient of 1 passing through each activation">${functions.map(spec=>{const a=activation(s.enabled?spec.kind:'linear',s.z);return `<div><strong>${spec.name}</strong><span>Gradient 1 → <b>${slopeNumber(a.backwardMultiplier)}</b></span><small>${regime(spec.kind,s.z,s.enabled)}</small></div>`;}).join('')}</div>
+      <p class="fn-instruction">Click a curve to move the input. The orange tangent shows its local slope.</p>
+      <div class="fn-functions">${functions.map(spec => plotMarkup(spec, s)).join('')}</div>
+      <details class="fn-options" data-fn-detail="activation-options"><summary>Try negative inputs or remove the activation</summary><div class="fn-toolbar">
         <div class="fn-choice-group" role="group" aria-label="Apply or bypass the activation">${button('enabled', 'true', 'Apply activations', s.enabled)}${button('enabled', 'false', 'Bypass: f(z) = z', !s.enabled)}</div>
         <div class="fn-input-control"><span>Shared input <strong>z = ${signed(s.z)}</strong></span><div class="fn-stepper">${button('z-step', '-0.25', '<span aria-hidden="true">&minus;</span><span class="fn-sr-only">Decrease input by 0.25</span>')}${button('z-step', '0.25', '<span aria-hidden="true">+</span><span class="fn-sr-only">Increase input by 0.25</span>')}</div></div>
       </div>
       <div class="fn-choice-group fn-presets" role="group" aria-label="Explore an input regime">${[[-4, 'Negative: -4'], [0, 'At zero: 0'], [1, 'Positive: +1'], [4, 'Far positive: +4']].map(([z, label]) => button('z', z, label, s.z === z)).join('')}</div>
-      <p class="fn-instruction">Click a plot to move z. Focus it and use arrow keys. <span class="fn-line-key"></span> Orange tangent = local slope.</p>
-      <div class="fn-functions">${functions.map(spec => plotMarkup(spec, s)).join('')}</div>
+      </details>
       <p class="fn-plot-readout" data-fn-hover>Every plot shares the x scale; y scales differ. Compare the numerical derivatives, not the drawn angles.</p>
       <p class="fn-takeaway" data-fn-status role="status">${!s.enabled ? '<strong>No bend, no new shape.</strong> Stacking only weighted sums and biases still gives one affine map. Nonlinear activations break that limitation.' : s.z === 0 ? '<strong>A bend changes what the network can learn.</strong> At zero, sigmoid and tanh pass some gradient; ReLU has a sharp corner, so its derivative is undefined there.' : Math.abs(s.z) >= 4 ? `<strong>Output can stay large while learning slows.</strong> Sigmoid and tanh are nearly flat here: little gradient gets through. ReLU ${s.z < 0 ? 'blocks this negative input and its gradient' : 'passes a positive input with slope 1'}.` : '<strong>Two jobs, one function:</strong> nonlinear shape adds expressive power; local slope scales the gradient during learning.'}</p>
     </div>`;
@@ -159,15 +162,13 @@
       observation = '<strong>Read the change under each outcome.</strong> Sigmoids answer separate yes/no questions. Softmax redistributes one shared 100% across the choices.';
     }
     return `<div class="lesson fn-lesson fn-outputs">
-      <header class="fn-heading"><p class="fn-kicker">Choose the output for the task</p><h3>Can two answers both be right?</h3><p>Same example scores, two different tasks.</p></header>
-      <div class="fn-choice-group fn-presets" role="group" aria-label="Output function scenarios">${Object.entries(scenarios).map(([key, scenario]) => button('scenario', key, scenario.name, scenario.logits.every((z, i) => z === s.logits[i]))).join('')}</div>
-      <div class="fn-score-editor">
-        <div class="fn-score-rail" role="group" aria-label="Choose a raw score to edit">${names.map((name, i) => button('select', i, `${name} <strong>${signed(s.logits[i])}</strong>`, selected === i)).join('')}</div>
-        <div class="fn-input-control"><span>Raw ${names[selected]} score</span><span class="fn-stepper">${button('score-step', '-0.5', '<span aria-hidden="true">&minus;</span><span class="fn-sr-only">Decrease selected score by 0.5</span>')}<input class="fn-number" type="number" inputmode="decimal" min="-6" max="6" step="0.5" value="${s.logits[selected]}" data-fn-number aria-label="${names[selected]} raw score">${button('score-step', '0.5', '<span aria-hidden="true">+</span><span class="fn-sr-only">Increase selected score by 0.5</span>')}</span></div>
-      </div>
+      <header class="fn-heading"><h3>More evidence for dog. Why does cat lose?</h3><p>For image tags, both can be right. For the next token, they must share one probability budget.</p></header>
+      <div class="fn-first-action">${button('dog-evidence','',s.logits[1]>=4?'Remove the extra dog evidence':'Add evidence for dog')}<span>Only the dog score changes.</span></div>
       <div class="fn-task-comparison">${outputPanel(s, 'independent', current.independent, before.independent)}${outputPanel(s, 'exclusive', current.exclusive, before.exclusive)}</div>
       ${mobileComparison(s, current, before)}
       <p class="fn-takeaway" data-fn-status role="status">${observation}</p>
+      <p class="fn-linked-equation"><strong>Cat's numerator uses only cat's score.</strong><br><code>P(cat) = exp(${number(s.logits[0],1)}) / (<mark>${s.logits.map(z=>`exp(${number(z,1)})`).join(' + ')}</mark>) = ${percent(current.exclusive[0])}</code><br>The shared denominator changes when dog gets stronger. Cat's independent sigmoid has no dog term.</p>
+      <details class="fn-options" data-fn-detail="output-options"><summary>Edit any score or try a tie</summary><div class="fn-choice-group fn-presets" role="group" aria-label="Output function scenarios">${Object.entries(scenarios).map(([key, scenario]) => button('scenario', key, scenario.name, scenario.logits.every((z, i) => z === s.logits[i]))).join('')}</div><div class="fn-score-editor"><div class="fn-score-rail" role="group" aria-label="Choose a raw score to edit">${names.map((name, i) => button('select', i, `${name} <strong>${signed(s.logits[i])}</strong>`, selected === i)).join('')}</div><div class="fn-input-control"><span>Raw ${names[selected]} score</span><span class="fn-stepper">${button('score-step', '-0.5', '<span aria-hidden="true">&minus;</span><span class="fn-sr-only">Decrease selected score by 0.5</span>')}<input class="fn-number" type="number" inputmode="decimal" min="-6" max="6" step="0.5" value="${s.logits[selected]}" data-fn-number aria-label="${names[selected]} raw score">${button('score-step', '0.5', '<span aria-hidden="true">+</span><span class="fn-sr-only">Increase selected score by 0.5</span>')}</span></div></div></details>
       <details class="fn-calculation"><summary>Follow the numbers + binary equivalence</summary><div><p>For <strong>${names[selected]}</strong>, sigmoid uses only its own score: <code>1 / (1 + exp(-(${number(s.logits[selected], 1)}))) = ${number(current.independent[selected])}</code>.</p><p>Softmax divides its exponentiated score by the total: <code>exp(${number(s.logits[selected], 1)}) / (${s.logits.map(z => `exp(${number(z, 1)})`).join(' + ')}) = ${number(current.exclusive[selected])}</code>.</p><p>The ${names[other]} score is ${signed(s.logits[other])}. Changing it affects the softmax denominator, but never enters ${names[selected]}'s sigmoid.</p><p><strong>Binary equivalence:</strong> sigmoid(z) is exactly the second probability of softmax([0, z]). At z = ${number(s.logits[selected], 1)}, both give <strong>${percent(current.independent[selected])}</strong>. The distinction above is <em>separate sigmoid decisions</em> versus <em>normalized multiclass competition</em>.</p><p>This is an illustrative 3-label example, not measured model output.</p></div></details>
     </div>`;
   }
@@ -186,6 +187,10 @@
       s.before = { z: s.z, enabled: s.enabled };
       s.z = z;
       s.enabled = enabled;
+    } else if (action === 'dog-evidence') {
+      s.before = [...s.logits];
+      s.logits[1] = s.logits[1]>=4 ? 2 : 4;
+      s.selected = 1;
     } else if (action === 'select') {
       if (![0, 1, 2].includes(Number(value))) return;
       s.selected = Number(value);
@@ -201,6 +206,7 @@
       s.logits[s.selected] = next;
     } else return;
     paint(instance);
+    if(action==='select') for(const root of instance.roots) root.querySelector('.fn-options').open=true;
   }
 
   function rememberFocus(root) {
@@ -223,9 +229,9 @@
       }
       binding.wasConnected ||= root.isConnected;
       const match = rememberFocus(root);
-      const open = root.querySelector('.fn-calculation')?.open;
+      const opened = [...root.querySelectorAll('details')].map((el,i)=>el.open?i:-1);
       root.innerHTML = markup;
-      if (open) root.querySelector('.fn-calculation').open = true;
+      [...root.querySelectorAll('details')].forEach((el,i)=>{el.open=opened.includes(i);});
       if (match) [...root.querySelectorAll('[data-fn-action], [data-fn-plot], [data-fn-number], .fn-calculation summary')].find(match)?.focus({ preventScroll: true });
     }
   }

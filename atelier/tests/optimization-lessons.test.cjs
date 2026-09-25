@@ -234,6 +234,7 @@ test('browser: responsive markup, direct inspection, shared state, focus, and la
     assert.match(await page.locator('#inline .opt-step-count').innerText(), /Step 1 of 24/);
     assert.match(await page.locator('#focus .opt-step-count').innerText(), /Step 1 of 24/);
     assert.equal(await page.evaluate(() => document.activeElement.dataset.optAction), 'next');
+    await page.locator('#inline [data-opt-detail="options"] > summary').click();
     await page.locator('#inline [data-opt-action="finish"]').click();
     await page.locator('#inline .opt-point-selected').focus();
     await page.keyboard.press('Home');
@@ -257,6 +258,7 @@ test('browser: responsive markup, direct inspection, shared state, focus, and la
     fs.mkdirSync(screenshotDir, { recursive: true });
     for (const kind of ['gradient-descent', 'optimizers', 'lr-schedule']) {
       await mount(kind);
+      if(!await page.locator('#inline [data-opt-detail="options"]').evaluate(el=>el.open)) await page.locator('#inline [data-opt-detail="options"] > summary').click();
       if (kind === 'gradient-descent') await page.locator('#inline [data-opt-action="preset"][data-opt-value="useful"]').click();
       for (const width of [1280, 720, 390, 320]) {
         await page.setViewportSize({ width, height: 960 });
@@ -272,8 +274,13 @@ test('browser: responsive markup, direct inspection, shared state, focus, and la
         if ([1280, 390].includes(width)) await page.locator('#inline').screenshot({ path: path.join(screenshotDir, `${kind}-${width}.png`) });
       }
       if (kind === 'optimizers') {
+        await page.locator('#inline [data-opt-action="compare-rule"]').click();
+        assert.match(await page.locator('#inline .opt-step-count').innerText(), /Step 1 of 24/);
+        assert.match(await page.locator('#inline .opt-linked-step').innerText(), /normalized direction/);
         for (const method of ['momentum', 'adam', 'sgd']) await page.locator(`#inline [data-opt-action="active"][data-opt-value="${method}"]`).click();
         await page.locator('#inline [data-opt-action="active"][data-opt-value="adam"]').click();
+        await page.locator('#inline [data-opt-detail="update"] > summary').click();
+        await page.locator('#focus [data-opt-detail="update"] > summary').click();
         assert.match(await page.locator('#inline .opt-inspector').innerText(), /Corrected mean/);
         assert.match(await page.locator('#focus .opt-inspector').innerText(), /Corrected mean/);
       }

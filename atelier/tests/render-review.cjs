@@ -6,7 +6,7 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = process.env.ATELIER_BASE_URL || 'http://127.0.0.1:4174/atelier/';
 const out = process.env.ATELIER_SCREENSHOTS || '/tmp/atelier-render-review';
 const root = path.resolve(__dirname, '..');
-const pages = [...fs.readFileSync(path.join(root,'index.html'),'utf8').matchAll(/class="route-link" href="\.\/([^"]+)"/g)].map(x=>x[1]);
+const pages = process.env.ATELIER_PAGES ? process.env.ATELIER_PAGES.split(',') : [...fs.readFileSync(path.join(root,'index.html'),'utf8').matchAll(/class="route-link" href="\.\/([^"]+)"/g)].map(x=>x[1]);
 const widths = (process.env.ATELIER_WIDTHS || '1440,720,390').split(',').map(Number);
 
 (async()=>{
@@ -15,6 +15,7 @@ const widths = (process.env.ATELIER_WIDTHS || '1440,720,390').split(',').map(Num
   const report = {checks:[],errors:[]};
   try {
     const page = await browser.newPage({reducedMotion:'reduce'});
+    if(process.env.ATELIER_THEME) await page.addInitScript(theme=>localStorage.setItem('atelier-reading-theme',theme),process.env.ATELIER_THEME);
     page.setDefaultTimeout(10000);
     page.on('pageerror',error=>report.errors.push({url:page.url(),message:error.message}));
     for(const width of widths) {
@@ -50,8 +51,14 @@ const widths = (process.env.ATELIER_WIDTHS || '1440,720,390').split(',').map(Num
             const dir=path.join(out,String(width),file.replace('.html',''));
             fs.mkdirSync(dir,{recursive:true});
             await page.screenshot({path:path.join(dir,`${id}.png`)});
+            const maxScroll=await dialog.evaluate(el=>el.scrollHeight-el.clientHeight);
+            if(maxScroll>100) {
+              await dialog.evaluate(el=>{el.scrollTop=el.scrollHeight;});
+              await page.screenshot({path:path.join(dir,`${id}-bottom.png`)});
+              await dialog.evaluate(el=>{el.scrollTop=0;});
+            }
           }
-          const primary=lesson.locator('button.fl-primary:not(:disabled):visible,button.tl-primary:not(:disabled):visible,button.rk-primary:not(:disabled):visible,button.dl-primary:not(:disabled):visible,button.opt-primary:not(:disabled):visible,button[data-action="next"]:not(:disabled):visible').first();
+          const primary=lesson.locator('button.fl-primary:not(:disabled):visible,button.tl-primary:not(:disabled):visible,button.rk-primary:not(:disabled):visible,button.dl-primary:not(:disabled):visible,button.opt-primary:not(:disabled):visible,.fn-first-action button:visible,button.nn-contribution.is-active:visible,button[data-action="next"]:not(:disabled):visible').first();
           const internalDetails=lesson.locator('details');
           for(let i=0;i<await internalDetails.count();i++) {
             const detail=internalDetails.nth(i);
@@ -62,12 +69,18 @@ const widths = (process.env.ATELIER_WIDTHS || '1440,720,390').split(',').map(Num
             await detail.locator(':scope > summary').click();
             assert.equal(await detail.evaluate(el=>el.open),wasOpen,`${id}: disclosure did not close`);
           }
-          const action=await primary.count()?primary:lesson.locator('button[aria-pressed="false"]:not(:disabled):visible').first();
+          const action=await primary.count()?primary:lesson.locator('button[aria-pressed="false"]:not(:disabled):visible,button[data-action="weight"]:visible,button[data-action="step"]:visible').first();
           if(await action.count()) {
             const before=await lesson.innerText();
             await action.click();
             entry.changed=(await lesson.innerText())!==before;
             entry.interaction='click';
+            if(!entry.changed) report.errors.push({file,id,width,reason:'Primary action did not change visible content'});
+            if(width!==720) {
+              const dir=path.join(out,String(width),file.replace('.html',''));
+              await dialog.evaluate(el=>{el.scrollTop=0;});
+              await page.screenshot({path:path.join(dir,`${id}-after.png`)});
+            }
           }
           await page.keyboard.press('Escape');
           assert.equal(await page.locator('.viz-lightbox:not([hidden])').count(),0,`${id}: Escape failed`);

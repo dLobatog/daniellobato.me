@@ -334,3 +334,168 @@ test('browser registration uses the shared core and state persists across roots/
   modal.events.keydown({ key: 'Enter', target: { closest: () => point }, preventDefault() {}, stopPropagation() {} });
   assert.ok(remount.innerHTML.includes('97.8%'));
 });
+
+test('raising one route score changes the fixed draw, while a shared shift cannot', () => {
+  const before = lab.initial('distribution');
+  const after = lab.reduce('distribution', before, 'boost', '');
+  assert.equal(before.probe, after.probe);
+  const p = lab.softmax(lab.distributionLogits(before));
+  const boosted = lab.softmax(lab.distributionLogits(after));
+  assert.equal(lab.categorical(p, before.probe), 1);
+  assert.equal(lab.categorical(boosted, after.probe), 0);
+  assert.ok(boosted[0] > p[0] && boosted[1] < p[1] && boosted[2] < p[2]);
+  vectorClose(p, lab.softmax(lab.distributionLogits(before).map(x => x + 5)));
+  const undo = lab.reduce('distribution', after, 'boost', '');
+  vectorClose(lab.distributionLogits(undo), lab.distributionLogits(before));
+  const inspected = lab.reduce('distribution', after, 'select', '1');
+  assert.ok(!lab.render('distribution', inspected).includes('Same draw selects'));
+});
+
+test('cohort shift changes only ten population units and preserves conditional losses', () => {
+  const state = lab.reduce('expectation', lab.initial('expectation'), 'population', 'shifted');
+  const html = lab.render('expectation', state);
+  assert.equal([...html.matchAll(/class="fl-person[^\"]*fl-reassigned/g)].length, 10);
+  assert.ok(html.includes('data-before="0.24" data-after="0.59"'));
+  for (const p of [[.8, .2], [.3, .7], [0, 1], [1, 0]]) {
+    assert.ok(lab.expectedRisk(p, [.1, .2]).mean < lab.expectedRisk(p, [.25, .35]).mean);
+  }
+});
+
+test('Bayes first action filters actual counts and the second changes the denominator', () => {
+  const initial = lab.initial('bayes');
+  const filtered = lab.reduce('bayes', initial, 'next', '');
+  const final = lab.reduce('bayes', filtered, 'next', '');
+  const b = lab.bayesCounts(initial.prior);
+  assert.equal(b.numerator, 90); assert.equal(b.other, 198);
+  assert.equal(b.evidence, 288);
+  const middle = lab.render('bayes', filtered);
+  assert.ok(middle.includes('90 survive') && middle.includes('198 survive'));
+  assert.ok(middle.includes('10 removed') && middle.includes('9702 removed'));
+  assert.ok(lab.render('bayes', final).includes('31.25%'));
+  assert.ok(lab.render('bayes', final).includes('width:31.25%'));
+});
+
+test('entropy first action inspects a different frequency-weighted region without changing p or q', () => {
+  const initial = lab.initial('entropy');
+  const next = lab.reduce('entropy', initial, 'select', '0');
+  assert.equal(initial.model, 'matched'); assert.equal(next.model, 'matched');
+  const before = lab.render('entropy', initial), after = lab.render('entropy', next);
+  assert.ok(before.includes('Compare common cup'));
+  assert.ok(after.includes('Selected contribution'));
+  assert.ok(after.includes('total entropy did not change'));
+  const p = [.6, .3, .1], info = lab.information(p, p);
+  close(info.terms[2].surprise - info.terms[0].surprise, Math.log2(6));
+  assert.ok(info.terms[0].entropy > info.terms[2].entropy);
+  const halfGlass = lab.information(p, [.65, .3, .05]);
+  close(halfGlass.terms[2].surprise - info.terms[2].surprise, 1);
+  close(halfGlass.terms[2].crossEntropy - info.terms[2].crossEntropy, .1);
+  assert.notEqual(halfGlass.crossEntropy - info.crossEntropy, .1);
+});
+
+test('loss steps apply the same learning rate to actual logit gradients', () => {
+  const update = lab.lossStep(1, .01);
+  close(update.zLog - update.z, 1.98);
+  close(update.zSquare - update.z, .039204);
+  close(update.qLog, 1 / (1 + Math.exp(-update.zLog)));
+  close(update.qSquare, 1 / (1 + Math.exp(-update.zSquare)));
+  assert.ok(update.qLog > update.qSquare && update.qSquare > .01);
+  for (const target of [0, 1, .1]) for (const q of [.01, .1, .5, .99]) {
+    const u = lab.lossStep(target, q);
+    assert.ok(lab.binaryRisk(target, u.qLog).log <= u.log + 1e-12);
+    assert.ok(lab.binaryRisk(target, u.qSquare).square <= u.square + 1e-12);
+  }
+  const optimum = lab.lossStep(.1, .1);
+  close(optimum.qLog, .1); close(optimum.qSquare, .1);
+  assert.throws(() => lab.lossStep(1, 0), RangeError);
+  assert.throws(() => lab.lossStep(1, .1, -1), RangeError);
+  const after = lab.reduce('loss', lab.initial('loss'), 'learn', '');
+  assert.equal(after.trained, true);
+  assert.ok(lab.render('loss', after).includes('Hollow circles are the common start'));
+  assert.equal(lab.reduce('loss', after, 'q', '.3').trained, false);
+});
+
+test('normalization and query scaling counterfactuals preserve the claimed quantities', () => {
+  const v = [2, -.1], q = [1, .5];
+  vectorClose(lab.unit(v), lab.unit(v.map(x => 3 * x)));
+  vectorClose(lab.unit(v).map(x => -x), lab.unit(v.map(x => -3 * x)));
+  for (const item of [[.9, .6], v, [-.5, 1]]) {
+    close(lab.dot(q.map(x => 10 * x), item), 10 * lab.dot(q, item));
+    close(lab.cosine(q.map(x => 10 * x), item), lab.cosine(q, item));
+  }
+  const before = lab.render('dot-products', lab.initial('dot-products'));
+  const after = lab.render('dot-products', lab.reduce('dot-products', lab.initial('dot-products'), 'normalize', 'true'));
+  assert.equal([...before.matchAll(/fl-rank-dot fl-rank-current/g)].length, 3);
+  assert.equal([...after.matchAll(/fl-rank-dot fl-rank-current/g)].length, 3);
+  assert.ok(after.includes('data-before="B" data-after="A"'));
+});
+
+test('matrix first action adds the second column at the first column tip', () => {
+  const state = lab.reduce('matrix-multiply', lab.initial('matrix-multiply'), 'next', '');
+  const html = lab.render('matrix-multiply', state);
+  assert.equal(state.step, 2);
+  assert.ok(html.includes('data-before="[1, 0]" data-after="[3, 2]"'));
+  assert.ok(html.includes('data-term="2 x [1, 1]"'));
+  vectorClose(lab.matvec([[1, 1], [1, 1]], [1, 2]), lab.matvec([[1, 1], [1, 1]], [2, 1]));
+});
+
+test('eigen residual is the perpendicular off-line component and shrinks on the default step', () => {
+  const A = [[2, 1], [1, 2]];
+  const residual = v => {
+    const Av = lab.matvec(A, v), rho = lab.dot(v, Av);
+    const r = Av.map((x, i) => x - rho * v[i]);
+    close(lab.dot(v, r), 0);
+    return lab.norm(r);
+  };
+  close(residual([1, 0]), 1);
+  close(residual(lab.powerStep(A, [1, 0], 1)), .6);
+  const state = lab.reduce('eigen', lab.initial('eigen'), 'next', '');
+  assert.ok(lab.render('eigen', state).includes('data-before="1" data-after="0.6"'));
+});
+
+test('SVD restored vector component and matrix error are different exact quantities', () => {
+  const A = [[3, 1], [0, 1]], x = [1, 1], d = lab.svd2(A);
+  const rank1 = lab.reconstructSvd(d, 1), kept = lab.matvec(rank1, x), full = lab.matvec(A, x);
+  const missing = full.map((v, i) => v - kept[i]);
+  const component = d.U.map(row => row[1] * d.singular[1] * lab.dot(d.Vt[1], x));
+  vectorClose(missing, component);
+  close(lab.dot(kept, missing), 0);
+  close(lab.norm(missing), d.singular[1] * Math.abs(lab.dot(d.Vt[1], x)));
+  assert.ok(Math.abs(lab.norm(missing) - d.singular[1]) > .1);
+  const state = lab.reduce('svd', lab.initial('svd'), 'rank', '2');
+  assert.ok(lab.render('svd', state).includes('data-before="0.944" data-after="0"'));
+  for (const sigma of [1, 2]) {
+    const matrix = [[5, 0], [0, sigma]], svd = lab.svd2(matrix);
+    close(lab.frobenius(lab.matrixSubtract(matrix, lab.reconstructSvd(svd, 1))) ** 2, sigma ** 2);
+  }
+});
+
+test('every first action changes drawn geometry, not only prose; history stays one action deep', () => {
+  function geometry(html) {
+    return [...html.matchAll(/<(?:svg|path|circle|rect|polygon|line|g|div|span|button)\b[^>]*>/g)]
+      .map(m => m[0]).filter(tag => /(?:\sx=|\sy=|\sd=|\scx=|\scy=|points=|\sx1=|fl-person|fl-mass|fl-cohort|fl-filter|fl-surprise-region)/.test(tag)).join('');
+  }
+  for (const kind of Object.keys(lab.content)) {
+    const initial = lab.initial(kind), before = lab.render(kind, initial);
+    const button = before.match(/<button class="fl-primary"([^>]*)>/)[1];
+    const action = button.match(/data-action="([^"]+)"/)[1];
+    const value = button.match(/data-value="([^"]*)"/)?.[1] || '';
+    const next = lab.reduce(kind, initial, action, value);
+    assert.notEqual(geometry(before), geometry(lab.render(kind, next)), kind);
+    const twice = lab.reduce(kind, next, action, value);
+    assert.ok(!twice.previous.previous, `${kind}: previous state must not recursively grow`);
+    assert.ok(before.includes('class="fl-equation"'), `${kind}: selected equation must be visible`);
+    assert.ok(!/<summary[^>]*data-action/.test(before));
+  }
+});
+
+test('semantic highlights and rank nodes are styled without fading required text', () => {
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '../foundations-labs.css'), 'utf8');
+  assert.match(css, /\.fl-equation-label\s*\{[^}]*display:\s*block/);
+  assert.match(css, /\.fl-equation-label::after\s*\{[^}]*content:\s*":"/);
+  assert.match(css, /\.fl-term\s*\{[^}]*background:\s*transparent/);
+  assert.match(css, /\.fl-rank-dot\s*\{[^}]*fill:\s*var\(--lesson-surface\)/);
+  assert.match(css, /\.fl-rank-current\s*\{[^}]*fill:\s*currentColor/);
+  assert.match(css, /\.fl-rank-current\s*\+\s*text\s*\{[^}]*fill:\s*var\(--lesson-surface\)/);
+  assert.doesNotMatch(css, /\.fl-dim\s*\{[^}]*opacity/);
+  assert.match(css, /\.fl-dot-grid \.fl-rank-panel\s*\{[^}]*order:\s*-1/);
+});

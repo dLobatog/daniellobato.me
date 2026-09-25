@@ -5100,9 +5100,7 @@ function renderConceptPager(previousSection, nextSection) {
 function renderSectionMarkup(section, previousSection, nextSection) {
   return `
     <div class="concept-header concept-copy">
-      <p class="concept-label">${section.label}</p>
       <h2>${section.title}</h2>
-      <p class="concept-summary">${section.summary}</p>
     </div>
     <div class="concept-layout">
       <div class="concept-column">
@@ -5235,6 +5233,13 @@ function renderGeometryTool(geometry) {
   `;
 }
 
+function orderedQuizOptions(section) {
+  const options = section.quiz.options;
+  // Stable per concept: no answer-position shortcut, and no reshuffle on reread.
+  const offset = [...section.id].reduce((hash, char) => (Math.imul(hash, 31) + char.charCodeAt(0)) >>> 0, 0) % options.length;
+  return [...options.slice(offset), ...options.slice(0, offset)];
+}
+
 function renderQuizTool(section) {
   return `
     <details class="fold study-tool">
@@ -5244,7 +5249,7 @@ function renderQuizTool(section) {
           <p class="tool-kicker">One check</p>
           <p class="quiz-prompt">${section.quiz.prompt}</p>
           <div class="quiz-options">
-            ${section.quiz.options
+            ${orderedQuizOptions(section)
               .map(
                 (option, index) => `
                   <button
@@ -5259,7 +5264,7 @@ function renderQuizTool(section) {
               )
               .join('')}
           </div>
-          <p class="quiz-feedback" data-feedback>Choose an answer to check your understanding.</p>
+          <p class="quiz-feedback" data-feedback role="status">Choose an answer to check your understanding.</p>
         </div>
       </div>
     </details>
@@ -5285,7 +5290,7 @@ function mountVisualization(card, section) {
   overlay.innerHTML = `
     <div class="viz-lightbox__dialog" role="dialog" aria-modal="true" aria-label="${escapeAttribute(section.title)} visualization">
       <div class="viz-toolbar viz-lightbox__toolbar">
-        <span class="viz-toolbar-label">Interactive visualization</span>
+        <span class="viz-toolbar-label">${escapeHtml(section.nav || section.title)}</span>
         <button type="button" class="viz-expand-button viz-lightbox__close">Close view</button>
       </div>
       <div class="viz-lightbox__body">

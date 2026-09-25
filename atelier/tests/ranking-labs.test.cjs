@@ -325,8 +325,8 @@ function withoutClosedDetails(html) {
 test('every first view has one question, one enabled primary action and no calculation table', () => {
   const mechanisms = {
     'matrix-factorization': 'rk-factor-source', 'two-tower': 'rk-tower-flow',
-    'rank-objectives': 'rk-objective-list', 'retrieval-funnel': 'rk-pipeline',
-    'cold-start': 'rk-evidence-flow', 'threshold-metrics': 'rk-impressions',
+    'rank-objectives': 'rk-objective-list', 'retrieval-funnel': 'rk-focused-route',
+    'cold-start': 'rk-evidence-flow', 'threshold-metrics': 'rk-confusion',
     calibration: 'rk-bin-list', 'ranking-metrics': 'rk-ranked-list',
   };
   for (const kind of Object.keys(lab.content)) {
@@ -348,6 +348,37 @@ test('every first view has one question, one enabled primary action and no calcu
   }
 });
 
+test('causal mechanisms precede their linked equations, including affected boundary records', () => {
+  const mechanisms = { 'rank-objectives': 'rk-objective-list', 'retrieval-funnel': 'rk-focused-route',
+    'threshold-metrics': 'rk-confusion', calibration: 'rk-bin-list', 'ranking-metrics': 'rk-ranked-list' };
+  for (const [kind, marker] of Object.entries(mechanisms)) {
+    const visible = withoutClosedDetails(lab.render(kind, lab.initial(kind)));
+    assert.ok(visible.indexOf(marker) < visible.indexOf('data-causal="true"'), kind);
+  }
+  const state = lab.initial('threshold-metrics');
+  for (const s of [state, lab.reduce('threshold-metrics', state, 'looser')]) {
+    const visible = withoutClosedDetails(lab.render('threshold-metrics', s));
+    assert.ok(visible.includes('#7 / p=0.52'));
+    assert.ok(visible.indexOf('#7 / p=0.52') < visible.indexOf('rk-confusion'));
+  }
+  const funnel = lab.initial('retrieval-funnel');
+  assert.ok(withoutClosedDetails(lab.render('retrieval-funnel', funnel)).includes('D omitted'));
+  const recovered = lab.reduce('retrieval-funnel', funnel, 'source');
+  assert.ok(withoutClosedDetails(lab.render('retrieval-funnel', recovered)).includes('D at #1'));
+});
+
+test('default tower action makes a large computed rank change without editing the item cache', () => {
+  const start = lab.initial('two-tower');
+  const action = lab.render('two-tower', start).match(/<button class="rk-primary"[^>]*data-value="([^"]*)"/);
+  const next = lab.reduce('two-tower', start, 'query', action[1]);
+  const trace = lab.towerTransition(next);
+  assert.equal(start.item, 'A');
+  assert.equal(trace.beforeRank, 1);
+  assert.equal(trace.afterRank, 6);
+  close(trace.beforeScore, 1.02);
+  close(trace.afterScore, .15);
+});
+
 test('ranking cards show the actual preferred-item jump and unchanged ranks on later steps', () => {
   const start = lab.initial('rank-objectives');
   const next = lab.reduce('rank-objectives', start, 'train');
@@ -367,7 +398,7 @@ test('ranking cards show the actual preferred-item jump and unchanged ranks on l
   assert.equal(same.rankDelta, 0);
   assert.ok(same.scoreDelta > 0);
   assert.ok(lab.render('rank-objectives', again).includes('Before #1 &rarr; Now #1'));
-  assert.ok(lab.render('rank-objectives', again).includes('= same rank'));
+  assert.ok(lab.render('rank-objectives', again).includes('Before #1 &rarr; Now #1'));
 });
 
 test('visible tower flow keeps encoders independent and projections secondary', () => {
@@ -403,4 +434,174 @@ test('table typography stays readable and overflows locally instead of shrinking
   assert.ok(css.includes('overflow-x: auto'));
   assert.ok(css.includes('font-size: max(15px, .94rem)'));
   assert.ok(!/font(?:-size)?:\s*\.(?:75|76|78|8[0145])rem/.test(css));
+});
+
+test('context records stay readable rather than being styled as disabled', () => {
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '../ranking-labs.css'), 'utf8');
+  const contextRules = [...css.matchAll(/[^{}]*\.rk-context[^{}]*\{([^}]*)\}/g)].map(match => match[1]);
+  assert.ok(contextRules.some(rule => rule.includes('var(--lesson-muted)')));
+  assert.ok(contextRules.every(rule => !/opacity\s*:/.test(rule)));
+});
+
+test('factor causal trace isolates delta-p dot fixed unseen vector and the frozen-user counterfactual', () => {
+  let state = lab.initial('matrix-factorization');
+  for (let step = 0; step < 3; step++) {
+    const original = structuredClone(state);
+    const next = lab.reduce('matrix-factorization', state, 'train');
+    const trace = lab.factorAttribution(next);
+    assert.equal(trace.applied, true);
+    assert.equal(lab.observations[next.user][trace.unseen], null);
+    assert.deepEqual(trace.q, state.factors.items[trace.unseen]);
+    assert.deepEqual(next.factors.items[trace.unseen], state.factors.items[trace.unseen]);
+    close(trace.beforeScore, lab.dot(state.factors.users[0], trace.q));
+    close(trace.afterScore, lab.dot(next.factors.users[0], trace.q));
+    close(trace.contributions.reduce((a, b) => a + b), trace.afterScore - trace.beforeScore);
+    close(trace.frozenScore, trace.beforeScore);
+    assert.ok(trace.afterScore > trace.beforeScore);
+    assert.deepEqual(state, original);
+    state = next;
+  }
+  const visible = withoutClosedDetails(lab.render('matrix-factorization', state));
+  assert.ok(visible.includes('If p had been frozen'));
+  assert.ok(visible.includes('qD'));
+  assert.ok(!visible.includes('class="rk-candidate-grid"'));
+  const selected = lab.reduce('matrix-factorization', state, 'cell', '1:1');
+  assert.equal(lab.factorAttribution(selected).applied, false);
+});
+
+test('tower score change is attributable to changed query coordinates, not a fabricated cache update', () => {
+  const state = { ...lab.initial('two-tower'), item: 'D' };
+  const changed = lab.reduce('two-tower', state, 'query', '1');
+  const trace = lab.towerTransition(changed);
+  assert.deepEqual(trace.beforeV, trace.afterV);
+  close(trace.afterScore - trace.beforeScore, lab.dot(trace.afterQ.map((x, i) => x - trace.beforeQ[i]), trace.afterV));
+  close(trace.beforeScore, .508);
+  close(trace.afterScore, .507);
+  assert.equal(trace.beforeRank, lab.retrieve(lab.matvec(lab.QUERY_W, [1, 0, 0]), 6).findIndex(row => row.id === 'D') + 1);
+  const cosine = lab.reduce('two-tower', changed, 'similarity', 'cosine');
+  const normalized = lab.towerTransition(cosine);
+  close(normalized.afterScore, lab.dot(lab.normalize(lab.matvec(lab.QUERY_W, [0, 1, 0])), lab.normalize(lab.catalog[3].vector)));
+});
+
+test('objective explanation uses the gradient actually applied, not the recomputed next-step gradient', () => {
+  for (const mode of ['pair', 'lambda', 'point', 'list']) {
+    const start = { ...lab.initial('rank-objectives'), mode };
+    const next = lab.reduce('rank-objectives', start, 'train');
+    const trace = lab.objectiveTransition(next);
+    assert.equal(trace.applied, true);
+    assert.equal(trace.mode, mode);
+    for (let i = 0; i < 4; i++) close(trace.after[i], trace.before[i] - .7 * trace.result.gradients[i]);
+    close(trace.result.ndcg, lab.objective(start.scores, mode, start.pair, start.k).ndcg);
+    const inspected = lab.reduce('rank-objectives', next, 'pair', '1');
+    assert.equal(lab.objectiveTransition(inspected).applied, false);
+  }
+  const swapped = lab.reduce('rank-objectives', lab.initial('rank-objectives'), 'swap');
+  assert.equal(lab.objectiveTransition(swapped).type, 'swap');
+  assert.ok(withoutClosedDetails(lab.render('rank-objectives', swapped)).includes('Manual swap, not a learning step'));
+});
+
+test('a common score shift preserves pairwise loss and NDCG but not pointwise BCE', () => {
+  const scores = lab.initial('rank-objectives').scores, shifted = scores.map(x => x + 5);
+  close(lab.objective(scores, 'pair', 0, 3).loss, lab.objective(shifted, 'pair', 0, 3).loss);
+  close(lab.objective(scores, 'pair', 0, 3).ndcg, lab.objective(shifted, 'pair', 0, 3).ndcg);
+  assert.notEqual(lab.objective(scores, 'point', 0, 3).loss, lab.objective(shifted, 'point', 0, 3).loss);
+});
+
+test('retrieval trace identifies newly reachable D and displaced A without changing labels', () => {
+  const start = lab.initial('retrieval-funnel'), labels = lab.catalog.map(item => item.rel);
+  const next = lab.reduce('retrieval-funnel', start, 'source');
+  const trace = lab.funnelTransition(next);
+  assert.deepEqual(trace.changed, ['D']);
+  assert.deepEqual(trace.added, ['D']);
+  assert.deepEqual(trace.displaced, ['A']);
+  close(trace.before.recall, 2 / 3);
+  close(trace.after.recall, 1);
+  assert.deepEqual(lab.catalog.map(item => item.rel), labels);
+  const oracle = lab.reduce('retrieval-funnel', start, 'oracle');
+  const oracleTrace = lab.funnelTransition(oracle);
+  assert.deepEqual(oracleTrace.changed, []);
+  assert.ok(!oracleTrace.after.ranked.some(item => item.id === 'D'));
+  close(oracleTrace.before.ceiling, oracleTrace.after.ceiling);
+});
+
+test('cold-start trace distinguishes adding a success, adding a failure, and adding no observation', () => {
+  let state = lab.initial('cold-start');
+  state = lab.reduce('cold-start', state, 'next');
+  let trace = lab.coldTransition(state);
+  assert.equal(trace.clicksAdded, 1); assert.equal(trace.shownAdded, 1);
+  assert.ok(trace.after.mean > trace.before.mean);
+  state = lab.reduce('cold-start', state, 'next');
+  trace = lab.coldTransition(state);
+  assert.equal(trace.clicksAdded, 0); assert.equal(trace.shownAdded, 1);
+  assert.ok(trace.after.mean < trace.before.mean);
+  state = lab.reduce('cold-start', state, 'next');
+  trace = lab.coldTransition(state);
+  assert.equal(trace.clicksAdded, 0); assert.equal(trace.shownAdded, 0);
+  close(trace.after.mean, trace.before.mean);
+  const prior = trace.after.prior;
+  assert.ok(lab.posterior(prior, [0]).mean < lab.posterior(prior, [null]).mean);
+});
+
+test('cutoff trace explains the exact TN-to-FP crossing and unchanged recall', () => {
+  const start = lab.initial('threshold-metrics');
+  const next = lab.reduce('threshold-metrics', start, 'looser');
+  const trace = lab.thresholdTransition(next);
+  assert.deepEqual(trace.changed.map(({ id, from, to }) => ({ id, from, to })), [{ id: 7, from: 'tn', to: 'fp' }]);
+  close(trace.before.precision, 4 / 6);
+  close(trace.after.precision, 4 / 7);
+  close(trace.before.recall, trace.after.recall);
+  const nextAgain = lab.reduce('threshold-metrics', next, 'looser');
+  const click = lab.thresholdTransition(nextAgain);
+  assert.deepEqual(click.changed.map(({ id, from, to }) => ({ id, from, to })), [{ id: 8, from: 'fn', to: 'tp' }]);
+  assert.ok(click.after.recall > click.before.recall);
+  const expensive = lab.reduce('threshold-metrics', next, 'cost', '5');
+  assert.deepEqual(lab.thresholdTransition(expensive).after, trace.after);
+});
+
+test('temperature trace follows a fixed label across an actual bin boundary', () => {
+  const start = lab.initial('calibration');
+  const next = lab.reduce('calibration', start, 'temperature', '2');
+  const trace = lab.calibrationTransition(next);
+  assert.equal(trace.row.id, 5);
+  assert.equal(trace.row.y, 0);
+  close(trace.beforeP, .68);
+  close(trace.afterP, lab.sigmoid(Math.log(.68 / .32) / 2));
+  assert.equal(trace.beforeBin, 2);
+  assert.equal(trace.afterBin, 1);
+  assert.equal(next.bin, 1);
+  const before = lab.calibration(lab.impressions, 3, 1), after = lab.calibration(lab.impressions, 3, 2);
+  assert.deepEqual(before.transformed.map(row => row.y), after.transformed.map(row => row.y));
+  for (const t of [.5, 1, 2]) {
+    const transformed = lab.calibration(lab.impressions, 3, t).transformed;
+    assert.deepEqual(lab.confusion(transformed, .5).counts, lab.confusion(lab.impressions, .5).counts);
+  }
+});
+
+test('NDCG causal attribution includes the displaced neighbor rather than crediting only D', () => {
+  const start = lab.initial('ranking-metrics');
+  const next = lab.reduce('ranking-metrics', start, 'move', '2:-1');
+  const trace = lab.rankAttribution(next);
+  close(trace.changes.find(item => item.id === 'D').delta, 3.5);
+  close(trace.changes.find(item => item.id === 'A').delta, -1.5);
+  close(trace.delta, 2);
+  close(trace.before.idcg, trace.after.idcg);
+  close(trace.after.ndcg - trace.before.ndcg, 2 / trace.after.idcg);
+  const outside = { ...start, k: 1 };
+  const outsideSwap = lab.reduce('ranking-metrics', outside, 'move', '2:-1');
+  close(lab.rankAttribution(outsideSwap).delta, 0);
+  close(lab.rankAttribution(outsideSwap).before.ndcg, lab.rankAttribution(outsideSwap).after.ndcg);
+});
+
+test('all eight causal equations remain visible and highlighted before advanced disclosures', () => {
+  for (const kind of Object.keys(lab.content)) {
+    const start = lab.initial(kind), html = lab.render(kind, start), visible = withoutClosedDetails(html);
+    assert.ok(visible.includes('data-causal="true"'), kind);
+    assert.ok(visible.includes('<mark class="rk-term">'), kind);
+    assert.ok(/class="rk-linked-equation">[\s\S]*?\d/.test(visible), kind);
+    const primary = visible.match(/<button class="rk-primary"[^>]*>/)[0];
+    assert.ok(visible.indexOf(primary) < visible.indexOf('data-causal="true"'), `${kind}: action must come first`);
+    const next = lab.reduce(kind, start, primary.match(/data-action="([^"]*)"/)[1], primary.match(/data-value="([^"]*)"/)[1]);
+    assert.notEqual(withoutClosedDetails(lab.render(kind, next)), visible);
+    assert.ok(lab.content[kind].quiz.prompt.startsWith('If '), `${kind}: counterfactual quiz`);
+  }
 });

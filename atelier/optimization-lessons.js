@@ -268,6 +268,7 @@
     const preview = view.selected === 0 && inside(view.after.point, bounds) ? `<circle class="opt-preview-dot" cx="${endpoint[0]}" cy="${endpoint[1]}" r="6"/>` : '';
     return `<figure class="opt-figure">
       <figcaption class="opt-figure-caption"><strong>A top-down view of loss</strong><span>Each ellipse joins equal loss. The cross is the minimum.</span></figcaption>
+      ${view.ids.length>1?`<div class="opt-inline-legend">${view.ids.map((id,i)=>`<span><i class="opt-line-sample opt-tone-${i}" aria-hidden="true"></i>${NAMES[id]}${view.active===id?' · inspecting':''}</span>`).join('')}</div>`:''}
       <div class="opt-map" style="aspect-ratio:${width}/${height}" role="group" aria-label="Optimization paths. Tap a point to inspect a step, or use the Previous and Next update buttons.">
         <svg viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false">
           <path class="opt-axis" d="M32,${cy}H${width - 32}M${cx},${cy - bounds[3] * scale}V${cy + bounds[3] * scale}"/>
@@ -304,6 +305,7 @@
       <div class="opt-inspector-title"><span>${selected === 0 ? 'Preview' : `Update ${selected}`}</span><h4>${label}</h4></div>
       <div class="opt-loss-change"><span>Loss before <strong>${number(before.loss)}</strong></span><span aria-hidden="true">&rarr;</span><span>Loss after <strong>${number(after.loss)}</strong></span></div>
       <p class="opt-result">${selected === 0 ? `This proposed update ${comparison === 'rose' ? 'raises' : comparison === 'fell' ? 'lowers' : 'does not change'} the loss.` : `The loss ${comparison}.`} ${after.loss > before.loss + 1e-12 ? 'A correct gradient can still lead to a worse destination.' : after.lr === 0 ? 'The rate is zero, not the gradient. Training has stopped moving.' : ''}</p>
+      <div class="opt-linked-step"><strong>The vertical move, unpacked</strong><p>new w₂ = old w₂ − rate × ${isAdam?'normalized direction':isMomentum?'velocity':'slope'}</p><p class="opt-inline-math">${number(before.point[1])} − <mark>${number(after.lr)}</mark> × (${number(after.direction[1])}) = <strong>${number(after.point[1])}</strong></p><p>${after.point[1]*before.point[1]<0?'This move crosses the valley. Compare the loss, not just which side it lands on.':isAdam?'The slope is rescaled by gradient history before the rate is applied.':'The rate scales the move; it does not change the slope at these weights.'}</p></div>
       <details data-opt-detail="update"><summary>Inspect the calculation</summary><dl class="opt-calculation">${rows.map(([name, value], i) => `<div${i === rows.length - 2 ? ' class="opt-move-row"' : ''}><dt>${name}</dt><dd>${value}</dd></div>`).join('')}</dl><p class="opt-equation">${isAdam ? 'w next = w - rate x m-hat / (sqrt(v-hat) + epsilon)' : isMomentum ? 'velocity = 0.9 x velocity + gradient; w next = w - rate x velocity' : 'w next = w - rate x gradient'}</p></details>
     </aside>`;
   }
@@ -329,6 +331,7 @@
     }).join('');
     return `<div class="opt-schedule">
       <div class="opt-schedule-heading"><strong>The rate used on each update</strong><span>Update ${index + 1}: <b>${number(scheduleRate(view.active, index))}</b></span></div>
+      <div class="opt-inline-legend">${SCHEDULES.map((id,i)=>`<span><i class="opt-line-sample opt-tone-${i}" aria-hidden="true"></i>${NAMES[id]}</span>`).join('')}</div>
       <div class="opt-schedule-chart"><span class="opt-schedule-high">0.18</span><span class="opt-schedule-low">0</span>
         <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><path class="opt-axis" d="M16,108H624"/>${lines}<path class="opt-schedule-cursor" d="M${selectedX},10V112"/></svg>
         <div class="opt-schedule-hitpoints" role="group" aria-label="Inspect a scheduled update">${Array.from({ length: BUDGET }, (_, i) => `<button type="button" data-opt-action="scheduled" data-opt-value="${i + 1}" data-opt-key="scheduled:${i + 1}" tabindex="${i === index ? 0 : -1}" aria-label="Inspect update ${i + 1}: ${NAMES[view.active]} learning rate ${number(scheduleRate(view.active, i))}. Arrow keys move between updates." title="Update ${i + 1}: rate ${number(scheduleRate(view.active, i))}"></button>`).join('')}</div>
@@ -355,15 +358,15 @@
     const gd = kind === 'gradient-descent', schedules = kind === 'lr-schedule';
     const headings = { 'gradient-descent': 'A downhill direction can still overshoot.', optimizers: 'Change the update rule, not the problem.', 'lr-schedule': 'The same slope. A different-sized move.' };
     const presets = !schedules ? `<div class="opt-presets" role="group" aria-label="Learning-rate stories">${Object.entries(PRESETS).map(([key, preset]) => button('preset', key, `${gd ? preset.label : key === 'small' ? 'Small rate' : key === 'useful' ? 'Stable SGD rate' : 'Unstable SGD rate'} <span class="opt-rate">${number(preset.lr)}</span>`, { pressed: state.preset === key })).join('')}</div>` : '';
-    return `<header class="opt-heading"><h3>${headings[kind]}</h3><p>Train <span class="opt-inline-math">prediction = w₁x₁ + w₂x₂</span> on two examples. The plot shows their summed squared-error loss, not the input data.</p></header>
-      ${presets}${gd ? '' : comparisonMarkup(instance, view)}
+    return `<header class="opt-heading"><h3>${headings[kind]}</h3><p>${gd?'Each point is a pair of model weights. Inner rings mean less prediction error. Take a step and watch where it lands.':schedules?'At update 13, two runs have the same weights and slope. One cuts its learning rate by ten. Compare their next moves.':'Same weights, same gradient. Does the optimizer turn them into the same move?'}</p></header>
+      ${gd?'':`<div class="opt-first-action">${button(schedules?'compare-schedule':'compare-rule','',schedules?(state.active==='step'?'Remove the rate drop':'Cut the rate by ten'):(state.active==='adam'?'Use plain SGD instead':'Try Adam on the same gradient'),{className:'opt-primary'})}</div>`}
       <nav class="opt-navigation" aria-label="Step through the optimization">
         <div class="opt-step-buttons">${button('previous', '', 'Previous', { disabled: view.selected === 0 })}${button('next', '', 'Next update', { className: 'opt-primary', disabled: view.selected >= view.track.points.length - 1 })}</div>
         <span class="opt-step-count">Step <strong>${view.selected}</strong> of ${BUDGET}${view.selected === 0 ? ' (start)' : ''}${gd ? ` &middot; Loss <strong>${number(view.current.loss)}</strong>` : ''}</span>
-        <div class="opt-secondary-buttons">${button('finish', '', 'Show all 24', { disabled: state.completed === BUDGET && view.selected === BUDGET })}${button('reset', '', 'Reset', { disabled: state.completed === 0 })}</div>
       </nav>
       ${schedules ? scheduleMarkup(instance, view) : ''}
       <div class="opt-workspace">${mapMarkup(instance, view, compact)}${updateMarkup(instance, view)}</div>
+      <details data-opt-detail="options"><summary>Compare other ${schedules?'schedules':'step sizes and update paths'}</summary>${presets}${gd ? '' : comparisonMarkup(instance, view)}<div class="opt-secondary-buttons">${button('finish', '', 'Show all 24', { disabled: state.completed === BUDGET && view.selected === BUDGET })}${button('reset', '', 'Reset', { disabled: state.completed === 0 })}</div></details>
       <details data-opt-detail="data"><summary>Which training examples create this landscape?</summary><div class="opt-training-data" aria-label="Predictions on the two training examples">
         <div><span>Example 1 · input (1, 0)</span><strong>Prediction ${number(view.current.point[0])}</strong><span>Target 0 · half-squared error ${number(view.current.point[0] ** 2 / 2)}</span></div>
         <div><span>Example 2 · input (0, 3)</span><strong>Prediction ${number(3 * view.current.point[1])}</strong><span>Target 0 · half-squared error ${number(9 * view.current.point[1] ** 2 / 2)}</span></div>
@@ -375,7 +378,7 @@
 
   function getInstance(kind) {
     if (!instances.has(kind)) {
-      const completed = kind === 'optimizers' ? 6 : kind === 'lr-schedule' ? 13 : 0;
+      const completed = kind === 'optimizers' ? 1 : kind === 'lr-schedule' ? 13 : 0;
       instances.set(kind, { kind, state: { preset: 'useful', active: kind === 'lr-schedule' ? 'step' : 'sgd', completed, selected: completed }, roots: new Set() });
     }
     return instances.get(kind);
@@ -408,7 +411,11 @@
   function act(instance, action, value) {
     const s = instance.state;
     const limit = model(instance).track.points.length - 1;
-    if (action === 'preset' && PRESETS[value]) {
+    if (action === 'compare-rule' && instance.kind === 'optimizers') {
+      s.active=s.active==='adam'?'sgd':'adam';s.completed=1;s.selected=1;
+    } else if (action === 'compare-schedule' && instance.kind === 'lr-schedule') {
+      s.active=s.active==='step'?'constant':'step';s.completed=13;s.selected=13;
+    } else if (action === 'preset' && PRESETS[value]) {
       s.preset = value;
       s.completed = instance.kind === 'optimizers' ? 6 : 0;
       s.selected = s.completed;

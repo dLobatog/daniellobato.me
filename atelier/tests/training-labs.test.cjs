@@ -425,7 +425,8 @@ test('every first view has one question, one working primary action, and no expo
     const next = lab.reduce(kind, state, action, value);
     assert.notDeepEqual(next, state, `${kind}: primary action changes the experiment`);
     const nextVisible = lab.render(kind, next).replace(/<details\b[\s\S]*?<\/details>/g, '');
-    const mechanism = markup => markup.slice(markup.indexOf('<div class="tl-mechanism">'), markup.indexOf('<p class="tl-outcome"'));
+    const mechanism = markup => markup.slice(markup.indexOf('<div class="tl-mechanism"'), markup.indexOf('<p class="tl-outcome"'));
+    assert.ok(mechanism(visible).length > 100, `${kind}: extractor must actually include the diagram`);
     assert.notEqual(mechanism(nextVisible), mechanism(visible), `${kind}: action changes the visible mechanism, not merely the button label`);
   }
 });
@@ -442,4 +443,182 @@ test('plotted positions remain directly keyboard and pointer inspectable', () =>
       assert.ok(lab.render(kind, state).includes('tl-outcome'));
     }
   }
+});
+
+function firstAction(kind, state = lab.initial(kind)) {
+  const tag = lab.render(kind, state).match(/<button[^>]*class="tl-primary"[^>]*>/)[0];
+  return lab.reduce(kind, state, tag.match(/data-action="([^"]*)"/)[1], tag.match(/data-value="([^"]*)"/)[1]);
+}
+
+test('all 12 primary actions change a real selected numeric result, not just narration', () => {
+  for (const kind of Object.keys(lab.content)) {
+    const start = lab.initial(kind), next = firstAction(kind, start);
+    const before = lab.causalSelection(kind, start), after = lab.causalSelection(kind, next);
+    assert.ok(Number.isFinite(before.before) && Number.isFinite(before.after), kind);
+    assert.ok(Number.isFinite(after.before) && Number.isFinite(after.after), kind);
+    assert.notEqual(after.after, before.after, `${kind}: selected computation must change`);
+    for (const state of [start, next]) {
+      const c = lab.causalSelection(kind, state);
+      const visible = lab.render(kind, state).split('<details')[0];
+      assert.ok(visible.includes(`data-before="${c.before}" data-after="${c.after}"`), kind);
+      assert.ok(visible.includes(`data-equation-for="${lab.escape(c.selection)}"`), kind);
+      assert.ok(visible.includes('<mark data-term='), kind);
+      assert.ok(c.equation.some(term => typeof term === 'object' && term.text.length), kind);
+    }
+  }
+});
+
+test('selected learning-rate equation uses the preceding update, including replay at step zero', () => {
+  for (const lr of [.05, .1, .22, .28]) for (const step of [0, 1, 2, 8]) for (const cell of [0, 1]) {
+    const c = lab.causalSelection('learning-rate', { lr, step, cell });
+    near(c.after, c.before + c.operands.delta);
+    near(c.operands.gradient, c.before * c.operands.curvature);
+  }
+  assert.ok(Math.abs(1 - .22 * 16) > 1, 'doubling curvature invalidates the previously stable rate');
+});
+
+test('initialization action changes only weight scale and displays its exact repeated effect', () => {
+  const start = lab.initial('initialization'), next = firstAction('initialization', start);
+  assert.equal(next.layer, start.layer); assert.equal(next.cell, start.cell);
+  assert.equal(next.mode, 'xavier');
+  for (const mode of ['small', 'he', 'xavier', 'large']) for (let layer = 0; layer < 6; layer++) for (let cell = 0; cell < 8; cell++) {
+    const c = lab.causalSelection('initialization', { mode, layer, cell });
+    near(c.after, c.before * c.operands.factor);
+  }
+  near(Math.sqrt(2 / 16), Math.sqrt(2 / 8) / Math.sqrt(2));
+});
+
+test('gradient route contributions and consecutive backward actions carry the same signal', () => {
+  const start = lab.initial('gradient-flow'), next = firstAction('gradient-flow', start);
+  const a = lab.causalSelection('gradient-flow', start), b = lab.causalSelection('gradient-flow', next);
+  near(a.after, b.before);
+  for (const mode of ['tanh', 'relu', 'linear']) for (let layer = 0; layer < 6; layer++) for (const cell of [0, 1]) {
+    const c = lab.causalSelection('gradient-flow', { mode, gain: 1.3, layer, cell });
+    near(sum(c.operands.contributions), c.operands.selectedGradient);
+    c.operands.contributions.forEach((v, i) => near(v, c.operands.incoming[i] * c.operands.derivatives[i] * c.operands.weights[i]));
+  }
+});
+
+test('normalization causal selection identifies the axis and uses the selected group moments', () => {
+  for (const mode of ['batch', 'layer', 'rms']) for (const shifted of [false, true]) for (let cell = 0; cell < 9; cell++) {
+    const c = lab.causalSelection('normalization', { mode, shifted, cell });
+    near(c.after, (c.operands.inputAfter - c.operands.mean) / c.operands.denominator);
+    near(c.operands.denominator ** 2, c.operands.variance + 1e-5);
+    if (cell < 6) near(c.operands.inputAfter, c.operands.inputBefore);
+    if (cell < 6 && mode !== 'batch') near(c.before, c.after);
+    assert.ok(c.selection.startsWith({ batch: 'BatchNorm', layer: 'LayerNorm', rms: 'RMSNorm' }[mode]));
+  }
+});
+
+test('residual action isolates the identity path and the displayed recurrence equals the stack Jacobian', () => {
+  const start = lab.initial('residuals'), next = firstAction('residuals', start);
+  assert.deepEqual(next, { ...start, skip: true });
+  near(lab.causalSelection('residuals', start).after, -.001);
+  near(lab.causalSelection('residuals', next).after, .729);
+  for (const mode of ['small', 'positive', 'cancel']) for (const skip of [false, true]) for (let layer = 1; layer <= 6; layer++) for (let cell = 0; cell < 4; cell++) {
+    const c = lab.causalSelection('residuals', { mode, skip, layer, cell });
+    near(c.after, sum(c.operands.contributions));
+  }
+});
+
+test('attention selections follow the active tile and preserve old probability mass in its new scale', () => {
+  for (const query of [0, 1]) for (let cell = 0; cell < 4; cell++) {
+    const s = lab.reduce('flash-attention', { ...lab.initial('flash-attention'), query }, 'cell', cell);
+    assert.equal(s.step, Math.floor(cell / 2));
+    const c = lab.causalSelection('flash-attention', s), a = lab.attentionExample(query);
+    near(c.after, c.operands.rescaledMass + c.operands.tileMass);
+    near(c.operands.rescaledMass, c.before * c.operands.alpha);
+    if (s.step) {
+      assert.ok(c.operands.alpha < 1);
+      assert.notEqual(c.after, c.before + c.operands.tileMass, 'omitting the old-mass rescale is not equivalent');
+      vectorNear(c.operands.output, a.dense);
+    }
+    assert.ok(c.equation.some(term => term.term === 'key'));
+  }
+  const next = firstAction('flash-attention');
+  assert.equal(next.cell, 2); assert.equal(next.step, 1);
+});
+
+test('token selection uses both the changed mask and changed supervised denominator', () => {
+  for (const mode of ['sft', 'pretrain']) for (let cell = 0; cell < 9; cell++) {
+    const c = lab.causalSelection('pretrain-finetune', { mode, cell });
+    near(c.after, c.operands.mask * -Math.log(c.operands.probability) / c.operands.targets);
+  }
+  const sft = lab.tokenLoss('sft'), rows = sft.rows;
+  const extended = [...rows.slice(0, 5), ...rows];
+  near(sum(extended.map(r => r.mask * r.nll)) / sum(extended.map(r => r.mask)), sft.loss);
+});
+
+test('PEFT inspecting a frozen or zero-gradient matrix does not undo the applied update', () => {
+  const applied = firstAction('peft');
+  assert.match(lab.render('peft', applied), /class="tl-cell ml-selected tl-changed-cell">0\.00065<\/button>/);
+  assert.ok(lab.render('peft', applied).includes('class="tl-peft-vector"'));
+  assert.ok(lab.render('peft', applied).includes('after one eligible step 0.00065'));
+  for (const matrix of ['W', 'H', 'A', 'B']) {
+    const s = lab.reduce('peft', applied, 'matrix', matrix), c = lab.causalSelection('peft', s);
+    assert.equal(s.applied, true);
+    near(c.after - c.before, c.operands.delta);
+    if (matrix !== 'B') near(c.operands.delta, 0);
+    if (matrix === 'A') { assert.equal(c.operands.mask, 1); near(c.operands.gradient, 0); }
+    if (matrix === 'W') { assert.equal(c.operands.mask, 0); assert.notEqual(c.operands.gradient, 0); }
+  }
+});
+
+test('LoRA selected factor pairs explain every merged cell and reciprocal rescaling leaves BA unchanged', () => {
+  for (const rank of [1, 2]) for (const zero of [false, true]) for (let cell = 0; cell < 12; cell++) {
+    const c = lab.causalSelection('lora', { rank, zero, cell });
+    near(c.after, c.before + sum(c.operands.terms));
+    near(c.operands.delta, lab.dot(c.operands.b, c.operands.a));
+  }
+  const d = lab.loraExample(2);
+  matrixNear(lab.mm(d.B.map(row => row.map(v => 2 * v)), d.A.map(row => row.map(v => v / 2))), d.delta);
+});
+
+test('quantization clipping improves the selected small weight but more bits cannot recover the outlier', () => {
+  const start = lab.causalSelection('quantization', lab.initial('quantization'));
+  const clipped = lab.causalSelection('quantization', firstAction('quantization'));
+  near(start.after, 0); near(clipped.after, 2 / 7);
+  assert.ok(Math.abs(clipped.operands.error) < Math.abs(start.operands.error));
+  for (const bits of [2, 4, 8]) {
+    const c = lab.causalSelection('quantization', { bits, limit: 1, cell: 7 });
+    near(c.after, c.operands.scale * c.operands.q);
+    near(c.operands.error, -4);
+  }
+});
+
+test('distillation shows the actual preceding update and does not equate logit growth with probability growth', () => {
+  for (const temperature of [1, 2, 4]) for (const objective of ['soft', 'hard']) for (const step of [1, 2, 20]) for (const cell of [0, 1, 2]) {
+    const c = lab.causalSelection('distillation', { temperature, objective, step, cell });
+    near(c.after, c.before + c.operands.delta);
+    near(c.operands.gradient, temperature * (c.operands.student - c.operands.target));
+  }
+  const b = lab.causalSelection('distillation', firstAction('distillation'));
+  assert.ok(b.after > b.before);
+  assert.ok(b.operands.probabilityAfter < b.operands.probabilityBefore);
+  vectorNear(lab.distillation([0, 1, 2], 2).student, lab.distillation([100, 101, 102], 2).student);
+});
+
+test('serving comparison uses the same request and exposes queue, prefill and output-round contributions', () => {
+  for (const policy of ['serial', 'batch']) for (const long of [false, true]) for (const cell of [0, 1, 2]) {
+    const c = lab.causalSelection('serving-tradeoffs', { policy, long, cell });
+    near(c.after, c.operands.wait + c.operands.prefill + c.operands.firstRound);
+    near(c.before, lab.servingTimeline('serial', long).results[cell].ttft);
+    near(c.after, lab.servingTimeline(policy, long).results[cell].ttft);
+  }
+});
+
+test('closed settings do not hide core units, methods, or timeline legends', () => {
+  const firstView = kind => lab.render(kind, lab.initial(kind)).split('<details')[0];
+  assert.ok(firstView('normalization').includes('BatchNorm'));
+  assert.ok(firstView('distillation').includes('Probability scale 0 to 1. Dashed tick = before.'));
+  assert.ok(firstView('serving-tradeoffs').includes('Dashed: queue wait'));
+  assert.ok(firstView('serving-tradeoffs').includes('ms'));
+  assert.ok(firstView('pretrain-finetune').includes('nats'));
+});
+
+test('de-emphasis preserves inactive text opacity and uses the shared readable muted color', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../training-labs.css'), 'utf8');
+  assert.ok(css.includes('.tl-lab .tl-context, .tl-lab .tl-context button { color: var(--lesson-muted); }'));
+  assert.ok(!/\.tl-context\s*\{[^}]*opacity\s*:/.test(css));
+  assert.ok(!/\.tl-lab\s+\.ml-question\s*\{/.test(css), 'question typography must use the shared family-wide rule');
 });

@@ -242,7 +242,8 @@ test('block architecture has two residual bypasses, all stages, causal edges and
     assert.ok(Number(key) <= Number(query));
     near(Number(weight), trace.attention.rows[Number(query)].weights[Number(key)]);
   });
-  assert.equal((html.match(/data-local-token="[0-3]"/g) || []).length, 4);
+  const mlpState = lab.reduce('transformer-block', initial, 'stage', 6);
+  assert.equal((lab.render('transformer-block', mlpState).match(/data-local-token="[0-3]"/g) || []).length, 4);
   const inspected = lab.reduce('transformer-block', initial, 'inspect', '');
   assert.match(lab.render('transformer-block', inspected), /<details class="tl-details tl-calculation" open>/);
   assert.equal(lab.reduce('transformer-block', inspected, 'stage', 6).inspect, true);
@@ -297,5 +298,156 @@ test('native calculation and settings disclosures persist while inspecting a mec
     state = lab.reduce(kind, state, 'next', '');
     assert.match(lab.render(kind, state), /class="tl-details tl-calculation" open/);
     assert.match(lab.render(kind, state), /class="tl-details tl-options" open/);
+  }
+});
+
+test('BPE causal annotations reconcile weighted occurrences with actual token savings', () => {
+  const first = lab.bpeEffect(1);
+  assert.deepEqual([first.before, first.after, first.count], [79, 70, 9]);
+  assert.deepEqual(first.occurrences, [{ word: 'newest', frequency: 6, matches: 1 }, { word: 'widest', frequency: 3, matches: 1 }]);
+  for (let step = 1; step <= 8; step++) {
+    const effect = lab.bpeEffect(step);
+    assert.equal(effect.before - effect.after, effect.count);
+    assert.ok(effect.count >= effect.runner.count);
+  }
+  const ranks = lab.trainBPE()[5].merges;
+  const frozen = JSON.stringify(ranks);
+  for (let request = 0; request < 20; request++) assert.deepEqual(lab.encodeBPE('lowest', ranks), ['low', 'est']);
+  assert.equal(JSON.stringify(ranks), frozen, 'Repeated inference must not retrain or mutate the merge ranks');
+});
+
+test('one embedding update improves the labeled margin without claiming Euclidean attraction', () => {
+  const before = lab.embeddingTrace(0), after = lab.embeddingTrace(1);
+  vectorNear(after.query, lab.add(before.query, lab.scale(before.gradient, -0.2)));
+  near(before.scores[0] - before.scores[1], -0.5);
+  near(after.scores[0] - after.scores[1], 0.07409699296769467);
+  assert.ok(after.probabilities[0] > before.probabilities[0]);
+  const doc = lab.DOCUMENTS[1].vector;
+  near(lab.dot(before.query, lab.scale(doc, 2)), 2 * lab.dot(before.query, doc));
+  near(lab.cosine(before.query, lab.scale(doc, 2)), lab.cosine(before.query, doc));
+});
+
+test('value intervention changes exactly one payload while all QK weights remain identical', () => {
+  const pristine = JSON.stringify(lab.attentionTrace());
+  for (let q = 0; q < 4; q++) for (let k = 0; k < 4; k++) {
+    const exp = lab.attentionValueExperiment(q, k, true);
+    assert.deepEqual(exp.after.q, exp.before.q);
+    assert.deepEqual(exp.after.k, exp.before.k);
+    exp.after.rows.forEach((row, i) => assert.deepEqual(row.weights, exp.before.rows[i].weights));
+    exp.after.v.forEach((v, i) => vectorNear(v, i === k ? [0, 0] : exp.before.v[i]));
+    vectorNear(exp.delta, lab.scale(exp.before.v[k], -exp.before.rows[q].weights[k]));
+    if (k > q) vectorNear(exp.delta, [0, 0]);
+  }
+  assert.equal(JSON.stringify(lab.attentionTrace()), pristine);
+});
+
+test('single-coordinate token substitution first reaches later tokens at attention', () => {
+  const { before, after } = lab.blockExperiment(true);
+  assert.equal(before.inputs.flatMap((row, i) => row.map((v, j) => v !== after.inputs[i][j])).filter(Boolean).length, 1);
+  const a = lab.blockStages(before), b = lab.blockStages(after);
+  for (let stage = 0; stage < 3; stage++) vectorNear(a[stage][3], b[stage][3]);
+  near(a[3][3][0], 0.28028319363206267);
+  near(b[3][3][0], -0.36104629453510206);
+  for (let stage = 3; stage < 8; stage++) assert.ok(Math.abs(a[stage][3][0] - b[stage][3][0]) > 0.001);
+  // Counterfactual: with the attention branch absent, shared MLP weights cannot mix rows.
+  const withoutAttention = rows => rows.map(x => lab.add(x, lab.mlp(lab.layerNorm(x)).output));
+  vectorNear(withoutAttention(before.inputs)[3], withoutAttention(after.inputs)[3]);
+});
+
+test('append action focuses the new KV row and retains all prior pairs exactly', () => {
+  const initial = lab.initial('kv-cache'), next = lab.reduce('kv-cache', initial, 'next', '');
+  const a = lab.cacheTrace(initial.step), b = lab.cacheTrace(next.step);
+  assert.equal(next.key, b.length - 1);
+  assert.equal(b.bytes - a.bytes, 16);
+  assert.deepEqual(b.keys.slice(0, -1), a.keys);
+  assert.deepEqual(b.values.slice(0, -1), a.values);
+  vectorNear(b.keys[next.key], lab.linear(lab.INPUTS[next.key], lab.WK));
+});
+
+test('highlighted RAG clauses exist verbatim and support remains claim-specific', () => {
+  lab.CLAIMS.forEach((claim, index) => lab.EVIDENCE.forEach(doc => {
+    const span = lab.supportSpan(index, doc.id);
+    assert.equal(Boolean(span), claim.support.includes(doc.id));
+    if (span) assert.ok(doc.text.includes(span));
+  }));
+  assert.deepEqual(lab.claimSupport(lab.CLAIMS[0], ['C']), []);
+  assert.deepEqual(lab.claimSupport(lab.CLAIMS[1], ['C']), ['C']);
+  assert.deepEqual(lab.claimSupport(lab.CLAIMS[2], ['B', 'C']), []);
+});
+
+test('all seven initial actions change a numerical or evidence outcome, not only prose', () => {
+  const experiments = {
+    tokenization: { action: 'next', value: '', outcome: s => lab.bpeEffect(s.step).after },
+    embeddings: { action: 'next', value: '', outcome: s => lab.embeddingTrace(s.step).loss },
+    positional: { action: 'swap', value: '', outcome: s => lab.positionalTrace(s.mode, s.swapped).scores[s.key] },
+    'transformer-block': { action: 'change', value: '', outcome: s => lab.blockStages(lab.blockExperiment(s.changed).after)[s.step][s.token][0] },
+    attention: { action: 'mute-value', value: '', outcome: s => lab.attentionValueExperiment(s.query, s.key, s.muted).after.rows[s.query].output[0] },
+    'kv-cache': { action: 'next', value: '', outcome: s => lab.cacheTrace(s.step).bytes },
+    rag: { action: 'exclude', value: 'B', outcome: s => lab.claimSupport(lab.CLAIMS[s.claim], lab.retrieve(s.query).slice(0, s.topk).map(d => d.id).filter(id => !s.excluded.includes(id))).length },
+  };
+  for (const [kind, ex] of Object.entries(experiments)) {
+    const state = lab.initial(kind), after = lab.reduce(kind, state, ex.action, ex.value);
+    assert.notEqual(ex.outcome(state), ex.outcome(after), `${kind}: first action must change its mechanism`);
+    for (const s of [state, after]) {
+      const html = lab.render(kind, s), disclosure = html.indexOf('<details');
+      assert.ok(html.indexOf('class="tl-equation"') < disclosure, `${kind}: visible equation`);
+      assert.ok(html.indexOf('class="tl-comparison"') < disclosure, `${kind}: visible before/after`);
+      assert.match(html.slice(0, disclosure), /data-term=/, `${kind}: relevant term is highlighted`);
+      assert.doesNotMatch(html, /NaN|undefined/);
+    }
+  }
+  assert.doesNotMatch(lab.render('attention', lab.initial('attention')), /data-action="next"/);
+});
+
+test('compact rotary view retains every vector endpoint in all three encoding modes', () => {
+  for (const mode of ['none', 'absolute', 'rope']) for (const swapped of [false, true]) {
+    const trace = lab.positionalTrace(mode, swapped);
+    for (const row of trace.rows) for (const v of [row.x, row.encoded]) {
+      const x = 160 + 52 * v[0], y = 140 - 52 * v[1];
+      assert.ok(x > 85 && x < 275 && y > 25 && y < 195, `${mode}: ${row.token} arrow stays inside the viewBox`);
+    }
+  }
+});
+
+test('plot legends stay with vectors and the substituted token keeps its correct label', () => {
+  const html = lab.render('embeddings', lab.initial('embeddings'));
+  const caption = html.match(/<figcaption>([\s\S]*?)<\/figcaption>/)[1];
+  for (const label of ['q: cache memory', '0: policy (positive)', '1: catalogue', '2: unrelated']) assert.ok(caption.includes(label));
+  const block = lab.render('transformer-block', { ...lab.initial('transformer-block'), step: 0, token: 0, changed: true });
+  assert.match(block, /Tracking token 0: buffer/);
+  assert.doesNotMatch(block, /Tracking token 0: cache/);
+});
+
+test('de-emphasized labels and evidence use theme colors rather than whole-node opacity', () => {
+  const css = require('node:fs').readFileSync(require('node:path').join(__dirname, '../transformer-labs.css'), 'utf8');
+  for (const selector of ['.tl-lab .tl-dim', '.tl-lab .tl-source-excluded', '.tl-evidence-absent']) {
+    const rule = css.slice(css.indexOf(`${selector} {`)).split('}')[0];
+    assert.match(rule, /var\(--lesson-muted\)/, selector);
+    assert.doesNotMatch(rule, /opacity/, selector);
+  }
+  assert.match(css, /svg \.tl-dim :is\(path, line, circle\) \{ opacity:/);
+});
+
+test('RAG source captions never imply support for a different or unsupported claim', () => {
+  for (const claim of [0, 1, 2]) for (const doc of ['A', 'B', 'C', 'D']) {
+    const html = lab.render('rag', { ...lab.initial('rag'), claim, doc });
+    if (!lab.supportSpan(claim, doc)) {
+      assert.match(html, /no clause here supports the selected claim/);
+      assert.doesNotMatch(html, /The highlighted clause is available/);
+    }
+    if (claim === 2) {
+      assert.doesNotMatch(html, />Remove the supporting runbook</);
+      assert.match(html, /Can the retrieved text justify a latency guarantee/);
+    }
+  }
+});
+
+test('selected architecture stage reports the same real before/after value beside the clicked layer', () => {
+  const experiment = lab.blockExperiment(true), before = lab.blockStages(experiment.before), after = lab.blockStages(experiment.after);
+  for (let step = 0; step < 8; step++) {
+    const html = lab.render('transformer-block', { ...lab.initial('transformer-block'), changed: true, step });
+    const actual = html.match(/<span class="tl-stage-result">([^<]+)<\/span>/)[1];
+    assert.equal(actual, `t3[0]: ${before[step][3][0].toFixed(3)} &#8594; ${after[step][3][0].toFixed(3)}`);
+    assert.equal((html.match(/class="tl-stage-result"/g) || []).length, 1);
   }
 });

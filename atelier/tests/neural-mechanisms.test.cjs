@@ -48,3 +48,23 @@ test('Each concept has matching annotations, runnable code and one correct check
     assert.doesNotMatch(JSON.stringify(c),/kilometer|delivery|min\/km/);
   }
 });
+test('Pixel edit exposes its exact contribution and preserves a before image',()=>{
+  const s=n.initial(),next=n.reduce('neuron',s,'pixel','1');
+  assert.deepEqual(next.beforePixels,s.pixels);
+  near(n.forward(s.pixels,s.parameters).z[0]-n.forward(next.pixels,next.parameters).z[0],.8);
+  const html=n.render('neuron',next);
+  assert.match(html,/Score: 2.3 → 1.5/);
+  assert.ok(html.indexOf('nn-contributions')<html.indexOf('<details'));
+});
+test('Chain rule shows a zero factor in the stage, not only reference notes',()=>{
+  const html=n.render('chain-rule',n.reduce('chain-rule',n.initial(),'weight','0'));
+  assert.match(html,/nn-path-factor is-blocked/);
+  assert.match(html,/One zero factor stops this path/);
+});
+test('Backprop does not claim a parameter update before a new forward pass',()=>{
+  let s=n.initial();s=n.reduce('backprop',s,'step',2);
+  assert.match(n.render('backprop',s),/Update prepared/);
+  s=n.reduce('backprop',s,'step',3);
+  assert.match(n.render('backprop',s),/Pixels and label stayed fixed/);
+  assert.deepEqual(s.parameters,n.initialParameters());
+});

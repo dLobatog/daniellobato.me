@@ -64,6 +64,23 @@ test('Every public section resolves to a native mechanism, including ranking obj
   assert.ok(sandbox.window.AtelierLessons.getContent('grpo'));
 });
 
+test('Quick checks vary answer position without changing content or reshuffling on reread', () => {
+  const sandbox={window:{},document:{addEventListener(){}},setTimeout(){}};
+  vm.runInNewContext(read('studio.js'),sandbox);
+  const order=vm.runInNewContext('orderedQuizOptions',sandbox);
+  const correctPositions=new Set();
+  for(const id of ['neuron','bayes','entropy','attention','grpo','quantization']) {
+    const options=[{text:'reasoned answer',correct:true},{text:'misconception',correct:false}];
+    const section={id,quiz:{options}},before=JSON.stringify(section);
+    const first=order(section);
+    assert.equal(JSON.stringify(first),JSON.stringify(order(section)));
+    assert.equal(JSON.stringify(section),before);
+    assert.equal(first.filter(x=>x.correct).length,1);
+    correctPositions.add(first.findIndex(x=>x.correct));
+  }
+  assert.equal(correctPositions.size,2);
+});
+
 function themeFixture(saved, unavailable = false) {
   const events = {}, attributes = {}, buttons = [];
   const rootNode = {dataset:{}};

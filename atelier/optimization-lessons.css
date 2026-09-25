@@ -177,3 +177,9 @@
   .opt-point { width: 36px; height: 36px; }
 }
 @media (prefers-reduced-motion: reduce) { .opt-button { transition: none; } }
+.opt-first-action { margin-bottom:18px; }
+.opt-inline-legend { display:flex; flex-wrap:wrap; gap:8px 16px; margin-block:10px; font-size:.88rem; }
+.opt-inline-legend > span { display:inline-flex; align-items:center; gap:6px; }
+.opt-linked-step { padding-top:16px; margin-top:16px; border-top:1px solid var(--lesson-border); }
+.opt-linked-step p { margin-top:8px; overflow-wrap:anywhere; }
+.opt-linked-step mark { background:color-mix(in srgb,var(--lesson-blue) 10%,var(--lesson-surface)); color:var(--lesson-blue); padding:2px 4px; }

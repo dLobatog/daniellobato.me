@@ -42,10 +42,15 @@ body { background: radial-gradient(ellipse at 100% 0, color-mix(in srgb, var(--l
 .reading-theme-toggle { color: var(--fg-soft); background: transparent; border: 1px solid var(--border-strong); border-radius: 6px; padding: 8px 12px; min-height: 42px; font: .9rem var(--sans); cursor: pointer; }
 .reading-theme-toggle:hover { color: var(--accent2); border-color: currentColor; }
 .nav-link, .nav-meta, .chapter-map a { font-family: var(--sans); text-transform: none; letter-spacing: 0; font-size: .95rem; color: var(--fg-dim); }
-.chapter-hero { padding-top: 52px; }
-.chapter-hero h1 { font-size: clamp(2.5rem, 4.5vw, 3.8rem); }
-.chapter-hero .lede { max-width: 62ch; font-size: 1.2rem; line-height: 1.6; }
-.chapter-map { background: var(--bg2); border-color: var(--border); box-shadow: 0 2px 8px #18283806; gap: 18px; padding: 14px 18px; }
+.chapter-hero { padding: 24px 0 20px; }
+.chapter-hero .eyebrow { display:none; }
+.chapter-hero h1 { max-width:none; margin-block:8px 12px; font-size: clamp(2rem, 3.8vw, 3rem); }
+.chapter-hero .lede { max-width: 70ch; font-size: 1.08rem; line-height: 1.5; margin-top:0; }
+.chapter-map { background: var(--bg2); border-color: var(--border); box-shadow: 0 2px 8px #18283806; gap: 18px; padding: 10px 14px; margin-bottom:24px; }
+.chapter-page .concept-header { padding-top:20px; margin-bottom:18px; }
+.chapter-page .concept-copy h2 { margin-block:0; max-width:none; font-size:clamp(1.5rem,2.6vw,2rem); }
+.chapter-page .concept-summary { font-size:1.04rem; line-height:1.5; }
+.chapter-page .viz-toolbar { margin-bottom:8px; }
 .chapter-map a:hover { color: var(--accent2); }
 .concept-copy h2 { font-size: clamp(1.9rem, 3vw, 2.5rem); max-width: 32ch; }
 .concept-summary { color: var(--fg-soft); }
@@ -106,7 +111,7 @@ body { background: radial-gradient(ellipse at 100% 0, color-mix(in srgb, var(--l
 @media (max-width: 650px) {
   .site-nav .nav-meta { display: none; }
   .reading-theme-toggle { margin-left: auto; }
-  .chapter-hero { padding-top: 42px; }
+  .chapter-hero { padding-top: 22px; }
   .chapter-map { gap: 16px; overflow-x: auto; flex-wrap: nowrap; }
   .chapter-map a { white-space: nowrap; }
   .viz-panel[data-renderer-kind='lesson'] { padding: 12px; }

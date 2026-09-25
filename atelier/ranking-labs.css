@@ -40,6 +40,15 @@
 .rk-lab .rk-stats .ml-stat strong { font: 600 1.35rem var(--mono); overflow-wrap: anywhere; }
 .rk-lab .rk-equation { font: max(15px, .94rem)/1.9 var(--mono); overflow-wrap: anywhere; }
 .rk-lab .rk-note { font-size: max(15px, .94rem); line-height: 1.6; margin-block: .85rem; }
+.rk-lab .rk-causal-line { margin-block: .8rem 1rem; min-width: 0; }
+.rk-lab .rk-cause-label { margin-bottom: .35rem; font-size: max(15px, .94rem); font-weight: 650; }
+.rk-lab .rk-linked-equation { font: max(15px, .94rem)/1.9 var(--mono); overflow-wrap: anywhere; }
+.rk-lab .rk-term { color: var(--lesson-blue); background: color-mix(in srgb, var(--lesson-blue) 10%, var(--lesson-surface)); padding: .08em .18em; border-bottom: 2px solid var(--lesson-blue); }
+.rk-lab .rk-cause-reason { font-size: max(15px, .94rem); line-height: 1.5; margin-top: .45rem; max-width: 72ch; }
+.rk-lab .rk-context { color: var(--lesson-muted); background: var(--lesson-surface); }
+.rk-lab .rk-context strong { font-weight: 500; }
+.rk-lab .rk-context .rk-contribution-rail span { background: var(--lesson-muted); }
+.rk-lab .rk-cause-focus { border-color: var(--lesson-blue); }
 .rk-lab .rk-table { width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; margin-block: .8rem; }
 .rk-lab table { width: 100%; min-width: 360px; border-collapse: collapse; font-size: max(15px, .94rem); }
 .rk-lab caption { text-align: left; color: var(--lesson-muted); line-height: 1.5; margin-bottom: .5rem; font-size: max(14px, .875rem); }
@@ -64,7 +73,7 @@
 .rk-lab .rk-confusion strong { font: 600 1.8rem var(--mono); }
 .rk-lab .rk-confusion small { color: var(--lesson-muted); font-size: max(14px, .875rem); }
 .rk-lab .rk-dim { opacity: .4; }
-.rk-lab .rk-ranked-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .65rem; }
+.rk-lab .rk-ranked-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
 .rk-lab .rk-ranked-list li { padding: .7rem; border: 1px solid var(--lesson-border); border-left: 3px solid transparent; }
 .rk-lab .rk-ranked-list li.rk-selected { border-left-color: var(--lesson-blue); background: var(--lesson-soft); }
 .rk-lab .rk-ranked-list li.rk-outside { border-style: dashed; }
@@ -94,6 +103,8 @@
 .rk-lab .rk-factor-source > div { display: grid; gap: .35rem; min-width: 0; }
 .rk-lab .rk-factor-source :is(span, p) { font-size: max(14px, .875rem); }
 .rk-lab .rk-factor-source strong { font-size: max(17px, 1.06rem); overflow-wrap: anywhere; }
+.rk-lab .rk-factor-source.rk-factor-trace { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: .7rem; padding: .8rem; }
+.rk-lab .rk-factor-trace > div { align-self: start; }
 .rk-lab .rk-flow-arrow { font-size: 1.65rem; line-height: 1.1; text-align: center; color: var(--lesson-muted); }
 .rk-lab .rk-broadcast { margin-block: .5rem; }
 .rk-lab .rk-tower-flow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1.4rem; margin-block: 1rem; }
@@ -108,6 +119,9 @@
 .rk-lab .rk-tower-output { font: 600 max(15px, .94rem)/1.5 var(--sans); text-align: center; padding: .5rem; }
 .rk-lab .rk-tower-query .rk-tower-output { color: var(--lesson-blue); }
 .rk-lab .rk-tower-item .rk-tower-output { color: var(--lesson-orange); }
+.rk-lab .rk-tower-item .rk-tower-input { color: var(--lesson-muted); }
+.rk-lab .rk-tower-flow .rk-similarity { width: min(100%, 680px); }
+.rk-lab .rk-similarity .rk-causal-line { margin-block: .35rem 0; text-align: left; }
 .rk-lab .rk-tower-merge { grid-column: 1 / -1; width: 100%; height: 42px; }
 .rk-lab .rk-tower-merge path { fill: none; stroke: var(--lesson-muted); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .rk-lab .rk-similarity { grid-column: 1 / -1; justify-self: center; width: min(100%, 480px); display: grid; gap: .4rem; text-align: center; padding: 1rem; background: var(--lesson-soft); border: 2px solid var(--lesson-border); border-radius: .5rem; }
@@ -115,7 +129,7 @@
 .rk-lab .rk-similarity h4 { margin: 0; }
 .rk-lab .rk-similarity > strong { font: 600 1.8rem var(--mono); }
 .rk-lab .rk-change-summary { font-size: max(15px, .94rem); line-height: 1.6; margin: .5rem 0 1rem; }
-.rk-lab .rk-objective-list { display: grid; gap: .65rem; list-style: none; margin: 0; padding: 0; }
+.rk-lab .rk-objective-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; list-style: none; margin: 0; padding: 0; }
 .rk-lab .rk-objective-card { --rk-item-color: var(--lesson-muted); padding: .8rem 1rem; border: 1px solid var(--lesson-border); border-left: 4px solid var(--rk-item-color); border-radius: .4rem; min-width: 0; }
 .rk-lab .rk-pair-preferred { --rk-item-color: var(--lesson-blue); background: var(--lesson-soft); }
 .rk-lab .rk-pair-other { --rk-item-color: var(--lesson-orange); background: var(--lesson-soft); }
@@ -139,6 +153,15 @@
 .rk-lab .rk-pipeline-item span { font-size: max(14px, .875rem); color: var(--lesson-muted); }
 .rk-lab .rk-omitted { border-style: dashed; border-color: var(--lesson-orange); }
 .rk-lab .rk-pipeline-arrow { align-self: center; font-size: 1.5rem; color: var(--lesson-muted); }
+.rk-lab .rk-focused-route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: .4rem; margin-block: 1rem; }
+.rk-lab .rk-focused-route > div { display: grid; gap: .5rem; min-width: 0; padding: .8rem .5rem; border-block: 2px solid var(--lesson-border); }
+.rk-lab .rk-focused-route span { font-size: max(14px, .875rem); color: var(--lesson-muted); }
+.rk-lab .rk-focused-route strong { font-size: max(15px, .94rem); overflow-wrap: anywhere; }
+.rk-lab .rk-focused-route .rk-route-blocked { border-color: var(--lesson-orange); border-style: dashed; }
+.rk-lab .rk-focused-route .rk-route-open { border-color: var(--lesson-blue); }
+.rk-lab .rk-boundary { margin-block: 1rem; }
+.rk-lab .rk-boundary-records { display: flex; flex-wrap: wrap; gap: .5rem; }
+.rk-lab .rk-boundary-records .rk-impression { display: flex; flex-wrap: wrap; gap: .5rem 1rem; width: 100%; }
 .rk-lab .rk-evidence-flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: .65rem; align-items: center; }
 .rk-lab .rk-mechanism-node { display: grid; gap: .5rem; padding: 1rem .75rem; min-width: 0; border: 1px solid var(--lesson-border); border-radius: .5rem; text-align: center; }
 .rk-lab .rk-mechanism-node span { font-size: max(14px, .875rem); color: var(--lesson-muted); }
@@ -164,6 +187,9 @@
 .rk-lab .rk-contribution-rail { height: 9px; background: var(--lesson-border); margin-top: .6rem; }
 .rk-lab .rk-contribution-rail span { display: block; height: 100%; background: var(--lesson-blue); }
 @media (max-width: 680px) {
+  .rk-lab .rk-factor-source.rk-factor-trace { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  .rk-lab .rk-factor-trace > div { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .rk-lab .rk-factor-trace > .rk-flow-arrow { transform: rotate(90deg); }
   .rk-lab .ml-grid { grid-template-columns: minmax(0, 1fr); }
   .rk-lab .rk-inspector { padding: .8rem; }
   .rk-lab .rk-select { flex: 1 1 180px; }
@@ -175,6 +201,13 @@
   .rk-lab .rk-evidence-flow > .rk-flow-arrow { transform: rotate(90deg); }
 }
 @media (max-width: 520px) {
+  .rk-lab .rk-objective-item { gap: .4rem; align-items: start; }
+  .rk-lab .rk-position-number { font-size: 1.1rem; }
+  .rk-lab .rk-objective-item strong { font-size: 15px; }
+  .rk-lab .rk-objective-card { padding: .6rem; }
+  .rk-lab .rk-ranked-list li { padding: .5rem; }
+  .rk-lab .rk-rank-title { align-items: start; flex-direction: column; gap: .2rem; }
+  .rk-lab .rk-rank-title button { width: 100%; }
   .rk-lab .rk-candidate-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rk-lab .rk-tower-flow { gap: .5rem; }
   .rk-lab .rk-tower-input, .rk-lab .rk-encoder-box { padding: .65rem; }
