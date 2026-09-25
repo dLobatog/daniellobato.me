@@ -1,0 +1,55 @@
+.ml-lab { min-width: 0; font: 1rem/1.55 var(--sans); color: var(--lesson-ink); container-type: inline-size; container-name: lesson; }
+.ml-lab *, .ml-lab *::before, .ml-lab *::after { box-sizing: border-box; }
+.ml-lab :is(h2,h3,h4,p,figure) { margin: 0; }
+.ml-lab .ml-heading { margin-bottom: 22px; }
+.ml-lab .ml-kicker { font: .76rem/1.5 var(--mono); letter-spacing: .06em; color: var(--lesson-muted); margin-bottom: 8px; }
+.ml-lab .ml-question { font: 600 clamp(1.25rem,2.2vw,1.75rem)/1.25 var(--sans); color: var(--lesson-ink); max-width: 45ch; }
+.ml-lab .ml-note, .ml-lab .ml-muted { color: var(--lesson-muted); font-size: .95rem; }
+.ml-lab .ml-heading .ml-note { margin-top: 10px; max-width: 65ch; }
+.ml-lab .ml-controls, .ml-lab .ml-step-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 18px 0; }
+.ml-lab button, .ml-lab select { appearance: none; font: inherit; font-size: .94rem; line-height: 1.4; min-height: 44px; border: 1px solid var(--lesson-border); background: var(--lesson-surface); color: var(--lesson-ink); padding: 9px 14px; border-radius: 7px; cursor: pointer; white-space: normal; }
+.ml-lab button:hover { border-color: var(--lesson-blue); }
+.ml-lab button:disabled { opacity: .5; cursor: default; }
+.ml-lab :is(button[aria-pressed='true'],button[aria-current='step'],.ml-selected) { border-color: var(--lesson-blue); background: color-mix(in srgb,var(--lesson-blue) 7%,var(--lesson-surface)); color: var(--lesson-blue); }
+.ml-lab :focus-visible { outline: 2px solid var(--lesson-blue); outline-offset: 3px; }
+.ml-lab input, .ml-lab select { max-width: 100%; accent-color: var(--lesson-blue); }
+.ml-lab input[type='number'] { width: 82px; min-height: 42px; font: 1rem var(--mono); padding: 6px; color: var(--lesson-ink); background: var(--lesson-surface); border: 1px solid var(--lesson-border); border-radius: 4px; }
+.ml-lab label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ml-lab .ml-grid, .ml-lab .ml-grid-3 { display: grid; gap: 20px; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
+.ml-lab .ml-grid-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.ml-lab .ml-grid > *, .ml-lab .ml-grid-3 > * { min-width: 0; }
+.ml-lab .ml-stage { border: 1px solid var(--lesson-border); border-radius: 10px; padding: clamp(12px,2vw,22px); background: var(--lesson-soft); min-width: 0; }
+.ml-lab .ml-stage > h3, .ml-lab .ml-stage > h4 { font: 600 1.05rem var(--sans); margin-bottom: 12px; }
+.ml-lab svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ml-lab svg text { font-family: var(--sans); fill: var(--lesson-ink); }
+.ml-lab svg [role='button'] { cursor: pointer; }
+.ml-lab svg [role='button']:focus-visible { outline: none; filter: drop-shadow(0 0 2px var(--lesson-blue)); }
+.ml-lab .ml-inspector { border-left: 3px solid var(--lesson-blue); background: var(--lesson-soft); padding: 14px 18px; margin-top: 20px; max-width: 100%; overflow-wrap: anywhere; }
+.ml-lab .ml-stat { font: 600 1.45rem var(--sans); font-variant-numeric: tabular-nums; }
+.ml-lab .ml-table { max-width: 100%; overflow-x: auto; border: 1px solid var(--lesson-border); border-radius: 8px; }
+.ml-lab table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.ml-lab :is(th,td) { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--lesson-border); vertical-align: top; }
+.ml-lab th { font-weight: 600; background: var(--lesson-soft); }
+.ml-lab tr:last-child td { border-bottom: 0; }
+.ml-lab .ml-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.ml-lab .ml-node { border: 1px solid var(--lesson-border); border-radius: 8px; padding: 12px; min-width: 0; }
+.ml-lab code { font: .88em var(--mono); }
+.ml-lab .ml-step-nav { justify-content: space-between; }
+.lesson.ml-lab :is(button, select, table) { font-size: .94rem; }
+.lesson.ml-lab table :is(th, td) { font-size: .94rem; }
+.lesson.ml-lab .ml-note { font-size: .94rem; }
+.lesson.ml-lab select { appearance: auto; padding-right: 28px; }
+.lesson.ml-lab details { border-block-start: 1px solid var(--lesson-border); margin-top: 20px; }
+.lesson.ml-lab summary { min-height: 44px; padding-block: 12px; font-size: .94rem; color: var(--lesson-muted); cursor: pointer; }
+.lesson.ml-lab details[open] > summary { color: var(--lesson-ink); margin-bottom: 8px; }
+.lesson.ml-lab .ml-step-nav button[data-action='next']:not(:disabled) { background: var(--lesson-blue); border-color: var(--lesson-blue); color: var(--lesson-surface); }
+@container lesson (max-width: 720px) {
+  .lesson.ml-lab :is(.ml-grid, .ml-grid-3) { grid-template-columns: minmax(0,1fr); gap: 16px; }
+}
+@media(max-width:680px) {
+  .ml-lab .ml-grid, .ml-lab .ml-grid-3 { grid-template-columns: minmax(0,1fr); gap: 14px; }
+  .ml-lab .ml-question { font-size: 1.35rem; }
+  .ml-lab :is(th,td) { padding: 8px; }
+  .ml-lab .ml-controls button { padding-inline: 10px; }
+}
+@media(prefers-reduced-motion:reduce) { .ml-lab * { animation: none !important; transition: none !important; } }

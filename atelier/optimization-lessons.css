@@ -1,3 +1,10 @@
+.opt-training-data { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; padding:20px 0; border-top:1px solid var(--lesson-border); }
+.opt-training-data > div { display:grid; gap:6px; }
+.opt-training-data span { font-size:.85rem; color:var(--lesson-muted); }
+.opt-training-data strong { font:600 1rem var(--sans); color:var(--lesson-ink); }
+.opt-lesson details { border-top:1px solid var(--lesson-border); margin-top:18px; }
+.opt-lesson summary { cursor:pointer; min-height:44px; padding-block:12px; color:var(--lesson-muted); }
+@media(max-width:500px) { .opt-training-data { grid-template-columns:1fr; } }
 .opt-lesson {
   --opt-ink: var(--lesson-ink, #202a33);
   --opt-muted: var(--lesson-muted, #56616d);

@@ -39,7 +39,7 @@ const chapters = {
     displayTitle: 'Reasoning under uncertainty.',
     title: 'Probability concepts that should feel obvious after ten minutes.',
     lede:
-      'What can happen? What should you expect? What changes when new evidence arrives? Start with familiar examples, then connect them to the quantities a model learns.',
+      'What can happen, how surprising is it, and what changes when evidence arrives? Start with a prediction and follow its consequences.',
     bestFor: 'Interview refresh / first pass review',
     studyMove: 'Read the first paragraph, then touch the controls',
     sections: [
@@ -334,7 +334,7 @@ const chapters = {
     eyebrow: 'Linear Algebra',
     title: 'The geometry underneath ML gets much easier once vectors stop feeling abstract.',
     lede:
-      'This chapter is about the pieces of linear algebra that keep showing up in machine learning: vectors, dot products, matrix multiplication, eigenvectors, and SVD. The goal is not proof. The goal is to make the later chapters feel visually obvious.',
+      'See vectors change direction, matrices transform space, and low-rank approximations keep some information while discarding the rest.',
     sections: [
       {
         id: 'vectors',
@@ -651,7 +651,7 @@ const chapters = {
     eyebrow: 'Neural Network Basics',
     title: 'Neural networks stop feeling magical once each piece has a small job.',
     lede:
-      'Build a prediction. Measure its error. Trace which weights caused it, then make one better prediction. Follow the numbers through the entire learning loop.',
+      'Can a tiny network distinguish a vertical stroke from a horizontal one? Edit the pixels, inspect its neurons, then teach it with a gradient update.',
     bestFor: 'First pass through neural networks / interview refresh',
     studyMove: 'Read each section as a tiny causal story: signal goes forward, blame comes backward, weights update.',
     sections: [
@@ -1214,7 +1214,7 @@ const chapters = {
     eyebrow: 'Deep Learning',
     title: 'The mechanics that make neural networks train or break.',
     lede:
-      'Deep learning gets much easier once you read training as a chain of simple failure modes instead of one mysterious process. This chapter walks through that chain in order: pick a stable step size, preserve signal scale at initialization, keep gradients alive through depth, stabilize drifting activations, open identity highways with residuals, then make long-context attention fit real hardware.',
+      'Why does training stall or explode? Follow signals through layers, change one decision, and see where the computation breaks.',
     bestFor: 'Core interview preparation / quick optimization refresh',
     studyMove: 'Start from the balanced preset in each card, then push one control into failure so you can see exactly what breaks',
     sections: [
@@ -1591,7 +1591,7 @@ const chapters = {
     eyebrow: 'Transformers And RAG',
     title: 'Representation, context, and grounding are different jobs.',
     lede:
-      'This chapter walks from raw text to grounded answers as a sequence of distinct jobs: compress text into reusable pieces, turn those pieces into vectors, inject order, choose context, reuse past computation, and then ground generation with retrieved evidence.',
+      'Follow text through tokens, vectors, and attention. Inspect what each layer changes, what a cache reuses, and what retrieved evidence actually supports.',
     bestFor: 'LLM interviews / modern systems refresh',
     studyMove: 'Treat each control as a tradeoff, not a magic quality knob',
     sections: [
@@ -1998,7 +1998,7 @@ const chapters = {
     eyebrow: 'Adaptation, Compression, And Serving',
     title: 'Modern LLM work is often about bending a model to a task without breaking the economics.',
     lede:
-      'This chapter is the decision layer after transformers: when a broad pre-trained prior is enough, when to specialize it, when to adapt cheaply, when to compress for serving, and how to choose the latency-throughput-memory compromise your product can actually afford.',
+      'Which weights need to change? Which precision can you lose? Adapt a model, compress it, and inspect the memory and serving trade-offs.',
     sections: [
       {
         id: 'pretrain-finetune',
@@ -2353,7 +2353,7 @@ const chapters = {
     eyebrow: 'Reinforcement Learning',
     title: 'RL gets less mystical once you see it as learning from delayed consequences instead of labeled answers.',
     lede:
-      'This chapter rebuilds reinforcement learning as one connected story: actions change future data, delayed rewards create credit-assignment problems, value functions summarize long-run payoff, TD methods bootstrap from partial evidence, and exploration is the price of discovering a better policy in the first place.',
+      'Take an action, receive a reward, and update an estimate. Build from a small decision process to TD learning, Q-learning, and DQN.',
     sections: [
       {
         id: 'mdp',
@@ -2719,7 +2719,7 @@ const chapters = {
     eyebrow: 'Metrics And Calibration',
     title: 'A model score is only useful if you know how to read it.',
     lede:
-      'This chapter is about evaluation choices that people casually name-drop but often explain badly: threshold metrics, calibration, and ranking quality. The goal is to make metric selection feel tied to the product question and the specific failure you can afford, not to a memorized acronym.',
+      'A good score, a trustworthy probability, and a useful ranking are different promises. Test each one against actual outcomes.',
     bestFor: 'Interview prep / evaluation refresh',
     studyMove: 'Ask what decision the metric is supposed to support',
     sections: [
@@ -2916,7 +2916,7 @@ const chapters = {
     eyebrow: 'Retrieval And Systems',
     title: 'Recommendation and search become simpler once you separate stages.',
     lede:
-      'A lot of system-design confusion disappears once you stop asking one model to do every job. Retrieval and serving pipelines work because each stage has a narrower task and a different objective.',
+      'A ranker cannot rescue an item retrieval omitted. Follow candidates through the pipeline, then handle an item with no interaction history.',
     bestFor: 'Recommendation interviews / ML system design refresh',
     studyMove: 'Look at the funnel first, then ask which stage can still recover from the mistake',
     sections: [
@@ -3042,7 +3042,7 @@ const chapters = {
     eyebrow: 'Generation And Decision-Making',
     title: 'Generation and decision-making both become intuitive once the tradeoff is visible.',
     lede:
-      'Read this chapter as two concrete stories. Diffusion starts with a messy sample and repeatedly removes uncertainty until structure appears. Bandits start with uncertain options and spend a small exploration budget to discover which choice is actually worth exploiting.',
+      'Reconstruct a signal from noise. Then explore a different kind of uncertainty: choosing an action before knowing how rewarding it will be.',
     bestFor: 'Modern ML refresh / high-level intuition before deeper math',
     studyMove: 'Start from the default preset, say what the stage is doing in plain language, then move one knob and predict what will worsen or improve before you read the takeaway',
     sections: [
@@ -3173,7 +3173,7 @@ const chapters = {
     eyebrow: 'Recommendation Depth',
     title: 'Modern recommenders work because different signals take turns carrying the job.',
     lede:
-      'Read this chapter as one serving pipeline: use sparse behavior to learn a shared taste space, retrieve quickly from cached item vectors, then spend extra compute making sure the best items really reach the top of the list.',
+      'Turn observed interactions into vectors, retrieve candidates, and update their order. See what changes when the learning objective changes.',
     bestFor: 'Recommendation interviews / product ML refresh',
     studyMove: 'Ask what signal is doing the heavy lifting in each stage',
     sections: [
@@ -3325,7 +3325,7 @@ const chapters = {
     eyebrow: 'Classical ML And Stats',
     title: 'A lot of ML questions are really statistics questions in disguise.',
     lede:
-      'This chapter turns three interview staples into one connected story: MAP means data plus prior, bias-variance means the best fit is not automatically the best generalizer, and regularization is the practical knob that shrinks fragile solutions back toward something stabler.',
+      'How much should a small dataset persuade you? Compare priors, noisy fits, and regularization without confusing training fit with generalization.',
     bestFor: 'Core interview prep / fundamentals refresh',
     studyMove: 'Read each visualization as one decision: how much should the data dominate, how much flexibility is healthy, and how much shrinkage keeps the model honest?',
     sections: [
@@ -3483,7 +3483,7 @@ const chapters = {
     eyebrow: 'Production ML Systems',
     title: 'Good offline models still fail when the surrounding system lies to them.',
     lede:
-      'These are the production questions that keep surfacing in serious interviews: whether train and serve really match, whether offline metrics predict product outcomes, and whether the world has drifted away from the data you trained on.',
+      'The model worked offline. What changed? Compare feature transformations, population mixes, and delayed evidence of drift.',
     bestFor: 'System design / senior ML interviews',
     studyMove: 'Ask where the system can silently look healthy while actually being broken',
     sections: [
@@ -3630,7 +3630,7 @@ const chapters = {
     eyebrow: 'GBDTs And Tabular ML',
     title: 'Tabular models win by making many small, useful corrections.',
     lede:
-      'This chapter should read as one causal story: first a tree finds a simple cut that makes the next groups easier to predict, then boosting stacks many of those small corrections until a strong tabular model emerges. The goal is not tree trivia — it is to see why structured-data systems still love simple splits plus stagewise residual repair.',
+      'Find a useful split. Fit the remaining errors. Watch simple trees become an ensemble through repeated corrections.',
     bestFor: 'Tabular ML interviews / practical modeling refresh',
     studyMove: 'Track the one split or one residual correction that changes the prediction next',
     sections: [
@@ -3735,7 +3735,7 @@ const chapters = {
     eyebrow: 'Data And Features',
     title: 'Many bad models are really bad datasets with good branding.',
     lede:
-      'This chapter is about the practical, often unglamorous failure modes that make feature work so important: leakage, missingness, and shifts between the data you imagined and the data the system actually sees.',
+      'Could this feature really have existed at prediction time? Check the timestamps, then see what happens when serving data changes.',
     bestFor: 'Applied ML interviews / feature engineering refresh',
     studyMove: 'Ask whether the feature is truly available and trustworthy at prediction time',
     sections: [
@@ -3837,7 +3837,7 @@ const chapters = {
     eyebrow: 'Alignment Depth',
     title: 'Good generation is not just about quality; it is about steering and not gaming the wrong objective.',
     lede:
-      'This chapter goes beyond the first diffusion and bandit intuitions into the more modern alignment ideas: guidance strength, preference optimization, and the classic danger that a proxy reward drifts away from what humans actually wanted.',
+      'Steer a sample, compare preferences, and compute a group-relative policy update. Then test whether a higher reward really means a better answer.',
     bestFor: 'LLM interviews / modern alignment refresh',
     studyMove: 'Separate the desired objective from the proxy the system is actually optimizing',
     sections: [
@@ -4983,8 +4983,12 @@ function renderChapterPage(chapterKey) {
   const root = document.getElementById('chapter-root');
   if (!originalChapter || !root) return;
   // A lesson owns its worked example, formulas, code, and interaction together.
-  const chapter = {...originalChapter, sections: originalChapter.sections.map(section => ({
-    ...section, ...window.AtelierLessons?.getContent(section.viz),
+  const sections = [...originalChapter.sections];
+  const grpo = chapterKey === 'alignment-depth' && window.AtelierLessons?.getContent('grpo');
+  if (grpo) sections.splice(1, 0, {id:'grpo',viz:'grpo',nav:'GRPO',...grpo});
+  const chapter = {...originalChapter, sections: sections.map((section,index) => ({
+    ...section, ...window.AtelierLessons?.getContent(section.viz, section.id),
+    label: `Concept ${String(index+1).padStart(2,'0')}`,
   }))};
 
   const navMeta = document.querySelector('[data-nav-meta]');
@@ -5615,7 +5619,9 @@ function mountVisualization(card, section) {
   let lastInlineWidth = 0;
   let lastOverlayWidth = 0;
 
-  if (typeof ResizeObserver !== 'undefined') {
+  // Native HTML/SVG lessons reflow with CSS. Replacing their DOM on resize
+  // interrupts focus and direct manipulation without improving the layout.
+  if (typeof ResizeObserver !== 'undefined' && !window.AtelierLessons?.has(section.viz)) {
     const observer = new ResizeObserver((entries) => {
       entries.forEach((entry) => {
         if (!isMounted) return;

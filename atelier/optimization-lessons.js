@@ -107,12 +107,12 @@
   const content = {
     'gradient-descent': {
       title: 'Gradient descent: the slope tells you where, not how far',
-      summary: 'Move two weights down a loss valley. A sensible step lowers the loss; a bigger step can cross the valley and land higher.',
+      summary: 'Fit the same two training examples one update at a time. A useful step lowers their prediction errors; a larger step can overshoot.',
       what: 'The <strong>gradient</strong> measures how the loss changes when each weight moves a little. It points uphill. Gradient descent subtracts it, scaled by a <strong>learning rate</strong>. The slope is local: a large step need not improve the loss.',
       why: 'Training adjusts many weights using this same rule. Our two-weight model makes the direction and the step size visible.',
       interview: 'The negative gradient is a local downhill direction. The learning rate still has to be small enough: <strong>a downhill direction is not a guarantee of a downhill destination.</strong>',
       details: [
-        'This is a deterministic quadratic, L(w) = (w1 squared + 9 times w2 squared) / 2. The vertical direction has nine times the curvature. Ellipses connect weights with equal loss; the minimum is (0, 0).',
+        'The model is prediction = w1*x1 + w2*x2. Its two training examples are x=(1,0), target 0 and x=(0,3), target 0. Summed half-squared error gives L=(w1 squared + 9*w2 squared)/2. The factor 3 in the second input becomes 9 in the curvature.',
         'For this quadratic, constant-rate gradient descent converges from every starting point when 0 < learning rate < 2/9. The overshoot preset uses 0.26, outside that range. This numerical threshold is specific to this loss.',
         'We use the exact gradient. In minibatch SGD, the gradient is instead estimated from part of the training data.',
       ],
@@ -302,10 +302,9 @@
     const comparison = after.loss > before.loss + 1e-12 ? 'rose' : after.loss < before.loss - 1e-12 ? 'fell' : 'stayed the same';
     return `<aside class="opt-inspector" aria-label="Exact update inspector">
       <div class="opt-inspector-title"><span>${selected === 0 ? 'Preview' : `Update ${selected}`}</span><h4>${label}</h4></div>
-      <dl class="opt-calculation">${rows.map(([name, value], i) => `<div${i === rows.length - 2 ? ' class="opt-move-row"' : ''}><dt>${name}</dt><dd>${value}</dd></div>`).join('')}</dl>
       <div class="opt-loss-change"><span>Loss before <strong>${number(before.loss)}</strong></span><span aria-hidden="true">&rarr;</span><span>Loss after <strong>${number(after.loss)}</strong></span></div>
       <p class="opt-result">${selected === 0 ? `This proposed update ${comparison === 'rose' ? 'raises' : comparison === 'fell' ? 'lowers' : 'does not change'} the loss.` : `The loss ${comparison}.`} ${after.loss > before.loss + 1e-12 ? 'A correct gradient can still lead to a worse destination.' : after.lr === 0 ? 'The rate is zero, not the gradient. Training has stopped moving.' : ''}</p>
-      <p class="opt-equation">${isAdam ? 'w next = w - rate x m-hat / (sqrt(v-hat) + epsilon)' : isMomentum ? 'velocity = 0.9 x velocity + gradient; w next = w - rate x velocity' : 'w next = w - rate x gradient'}</p>
+      <details data-opt-detail="update"><summary>Inspect the calculation</summary><dl class="opt-calculation">${rows.map(([name, value], i) => `<div${i === rows.length - 2 ? ' class="opt-move-row"' : ''}><dt>${name}</dt><dd>${value}</dd></div>`).join('')}</dl><p class="opt-equation">${isAdam ? 'w next = w - rate x m-hat / (sqrt(v-hat) + epsilon)' : isMomentum ? 'velocity = 0.9 x velocity + gradient; w next = w - rate x velocity' : 'w next = w - rate x gradient'}</p></details>
     </aside>`;
   }
   function comparisonMarkup(instance, view) {
@@ -334,7 +333,7 @@
         <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><path class="opt-axis" d="M16,108H624"/>${lines}<path class="opt-schedule-cursor" d="M${selectedX},10V112"/></svg>
         <div class="opt-schedule-hitpoints" role="group" aria-label="Inspect a scheduled update">${Array.from({ length: BUDGET }, (_, i) => `<button type="button" data-opt-action="scheduled" data-opt-value="${i + 1}" data-opt-key="scheduled:${i + 1}" tabindex="${i === index ? 0 : -1}" aria-label="Inspect update ${i + 1}: ${NAMES[view.active]} learning rate ${number(scheduleRate(view.active, i))}. Arrow keys move between updates." title="Update ${i + 1}: rate ${number(scheduleRate(view.active, i))}"></button>`).join('')}</div>
       </div><div class="opt-schedule-axis"><span>Update 1</span><span>Update 12</span><span>Update 24</span></div>
-      <p class="opt-small">Tap the schedule to jump to an update. Its computed path and weights appear above.</p>
+      <p class="opt-small">Tap the schedule to jump to an update. Follow its path and weight changes below.</p>
     </div>`;
   }
   function takeaway(instance, view) {
@@ -356,15 +355,19 @@
     const gd = kind === 'gradient-descent', schedules = kind === 'lr-schedule';
     const headings = { 'gradient-descent': 'A downhill direction can still overshoot.', optimizers: 'Change the update rule, not the problem.', 'lr-schedule': 'The same slope. A different-sized move.' };
     const presets = !schedules ? `<div class="opt-presets" role="group" aria-label="Learning-rate stories">${Object.entries(PRESETS).map(([key, preset]) => button('preset', key, `${gd ? preset.label : key === 'small' ? 'Small rate' : key === 'useful' ? 'Stable SGD rate' : 'Unstable SGD rate'} <span class="opt-rate">${number(preset.lr)}</span>`, { pressed: state.preset === key })).join('')}</div>` : '';
-    return `<header class="opt-heading"><h3>${headings[kind]}</h3><p>Two weights. One loss: <span class="opt-inline-math">L = (w<sub>1</sub><sup>2</sup> + 9w<sub>2</sub><sup>2</sup>) / 2</span>. Start at <span class="opt-inline-math">(-3, 1.2)</span>; aim for <span class="opt-inline-math">(0, 0)</span>.</p></header>
+    return `<header class="opt-heading"><h3>${headings[kind]}</h3><p>Train <span class="opt-inline-math">prediction = w₁x₁ + w₂x₂</span> on two examples. The plot shows their summed squared-error loss, not the input data.</p></header>
       ${presets}${gd ? '' : comparisonMarkup(instance, view)}
       <nav class="opt-navigation" aria-label="Step through the optimization">
         <div class="opt-step-buttons">${button('previous', '', 'Previous', { disabled: view.selected === 0 })}${button('next', '', 'Next update', { className: 'opt-primary', disabled: view.selected >= view.track.points.length - 1 })}</div>
         <span class="opt-step-count">Step <strong>${view.selected}</strong> of ${BUDGET}${view.selected === 0 ? ' (start)' : ''}${gd ? ` &middot; Loss <strong>${number(view.current.loss)}</strong>` : ''}</span>
         <div class="opt-secondary-buttons">${button('finish', '', 'Show all 24', { disabled: state.completed === BUDGET && view.selected === BUDGET })}${button('reset', '', 'Reset', { disabled: state.completed === 0 })}</div>
       </nav>
-      <div class="opt-workspace">${mapMarkup(instance, view, compact)}${updateMarkup(instance, view)}</div>
       ${schedules ? scheduleMarkup(instance, view) : ''}
+      <div class="opt-workspace">${mapMarkup(instance, view, compact)}${updateMarkup(instance, view)}</div>
+      <details data-opt-detail="data"><summary>Which training examples create this landscape?</summary><div class="opt-training-data" aria-label="Predictions on the two training examples">
+        <div><span>Example 1 · input (1, 0)</span><strong>Prediction ${number(view.current.point[0])}</strong><span>Target 0 · half-squared error ${number(view.current.point[0] ** 2 / 2)}</span></div>
+        <div><span>Example 2 · input (0, 3)</span><strong>Prediction ${number(3 * view.current.point[1])}</strong><span>Target 0 · half-squared error ${number(9 * view.current.point[1] ** 2 / 2)}</span></div>
+      </div></details>
       ${view.track.stopped ? `<p class="opt-warning" role="note">${escape(view.track.reason)} Last safe update: ${view.track.points.length - 1}.</p>` : ''}
       <p class="opt-takeaway">${takeaway(instance, view)}</p>
       ${gd ? '' : `<p class="opt-small">${schedules ? 'Same SGD rule and 24-update budget. Only the learning-rate schedule changes.' : 'Same start, learning rate, and update budget. Exact gradients, no sampling noise; rates are not separately tuned.'}</p>`}`;
@@ -382,7 +385,9 @@
     if (!binding) return;
     const activeElement = root.ownerDocument.activeElement;
     const focusKey = root.contains(activeElement) ? activeElement.dataset.optKey : null;
+    const opened = [...root.querySelectorAll('details[open][data-opt-detail]')].map(el=>el.dataset.optDetail);
     binding.content.innerHTML = markup(binding.instance, binding.compact);
+    root.querySelectorAll('details[data-opt-detail]').forEach(el=>{ el.open = opened.includes(el.dataset.optDetail); });
     if (focusKey) {
       const focus = [...root.querySelectorAll('[data-opt-key]')].find(element => element.dataset.optKey === focusKey && !element.disabled);
       (focus || root.querySelector('[data-opt-action="previous"]:not(:disabled)') || root.querySelector('[data-opt-action="next"]'))?.focus({ preventScroll: true });

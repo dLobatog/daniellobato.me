@@ -33,16 +33,16 @@
       </div>
       <aside class="opening-experiment" aria-label="A quick Bayes experiment">
         <p class="eyebrow">Start with a surprise</p>
-        <h2>A positive test.<br>How sure are you?</h2>
-        <p>A disease affects <strong>1 in 100 people.</strong> A test catches 99% of sick people, but also flags 1% of healthy people.</p>
-        <p>After a positive result, what is the chance of being sick?</p>
-        <div class="lesson-choices" role="group" aria-label="Predict the chance"><button class="lesson-choice" type="button" data-guess="99">About 99%</button><button class="lesson-choice" type="button" data-guess="50">About 50%</button></div>
+        <h2>Flagged as spam.<br>How sure are you?</h2>
+        <p>Only <strong>1 in 100 emails is spam.</strong> An example filter catches 90% of spam, but also flags 2% of legitimate emails.</p>
+        <p>When it flags an email, how likely is that email to be spam?</p>
+        <div class="lesson-choices" role="group" aria-label="Predict the chance"><button class="lesson-choice" type="button" data-guess="90">About 90%</button><button class="lesson-choice" type="button" data-guess="31">About 1 in 3</button></div>
         <div class="opening-answer" hidden aria-live="polite">
-          <div class="opening-counts"><span><strong>99</strong>real detections</span><span class="plus">+</span><span><strong>99</strong>false alarms</span></div>
+          <div class="opening-counts"><span><strong>90</strong>real detections</span><span class="plus">+</span><span><strong>198</strong>false alarms</span></div>
           <p data-guess-feedback></p>
-          <a class="text-link" href="./foundations.html#bayes">Follow the people, step by step <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="./foundations.html#bayes">Follow the emails, step by step <span aria-hidden="true">↗</span></a>
         </div>
-        <noscript><p>It is 50%: in 10,000 people, 99 sick people and 99 healthy people test positive. <a href="./foundations.html#bayes">Explore Bayes</a>.</p></noscript>
+        <noscript><p>About 31%: among 10,000 emails, 90 spam messages and 198 legitimate messages are flagged. <a href="./foundations.html#bayes">Explore Bayes</a>.</p></noscript>
       </aside>
     </section>
 
@@ -188,8 +188,8 @@
           <a class="route-link" href="./generative-and-rl.html">
             <div>
               <p class="route-kicker">Chapter 14</p>
-              <h3>Generation and alignment</h3>
-              <p>Temperature, sampling behavior, and why preference tuning needs a leash instead of raw reward chasing.</p>
+              <h3>Generation and decision-making</h3>
+              <p>Denoising a signal with diffusion, and choosing between uncertain options with bandits.</p>
             </div>
             <span class="card-cta">Open chapter</span>
           </a>
@@ -209,7 +209,7 @@
             <div>
               <p class="route-kicker">Chapter 16</p>
               <h3>Objectives and alignment</h3>
-              <p>Guidance, preference tuning, and reward hacking once you go beyond the first generative intuition.</p>
+              <p>Guidance, DPO, GRPO, and the difference between earning reward and solving the intended problem.</p>
             </div>
             <span class="card-cta">Open chapter</span>
           </a>
@@ -222,6 +222,6 @@
     <p>A project by <a href="../index.html">Daniel Lobato</a>.</p><a class="text-link" href="https://www.buymeacoffee.com/dlobatog" target="_blank" rel="noopener">Support the project</a>
   </footer>
 
-  <script defer src="./library.js?v=1"></script>
+  <script defer src="./library.js?v=2"></script>
 </body>
 </html>

@@ -23,7 +23,7 @@ test('All public chapter assets exist and use the same reading shell', () => {
 
 test('Native module registrations expose coherent content, not duplicate legacy controls', () => {
   const sandbox = {window:{}};
-  for (const file of ['neural-flow.js', 'neural-functions.js', 'optimization-lessons.js', 'lessons.js']) vm.runInNewContext(read(file), sandbox, {filename:file});
+  for (const file of ['lab-core.js', 'neural-mechanisms.js', 'neural-functions.js', 'optimization-lessons.js', 'foundations-labs.js', 'transformer-labs.js', 'ranking-labs.js', 'tabular-labs.js', 'decision-labs.js', 'training-labs.js', 'lessons.js']) vm.runInNewContext(read(file), sandbox, {filename:file});
   const facade = sandbox.window.AtelierLessons;
   for (const kind of ['neuron','activation-basics','output-functions','forward-pass','chain-rule','backprop','gradient-descent','optimizers','lr-schedule']) {
     assert.ok(facade.has(kind), kind);
@@ -36,6 +36,32 @@ test('Native module registrations expose coherent content, not duplicate legacy 
   }
   assert.ok(facade.has('bayes'));
   assert.equal(facade.has('unknown'), false);
+  const allContent = sandbox.window.AtelierLessonModules.flatMap(module => Object.keys(module.content));
+  assert.equal(new Set(allContent).size, allContent.length, 'Each renderer has one owner');
+  assert.equal(allContent.length, 67, '66 existing mechanisms plus GRPO; bandit appears in two chapters');
+  for (const kind of allContent) {
+    const c = facade.getContent(kind);
+    assert.ok(c.summary && c.math.annotations.length && c.code.snippet, kind);
+    assert.equal(c.controls.length, 0, kind);
+    assert.equal(c.presets.length, 0, kind);
+    assert.equal(c.quiz.options.filter(option => option.correct).length, 1, kind);
+  }
+});
+
+test('Every public section resolves to a native mechanism, including ranking objectives and GRPO', () => {
+  const sandbox = {window:{}, document:{addEventListener(){}}, setTimeout(){}};
+  for (const file of ['lab-core.js', 'neural-mechanisms.js', 'neural-functions.js', 'optimization-lessons.js', 'foundations-labs.js', 'transformer-labs.js', 'ranking-labs.js', 'tabular-labs.js', 'decision-labs.js', 'training-labs.js', 'lessons.js', 'studio.js']) vm.runInNewContext(read(file), sandbox, {filename:file});
+  const chapterData = vm.runInNewContext('chapters', sandbox);
+  let count = 0;
+  for (const chapter of Object.values(chapterData)) for (const section of chapter.sections) {
+    const c = sandbox.window.AtelierLessons.getContent(section.viz, section.id);
+    assert.ok(c, section.id);
+    assert.ok(sandbox.window.AtelierLessons.has(c.viz || section.viz), section.id);
+    count++;
+  }
+  assert.equal(count, 67);
+  assert.equal(sandbox.window.AtelierLessons.getContent('ranking-metrics', 'rank-objectives').viz, 'rank-objectives');
+  assert.ok(sandbox.window.AtelierLessons.getContent('grpo'));
 });
 
 function themeFixture(saved, unavailable = false) {

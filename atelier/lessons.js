@@ -166,7 +166,7 @@
       if (lessonModule) return lessonModule.render(kind, root);
       return render(kind, root);
     },
-    getContent: kind => moduleFor(kind)?.content[kind],
+    getContent: (kind, sectionId) => moduleFor(sectionId)?.content[sectionId] || moduleFor(kind)?.content[kind],
     unmount: (kind, root) => moduleFor(kind)?.unmount?.(root),
     bayes, entropy, crossEntropy, expectation,
   };

@@ -1,0 +1,97 @@
+.ml-lab[data-family="training-labs"] .tl-lab {
+  color: var(--lesson-ink);
+  font-family: var(--sans);
+  min-width: 0;
+}
+.tl-lab *, .tl-lab *::before, .tl-lab *::after { box-sizing: border-box; }
+.tl-lab .ml-question { max-width: 64ch; font-size: clamp(1.05rem, 2.1vw, 1.35rem); line-height: 1.4; }
+.tl-lab h4 { margin: .6rem 0; font-size: .86rem; line-height: 1.4; font-weight: 650; }
+.tl-lab .ml-grid, .tl-lab .ml-grid-3 { margin: 1rem 0; align-items: start; }
+.tl-lab .ml-grid > *, .tl-lab .ml-grid-3 > * { min-width: 0; }
+.tl-control { margin: .8rem 0; }
+.tl-control > .ml-kicker { display: block; margin-bottom: .4rem; }
+.tl-lab .ml-controls { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tl-lab button { font: inherit; cursor: pointer; color: var(--lesson-ink); border: 1px solid var(--lesson-border); background: var(--lesson-surface); border-radius: .4rem; min-height: 44px; padding: .45rem .65rem; line-height: 1.35; }
+.tl-lab button:hover { border-color: var(--lesson-blue); }
+.tl-lab button:focus-visible, .tl-lab [tabindex="0"]:focus-visible { outline: 3px solid var(--lesson-blue); outline-offset: 3px; }
+.tl-lab button[aria-pressed="true"] { border-color: var(--lesson-blue); box-shadow: inset 0 0 0 1px var(--lesson-blue); }
+.tl-lab button:disabled { cursor: default; opacity: .45; }
+.tl-primary-row { margin: 0 0 1rem; }
+.tl-lab .tl-primary { background: var(--lesson-blue); border: 2px solid var(--lesson-blue); color: var(--lesson-surface); font-weight: 700; padding: .65rem 1rem; min-height: 48px; }
+.tl-lab .tl-primary:hover { filter: brightness(.93); }
+.tl-mechanism { min-width: 0; margin: .7rem 0; }
+.tl-lab .tl-outcome { font-size: .94rem; line-height: 1.5; margin: .7rem 0 1rem; max-width: 70ch; }
+.tl-flow { display: flex; align-items: stretch; gap: 1rem; min-width: 0; margin: .8rem 0; }
+.tl-flow-node { flex: 1; min-width: 0; position: relative; padding: .5rem 0; border-top: 2px solid var(--lesson-border); }
+.tl-flow-node + .tl-flow-node::before { content: ">"; position: absolute; left: -.75rem; top: 1rem; color: var(--lesson-muted); font-family: var(--mono); }
+.tl-flow-node span { display: block; font-size: .77rem; line-height: 1.4; color: var(--lesson-muted); }
+.tl-flow-node strong { display: block; font: 600 .9rem/1.55 var(--mono); overflow-wrap: anywhere; margin-top: .2rem; }
+.tl-branches { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: .7rem; align-items: center; }
+.tl-plus { font: 600 1.3rem var(--mono); color: var(--lesson-blue); }
+.tl-disclosure { border-top: 1px solid var(--lesson-border); margin-top: .7rem; }
+.tl-disclosure > summary { cursor: pointer; min-height: 44px; padding: .75rem 0; font-size: .85rem; font-weight: 600; }
+.tl-disclosure > summary:focus-visible { outline: 3px solid var(--lesson-blue); outline-offset: 2px; }
+.tl-disclosure-body { padding-bottom: .8rem; }
+.tl-parameter-map { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.tl-parameter-map button { display: grid; gap: .2rem; text-align: left; min-width: 0; }
+.tl-parameter-map span { font-size: .75rem; }
+.tl-weight-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem; margin: .75rem 0; }
+.tl-lab .ml-stat { padding: .55rem 0; }
+.tl-lab .ml-stat > span { display: block; }
+.tl-lab .ml-stat strong { display: block; font: 600 1.05rem/1.5 var(--mono); overflow-wrap: anywhere; }
+.tl-lab .ml-inspector { border-left: 3px solid var(--lesson-blue); padding: .45rem 1rem; background: var(--lesson-soft); margin: 1rem 0; }
+.tl-lab .ml-note { font-size: .83rem; line-height: 1.6; color: var(--lesson-muted); }
+.tl-equation { font-family: var(--mono); font-size: .81rem; line-height: 1.75; overflow-wrap: anywhere; margin: .5rem 0; }
+.tl-matrix-wrap { min-width: 0; margin-bottom: .9rem; }
+.tl-matrix { display: grid; grid-template-columns: repeat(var(--tl-cols), minmax(0, 1fr)); gap: .3rem; }
+.tl-lab .tl-cell { font: 500 clamp(.66rem, 1.35vw, .83rem)/1.3 var(--mono); display: flex; align-items: center; justify-content: center; min-height: 44px; padding: .35rem .1rem; border-radius: .2rem; background: var(--lesson-soft); overflow-wrap: anywhere; min-width: 0; }
+.tl-lab .tl-group { background: color-mix(in srgb, var(--lesson-blue) 15%, var(--lesson-surface)); border-color: var(--lesson-blue); }
+.tl-lab .tl-trainable { background: color-mix(in srgb, var(--lesson-blue) 12%, var(--lesson-surface)); border-bottom: 3px solid var(--lesson-blue); }
+.tl-lab .tl-frozen { background: var(--lesson-soft); border-style: dashed; }
+.tl-chart { width: 100%; min-width: 0; }
+.tl-axis-labels { display: flex; justify-content: space-between; gap: .5rem; font: .76rem/1.5 var(--mono); color: var(--lesson-muted); }
+.tl-request-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: .35rem; min-height: 44px; margin: .35rem 0; }
+.tl-request-row strong { font: .8rem var(--mono); }
+.tl-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tl-chart text { fill: var(--lesson-muted); font: 13px var(--mono); }
+.tl-axis { stroke: var(--lesson-border); stroke-width: 1.5; }
+.tl-line { fill: none; stroke-width: 2.5; }
+.tl-color-0 { stroke: var(--lesson-blue); }
+.tl-color-1 { stroke: var(--lesson-orange); }
+.tl-point.tl-color-0 { fill: var(--lesson-blue); }
+.tl-point.tl-color-1 { fill: var(--lesson-orange); }
+.tl-legend { display: flex; gap: .5rem 1rem; flex-wrap: wrap; font-size: .75rem; margin: .25rem 0 .75rem; }
+.tl-legend-0::before, .tl-legend-1::before { content: ""; display: inline-block; width: .7rem; height: .7rem; margin-right: .35rem; background: var(--lesson-blue); }
+.tl-legend-1::before { background: var(--lesson-orange); }
+.tl-table { max-width: 100%; overflow-x: auto; margin: 1rem 0; }
+.tl-table table { width: 100%; border-collapse: collapse; font: .77rem/1.5 var(--mono); text-align: left; }
+.tl-table th, .tl-table td { padding: .55rem .6rem; border-bottom: 1px solid var(--lesson-border); white-space: nowrap; }
+.tl-table th { font-weight: 600; background: var(--lesson-soft); }
+.tl-tokens { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: .5rem; margin: 1rem 0; }
+.tl-lab .tl-token { display: grid; gap: .4rem; text-align: left; padding: .7rem; min-width: 0; }
+.tl-token strong { font-family: var(--mono); font-size: .83rem; }
+.tl-token span { font-size: .75rem; color: var(--lesson-muted); }
+.tl-keytiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.tl-lab .tl-tile { display: grid; text-align: left; gap: .3rem; padding: .65rem; min-width: 0; }
+.tl-tile span { font: .74rem/1.4 var(--mono); overflow-wrap: anywhere; }
+.tl-distributions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: 1rem 0; }
+.tl-lab .tl-distribution { display: grid; gap: .5rem; text-align: left; padding: .8rem; min-width: 0; }
+.tl-prob-label { font: .75rem var(--mono); }
+.tl-prob-track { height: 12px; width: 100%; background: var(--lesson-soft); display: block; }
+.tl-prob-target, .tl-prob-student { display: block; height: 100%; background: var(--lesson-blue); }
+.tl-prob-student { background: var(--lesson-orange); }
+.tl-wait { stroke: var(--lesson-muted); stroke-width: 2; stroke-dasharray: 4 3; }
+.tl-prefill { fill: var(--lesson-orange); opacity: .65; }
+.tl-lab .ml-step-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; font-size: .8rem; }
+.tl-reset { margin-top: 1rem; text-align: right; }
+.tl-reset button { font-size: .77rem; }
+@media (max-width: 680px) {
+  .tl-lab .ml-grid, .tl-lab .ml-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .tl-distributions { grid-template-columns: minmax(0, 1fr); }
+  .tl-lab .tl-distribution { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tl-distribution strong { grid-column: 1 / -1; }
+  .tl-prob-track { align-self: center; }
+  .tl-lab .ml-inspector { padding: .45rem .7rem; }
+  .tl-lab .ml-controls button { font-size: .78rem; }
+}
+@media (prefers-reduced-motion: reduce) { .tl-lab * { animation: none !important; transition: none !important; } }

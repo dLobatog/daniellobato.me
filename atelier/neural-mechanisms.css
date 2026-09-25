@@ -1,0 +1,53 @@
+.nn-network { display:grid; grid-template-columns:minmax(120px,1fr) 32px minmax(140px,1fr) 32px minmax(140px,1fr); gap:14px; align-items:center; padding:24px 0; border-block:1px solid var(--lesson-border); }
+.nn-layer-label { display:block; font:600 .83rem var(--sans); color:var(--lesson-muted); margin-bottom:12px; }
+.nn-pixels, .nn-weights { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; max-width:210px; }
+.ml-lab .nn-pixel { aspect-ratio:1; padding:0; background:var(--lesson-soft); color:var(--lesson-muted); border-radius:4px; min-height:44px; font: .86rem var(--mono); }
+.ml-lab .nn-pixel.is-lit { background:var(--lesson-ink); color:var(--lesson-surface); }
+.nn-network small { display:block; color:var(--lesson-muted); font-size:.8rem; line-height:1.45; margin-top:9px; }
+.nn-wire { text-align:center; color:var(--lesson-muted); font-size:1.8rem; }
+.ml-lab .nn-hidden { display:grid; grid-template-columns:1fr auto; text-align:left; gap:6px; width:100%; margin:8px 0; padding:12px; }
+.nn-hidden strong { font:600 1.5rem var(--sans); }
+.nn-hidden small { grid-column:1/-1; margin:0; }
+.nn-output { padding:20px 16px; border:1px solid var(--lesson-blue); border-radius:9px; }
+.nn-output > * { display:block; }
+.nn-output strong { font:600 clamp(1.8rem,3vw,2.5rem) var(--sans); color:var(--lesson-blue); margin:10px 0; }
+.nn-detail { display:grid; grid-template-columns:minmax(170px,.8fr) minmax(0,1.5fr); gap:28px; margin-top:24px; }
+.nn-detail h4 { font:600 1rem var(--sans); margin-bottom:14px; }
+.nn-detail .ml-note { margin-top:12px; max-width:30ch; }
+.ml-lab .nn-weight { aspect-ratio:1; min-height:44px; padding:4px; border-radius:4px; font:.82rem var(--mono); }
+.ml-lab .nn-weight.positive { color:var(--lesson-blue); background:color-mix(in srgb,var(--lesson-blue) 9%,var(--lesson-surface)); }
+.ml-lab .nn-weight.negative { color:var(--lesson-orange); background:color-mix(in srgb,var(--lesson-orange) 9%,var(--lesson-surface)); }
+.ml-lab .nn-weight[aria-pressed='true'] { outline:2px solid var(--lesson-ink); outline-offset:1px; }
+.nn-equation { font:1rem/1.8 var(--mono); margin-block:14px!important; overflow-wrap:anywhere; }
+.nn-factors { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.nn-factors > div { border-left:2px solid var(--lesson-border); padding:8px 12px; }
+.nn-factors :is(span,strong,small) { display:block; }
+.nn-factors span, .nn-factors small { font-size:.83rem; color:var(--lesson-muted); }
+.nn-factors strong { font:600 1.4rem var(--sans); margin:4px 0; }
+.nn-probe { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:20px 0; border-top:1px solid var(--lesson-border); margin-top:24px; }
+.nn-probe :is(span,strong,small) { display:block; }
+.nn-probe span { color:var(--lesson-muted); font-size:.9rem; }
+.nn-probe strong { color:var(--lesson-blue); font:600 clamp(1.25rem,2.4vw,2rem) var(--sans); margin:8px 0; }
+.nn-probe > p { grid-column:1/-1; }
+.nn-caveat { margin-top:28px!important; font-size:.82rem; line-height:1.5; color:var(--lesson-muted); max-width:75ch; }
+@media(max-width:760px) {
+  .nn-network { grid-template-columns: minmax(100px,1fr) 16px minmax(130px,1fr); gap:8px; }
+  .nn-output-column { grid-column:1/-1; }
+  .nn-hidden-column + .nn-wire { display:none; }
+  .nn-output { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 18px; padding:12px; }
+  .nn-output strong { margin:0; }
+  .nn-output small { margin:0; }
+  .nn-pixels { max-width:180px; }
+  .nn-detail { grid-template-columns:minmax(0,1fr); gap:22px; }
+  .nn-detail > div:first-child { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px 16px; align-items:start; }
+  .nn-detail > div:first-child h4 { grid-column:1/-1; }
+  .nn-detail > div:first-child .ml-note { margin-top:0; }
+}
+@media(max-width:360px) {
+  .nn-network { grid-template-columns:minmax(90px,1fr) 10px minmax(110px,1fr); gap:5px; }
+  .nn-pixels { gap:3px; }
+  .ml-lab .nn-pixel { min-height:34px; }
+  .ml-lab .nn-hidden { padding:8px; font-size:.85rem; }
+  .nn-layer-label { font-size:.77rem; }
+  .nn-wire { font-size:1.2rem; }
+}
