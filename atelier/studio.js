@@ -15,7 +15,7 @@ function ensureReactBundle() {
       ? studioScript.src.replace(/studio\.js.*$/, '')
       : './';
     const s = document.createElement('script');
-    s.src = base + 'react-viz/dist/atelier-viz.iife.js';
+    s.src = base + 'react-viz/dist/atelier-viz.iife.js?v=49';
     s.onload = () => resolve();
     s.onerror = () => reject(new Error('Failed to load atelier-viz bundle'));
     document.head.appendChild(s);
