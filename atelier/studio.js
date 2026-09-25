@@ -35,9 +35,10 @@ const chapters = {
   foundations: {
     navMeta: 'chapter 01 / uncertainty and loss',
     eyebrow: 'Foundations',
+    displayTitle: 'Reasoning under uncertainty.',
     title: 'Probability concepts that should feel obvious after ten minutes.',
     lede:
-      'The point of this chapter is not to memorize formulas. It is to make a few reusable ideas feel intuitive enough that the equations start reading like summaries, not like mysteries.',
+      'What can happen? What should you expect? What changes when new evidence arrives? Start with familiar examples, then connect them to the quantities a model learns.',
     bestFor: 'Interview refresh / first pass review',
     studyMove: 'Read the first paragraph, then touch the controls',
     sections: [
@@ -45,9 +46,9 @@ const chapters = {
         id: 'distribution',
         nav: 'Distribution',
         label: 'Concept 01',
-        title: 'A distribution is how probability is spent across outcomes',
+        title: 'What can happen, and how often?',
         summary:
-          'A distribution tells you how probability is allocated over the possible outcomes — and whatever shape you give it, random samples will follow.',
+          'A <strong>probability distribution</strong> lists the possible outcomes and their chances. A fair die gives each face one sixth of the probability. Change those chances below, then draw samples to see the pattern emerge.',
         what:
           'Think of probability as a fixed budget of 1. A <strong>distribution</strong> is how you spend that budget across the possible outcomes. Give outcome A a weight of 0.3 and outcome B a weight of 0.7, and over many draws roughly 30% of your samples will land on A and 70% on B. It comes in two flavors: <strong>discrete</strong> (finite outcomes — a die, a class label) and <strong>continuous</strong> (a smooth curve over a range — heights, prices, residuals).',
         why:
@@ -101,13 +102,13 @@ const chapters = {
         id: 'expectation',
         nav: 'Expectation',
         label: 'Concept 02',
-        title: 'Expectation is the balance point of a distribution',
+        title: 'The average need not be a possible outcome.',
         summary:
-          'The expectation — what most people call the "average" — is literally the center of mass of a distribution. If you rolled forever, your running average would converge to it.',
+          'A fair die has an <strong>expected value of 3.5</strong>, but you can never roll a 3.5. Expectation is the long-run average: weight each outcome by how often it happens, then add.',
         what:
           'Take a distribution and treat each outcome as a weight hanging on a number line. The <strong>expectation</strong> E[X] is the single point where the whole thing balances. It lives at <code>Σ x · p(x)</code> for discrete distributions and <code>∫ x · p(x) dx</code> for continuous ones. Everything else — variance, entropy, loss — is built on top of expectations.',
         why:
-          'Once expectation feels like "center of mass," the Law of Large Numbers stops sounding mystical. It is just: sample enough times, the balance point wins. Entropy (next section) is itself an expectation — E[−log p] — so this grounding pays off immediately.',
+          'The average of many independent rolls settles toward this balance point. Later, entropy uses the same operation: average the surprise of each outcome, weighted by its chance.',
         interview:
           'The sentence to keep: <em>expectation is where the distribution would balance; variance is how much it wobbles.</em>',
         details: [
@@ -158,38 +159,33 @@ const chapters = {
         id: 'bayes',
         nav: 'Bayes',
         label: 'Concept 03',
-        title: 'Bayes: evidence updates a prior belief',
+        title: 'A positive test. But positive for whom?',
         summary:
-          'Start with a base rate, then crop the world down to the cases that produced the evidence. The posterior is simply: among the positives you kept, what fraction are actually true?',
+          'A test detects 99% of sick people and gives a false alarm for 1% of healthy people. If only 1% are sick, a positive result means a <strong>50% chance of being sick</strong>, not 99%. Follow the people to see why.',
         what:
-          'You start with a <strong>prior</strong>, which is your belief before the evidence. Then you ask how consistent the evidence is with the event versus without it. The posterior is the updated belief after combining both pieces. The easiest mental move is: <strong>filter the world down to the examples that match the evidence, then ask what share of that smaller pool is actually the thing you care about.</strong>',
+          '<strong>Bayes\' rule changes the group you count over.</strong> Before the test, you count sick people among everyone: 100 out of 10,000. After a positive result, you count sick people among positive results only: 99 out of 198. That smaller group contains both real detections and false alarms.',
         why:
-          'This is the cleanest way to understand why a strong test can still produce a surprisingly modest probability when the event itself is rare. The update only feels counterintuitive until you literally picture how many false positives survive the crop.',
+          'A small false-alarm rate can still produce many false alarms when healthy people greatly outnumber sick people. Change only the base rate below: the test stays the same, but the meaning of a positive result changes.',
         interview:
-          'The high-value interview sentence is: <em>a positive signal is not the same as a high posterior when the base rate is tiny.</em>',
+          '<em>The posterior is the fraction of evidence-matching cases that support the hypothesis.</em> The prior describes the starting population; the likelihood describes how the evidence is generated.',
         details: [
           'In classification, the same logic shows up whenever model scores need calibration rather than just ranking.',
           'The same mental model helps with spam filters, anomaly detection, medical screening, and alerting systems.',
         ],
         math: {
           title: 'Posterior formula',
-          formula: 'P(H \\mid E) = \\frac{P(E \\mid H)\\,P(H)}{P(E)}',
-          note: 'Read it as: posterior equals likelihood times prior, divided by the total probability of the evidence.',
-        },
-        geometry: {
-          title: 'Geometric view',
-          type: 'bayes-area',
-          body:
-            'Following the 3Blue1Brown picture, imagine the whole space of possibilities as a <strong>unit square</strong>. The hypothesis <strong>H</strong> fills one slice of that square with area <strong>P(H)</strong>. The evidence <strong>E</strong> carves out another region. The overlap between them has area <strong>P(H ∩ E)</strong>. Once you condition on the evidence, you are restricting attention to the evidence region only, so the posterior becomes: <em>what fraction of the evidence area lies inside the overlap?</em>',
-          formula: 'P(H \\mid E) = \\frac{\\operatorname{area}(H \\cap E)}{\\operatorname{area}(E)}',
-          note:
-            'This is the useful visual mantra from the lesson: seeing evidence means cropping the square down to the evidence region, then asking what fraction of that cropped space still belongs to the hypothesis.',
+          formula: [
+            'P(H \\mid E) = \\frac{P(E \\mid H)\\,P(H)}{P(E)}',
+            '\\begin{aligned}P(E) ={}& P(E \\mid H)P(H) \\\\ &+ P(E \\mid \\neg H)P(\\neg H)\\end{aligned}',
+            '\\begin{aligned}P(\\text{sick} \\mid +) &= \\frac{99}{99 + 99} \\\\ &= \\frac{99}{198} = 50\\%\\end{aligned}',
+          ],
+          note: 'H is the hypothesis (sick); E is the evidence (a positive test); the bar means "among". The denominator counts every way to get a positive result, not just true detections. This is a hypothetical test, not medical advice.',
         },
         code: {
           title: 'Code sketch',
           lang: 'python',
           snippet:
-            'prior = 0.05\nsensitivity = 0.95\nspecificity = 0.92\n\ntrue_positive = prior * sensitivity\nfalse_positive = (1 - prior) * (1 - specificity)\nposterior = true_positive / (true_positive + false_positive)',
+            'people = 10_000\nprior = 0.01\nsensitivity = 0.99\nfalse_alarm_rate = 0.01\n\ntrue_positives = people * prior * sensitivity       # 99\nfalse_positives = people * (1 - prior) * false_alarm_rate  # 99\nall_positives = true_positives + false_positives    # 198\nposterior = true_positives / all_positives         # 0.5',
         },
         quiz: {
           prompt: 'Why can a positive test still imply only modest posterior probability?',
@@ -212,47 +208,41 @@ const chapters = {
           ],
         },
         viz: 'bayes',
-        controls: [
-          { key: 'prior', label: 'Prior', min: 0.01, max: 0.8, step: 0.01, value: 0.05, format: 'percent' },
-          { key: 'sensitivity', label: 'Sensitivity', min: 0.5, max: 0.99, step: 0.01, value: 0.95, format: 'percent' },
-          { key: 'specificity', label: 'Specificity', min: 0.5, max: 0.99, step: 0.01, value: 0.92, format: 'percent' },
-        ],
-        presets: [
-          { label: 'Rare event', values: { prior: 0.01, sensitivity: 0.99, specificity: 0.99 } },
-          { label: 'More common', values: { prior: 0.35, sensitivity: 0.92, specificity: 0.92 } },
-          { label: 'Weak test', values: { prior: 0.12, sensitivity: 0.75, specificity: 0.78 } },
-        ],
+        controls: [],
+        presets: [],
       },
       {
         id: 'entropy',
         nav: 'Entropy',
         label: 'Concept 04',
-        title: 'Entropy and cross-entropy: uncertainty plus model mismatch',
+        title: 'An everyday heads. A surprising tail.',
         summary:
-          'Entropy is the uncertainty already built into the true distribution. Cross-entropy is that unavoidable surprise plus the extra pain your model creates when it bets on the wrong shape.',
+          'A tail from a 99%-heads coin is surprising. But it hardly ever happens. <strong>Entropy is average surprise</strong>, not the surprise of the rarest event. Select a coin, then tap either outcome.',
         what:
-          'Think of <strong>entropy</strong> as the <strong>average surprise</strong> of the true distribution. A peaky distribution is low entropy because the next outcome is rarely a shock; a flat distribution is high entropy because many outcomes stay plausible. Then think of <strong>cross-entropy</strong> as that built-in surprise plus the extra penalty you pay because your model distribution <code>q</code> does not match the true distribution <code>p</code>. The clean visual mantra is: <strong>blue is the task, gold is the avoidable mismatch.</strong>',
+          'We measure surprise as <strong>−log₂(probability)</strong>: an event with probability 1/2 costs 1 bit; an event with probability 1/4 costs 2 bits. Halve the probability and you add one bit. Entropy averages these costs using how often each outcome really happens.',
         why:
-          'This turns the classification loss into something intuitive: some of the loss is unavoidable, and the rest is your model being off. If you can separate those two pieces, log-loss stops feeling like arbitrary punishment and starts feeling like bookkeeping.',
+          'Now let a model assign its own probabilities. <strong>Cross-entropy</strong> still averages over real outcomes, but scores each one with the model\'s probability. A model that expects heads while tails keep appearing pays extra surprise. That extra average cost is <strong>KL divergence</strong>.',
         interview:
           'The reusable equation is: <em>cross-entropy = entropy + KL divergence.</em> Read it as: unavoidable surprise plus avoidable mismatch.',
         details: [
-          'When the true labels are one-hot, entropy can be low while cross-entropy still spikes if the model puts probability mass on the wrong class.',
+          'A one-hot target has entropy zero, so its cross-entropy is simply the negative log probability assigned to the observed class. This does not mean the underlying prediction task has no uncertainty.',
           'In language modeling, the same idea becomes next-token prediction over a much larger distribution.',
         ],
         math: {
-          title: 'Loss decomposition',
+          title: 'From one surprise to an average',
           formula: [
-            'H(p, q) = H(p) + KL(p \\parallel q)',
-            '\\mathcal{L}_{CE} = -\\sum_x p(x) \\log q(x)',
+            'I(x) = -\\log_2 p(x)',
+            'H(p) = \\sum_x p(x) I(x) = -\\sum_x p(x)\\log_2 p(x)',
+            'H(p,q) = -\\sum_x p(x)\\log_2 q(x) = H(p) + KL(p \\parallel q)',
+            '\\mathcal{L}_{CE}(y,q) = -\\log q(y)',
           ],
-          note: 'The first line gives the conceptual decomposition. The second line is the actual loss you optimize in classification and language modeling.',
+          note: 'The visualization uses log₂, so surprise is measured in bits. Training usually uses natural logs (nats); only the unit changes. In the last line, y is the observed class. For a fair coin: 0.5 × 1 + 0.5 × 1 = 1 bit per flip.',
         },
         code: {
           title: 'Code sketch',
           lang: 'python',
           snippet:
-            'import math\n\ndef cross_entropy(p, q):\n    return -(p * math.log2(q) + (1 - p) * math.log2(1 - q))\n\ndef entropy(p):\n    return -(p * math.log2(p) + (1 - p) * math.log2(1 - p))\n\nkl = cross_entropy(p, q) - entropy(p)',
+            'from math import log2\n\ndef cross_entropy(p, q):\n    # p is the real distribution; q is the predicted one.\n    # Any positive-probability event needs q > 0.\n    return sum(-pi * log2(qi) for pi, qi in zip(p, q) if pi > 0)\n\np = [0.9, 0.1]  # heads, tails\nq = [0.5, 0.5]  # model believes the coin is fair\nentropy = cross_entropy(p, p)       # 0.469 bits\nloss = cross_entropy(p, q)          # 1.000 bits\nkl = loss - entropy                # 0.531 extra bits',
         },
         quiz: {
           prompt: 'If q moves away from p while p stays fixed, what must happen?',
@@ -275,31 +265,24 @@ const chapters = {
           ],
         },
         viz: 'entropy',
-        controls: [
-          { key: 'p', label: 'True distribution p', min: 0.05, max: 0.95, step: 0.01, value: 0.35, format: 'percent' },
-          { key: 'q', label: 'Model distribution q', min: 0.05, max: 0.95, step: 0.01, value: 0.55, format: 'percent' },
-        ],
-        presets: [
-          { label: 'Matched model', values: { p: 0.5, q: 0.5 } },
-          { label: 'Overconfident wrong', values: { p: 0.35, q: 0.85 } },
-          { label: 'Mostly aligned', values: { p: 0.7, q: 0.62 } },
-        ],
+        controls: [],
+        presets: [],
       },
       {
         id: 'loss',
         nav: 'Loss',
         label: 'Concept 05',
-        title: 'Loss turns wrongness into a single number you can minimize',
+        title: 'Which mistakes should cost the most?',
         summary:
-          'Loss is the penalty score for a prediction. Lower is better, and training is just repeated weight updates that try to make that score smaller.',
+          'Predict a delivery in 20 minutes when it takes 30. The miss is 10 minutes: <strong>absolute error charges 10; squared error charges 100.</strong> A loss function defines the mistakes your model will work hardest to avoid.',
         what:
           'Pick any prediction your model makes. Compare it to the truth. A <strong>loss function</strong> turns that comparison into a number, then sums or averages it across the whole dataset. Different losses care about different kinds of wrongness: <strong>squared error</strong> punishes big misses quadratically, <strong>absolute error</strong> treats every dollar of miss the same, and <strong>Huber</strong> behaves like squared error near the target but stops letting one wild outlier dominate. For classification, <strong>log-loss</strong> rewards being confidently right and punishes being confidently wrong with an exploding penalty.',
         why:
-          'Loss is the handle gradient descent grabs. The next chapter is entirely about how to shrink it. If you are not clear on what "it" is, the optimizers story has nowhere to land. The practical learner sentence is: a loss tells the model both <strong>how wrong</strong> it was and <strong>what kind of wrongness matters most</strong>.',
+          'Double a miss and absolute error doubles, but squared error quadruples. This makes large errors much more influential under squared loss. Choosing a loss means choosing which mistakes training should prioritize.',
         interview:
           'The sentence to keep: <em>loss is a single minimizable number, and choosing the loss is choosing what kind of mistake you care about most.</em>',
         details: [
-          'MSE is the default for regression because it has nice gradients and a closed-form solution, but one bad outlier can pull the line way off.',
+          'Squared error targets a conditional mean; absolute error targets a conditional median. Choose according to the prediction you need, not just the presence of outliers. Ordinary least-squares linear regression has a closed-form solution; arbitrary models trained with MSE do not.',
           'MAE is robust to outliers but not differentiable at zero, which makes optimization trickier.',
           'Huber combines them: quadratic near zero (smooth gradients) and linear far away (robust to outliers).',
           'Log-loss on a sigmoid is exactly negative log-likelihood for a Bernoulli model — so minimizing log-loss is maximum likelihood under the hood.',
@@ -330,7 +313,7 @@ const chapters = {
             {
               text: 'MSE — its gradients are the cleanest',
               correct: false,
-              explanation: 'Clean gradients but very sensitive to outliers. Use MSE only when the data is clean.',
+              explanation: 'MSE gives large residuals disproportionate influence. It may still be appropriate if large errors matter especially much, but MAE or Huber is less sensitive to this outlier.',
             },
             {
               text: 'Log-loss — it is more modern',
@@ -2014,7 +1997,7 @@ const chapters = {
     eyebrow: 'Adaptation, Compression, And Serving',
     title: 'Modern LLM work is often about bending a model to a task without breaking the economics.',
     lede:
-      'This chapter is the practical layer after transformers: when to fine-tune, when to use adapters, why quantization changes the memory budget, how distillation trades quality for speed, and why serving is always a latency-versus-throughput negotiation.',
+      'This chapter is the decision layer after transformers: when a broad pre-trained prior is enough, when to specialize it, when to adapt cheaply, when to compress for serving, and how to choose the latency-throughput-memory compromise your product can actually afford.',
     sections: [
       {
         id: 'pretrain-finetune',
@@ -2022,16 +2005,16 @@ const chapters = {
         label: 'Concept 01',
         title: 'Pre-training versus fine-tuning: breadth first, specialization second',
         summary:
-          'Pre-training gives a model broad reusable representations. Fine-tuning bends those representations toward one narrower task or domain.',
+          'Pre-training teaches a broad reusable prior; fine-tuning spends that prior on one narrower task, domain, or behavior target.',
         what:
-          'The clean mental model is that <strong>pre-training builds a general prior</strong> and <strong>fine-tuning spends it</strong> on a specific job. A big pre-trained model has broad language or multimodal competence. Fine-tuning then shifts that competence toward your task, your data distribution, and your failure modes.',
+          'Think in two stages: <strong>pre-training teaches general structure from huge broad data</strong>, then <strong>fine-tuning nudges that already-useful model toward your task</strong>. The point is not to relearn language from zero; it is to start from a strong prior and steer it toward your domain, labels, and failure modes.',
         why:
-          'A lot of ML confusion comes from treating pre-training and fine-tuning as the same thing at different scales. They are not. One learns broad structure; the other steers it.',
+          'This is the cleanest way to explain transfer learning in modern LLMs. Pre-training buys breadth; fine-tuning buys specialization. Keeping that split explicit makes the rest of the chapter easier to reason about.',
         interview:
-          'The interview sentence is: <em>pre-training learns reusable representations from broad data, while fine-tuning specializes those representations for a narrower objective.</em>',
+          'The interview sentence is: <em>pre-training builds broad competence, and fine-tuning specializes that competence for a narrower objective.</em>',
         details: [
-          'Large domain gap means you need more adaptation signal because the base model prior is less aligned with your task.',
-          'Very small task data can still help if the base model is already close to the right domain.',
+          'A small domain gap means the base model is already close, so a little task data can go a long way.',
+          'A hard domain shift means you need more adaptation signal because the original prior is pointed at the wrong world.',
         ],
         code: {
           title: 'Code sketch',
@@ -2065,9 +2048,9 @@ const chapters = {
           { key: 'domainGap', label: 'Domain gap', min: 0.05, max: 0.95, step: 0.01, value: 0.34, format: 'percent' },
         ],
         presets: [
-          { label: 'Close domain', values: { taskData: 0.42, domainGap: 0.16 } },
-          { label: 'Balanced adaptation', values: { taskData: 0.54, domainGap: 0.34 } },
-          { label: 'Hard domain shift', values: { taskData: 0.74, domainGap: 0.82 } },
+          { label: 'Strong prior already fits', values: { taskData: 0.42, domainGap: 0.16 } },
+          { label: 'Typical specialization', values: { taskData: 0.54, domainGap: 0.34 } },
+          { label: 'Hard domain jump', values: { taskData: 0.74, domainGap: 0.82 } },
         ],
       },
       {
@@ -2076,16 +2059,16 @@ const chapters = {
         label: 'Concept 02',
         title: 'Full fine-tuning versus PEFT: not every task needs every weight to move',
         summary:
-          'Parameter-efficient fine-tuning methods update a tiny subset of trainable parameters while keeping the frozen base model intact.',
+          'PEFT keeps the expensive base model frozen and learns only a small task-specific update when you do not need every weight to move.',
         what:
-          'The main idea is simple: if the base model already contains a lot of useful structure, you may not need to rewrite all of it. <strong>PEFT methods keep the expensive base frozen</strong> and only learn a lightweight adaptation layer or low-rank update.',
+          'The practical question is not "can I fine-tune?" but <strong>how much of the model really needs to change</strong>. If the base model already contains useful structure, PEFT methods keep the big backbone frozen and learn a small adapter, prefix, or low-rank update around it.',
         why:
-          'This matters because training memory, checkpoint size, deployment complexity, and experimentation speed all improve when you stop touching the whole model.',
+          'This is the economic center of modern adaptation work: lower training memory, smaller checkpoints, faster iteration, and one shared base model that can support many tasks.',
         interview:
-          'The crisp answer is: <em>PEFT keeps most of the model frozen and learns a small task-specific adjustment instead of full fine-tuning.</em>',
+          'The crisp answer is: <em>PEFT freezes most weights and learns a lightweight task-specific delta instead of updating the whole model.</em>',
         details: [
-          'Full fine-tuning can still win when the task is very different or the quality bar is extremely high.',
-          'PEFT is attractive when many tasks share the same base model because adapters are easy to swap without duplicating the full checkpoint.',
+          'Full fine-tuning can still win when the task is very different or the quality bar is unusually high.',
+          'PEFT shines when many tasks share one backbone because you can swap small modules without duplicating the full checkpoint.',
         ],
         code: {
           title: 'Code sketch',
@@ -2119,9 +2102,9 @@ const chapters = {
           { key: 'budget', label: 'Training budget', min: 0.08, max: 0.95, step: 0.01, value: 0.42, format: 'percent' },
         ],
         presets: [
-          { label: 'Small budget', values: { modelScale: 0.78, budget: 0.18 } },
-          { label: 'Balanced team', values: { modelScale: 0.68, budget: 0.42 } },
-          { label: 'Big training room', values: { modelScale: 0.58, budget: 0.82 } },
+          { label: 'Tiny budget, frozen base', values: { modelScale: 0.78, budget: 0.18 } },
+          { label: 'Typical PEFT team', values: { modelScale: 0.68, budget: 0.42 } },
+          { label: 'Budget big enough to full-tune', values: { modelScale: 0.58, budget: 0.82 } },
         ],
       },
       {
@@ -2130,16 +2113,16 @@ const chapters = {
         label: 'Concept 03',
         title: 'LoRA: learn a low-rank update instead of rewriting the whole matrix',
         summary:
-          'LoRA says the task-specific change often lives in a much smaller subspace than the full weight matrix, so you can learn a skinny update instead of a full replacement.',
+          'LoRA assumes the useful task-specific change is much smaller than the full weight matrix, so you can learn a compact correction instead of rewriting everything.',
         what:
-          'Instead of updating a full weight matrix <code>W</code>, LoRA keeps <code>W</code> frozen and learns a low-rank correction <code>BA</code>. That means the model can adapt in a restricted but often sufficient subspace, which is why the trainable parameter count collapses so much.',
+          'The first-read picture is: keep the big matrix frozen, then learn a <strong>skinny correction path</strong> that nudges it in the directions your task needs. LoRA writes the delta as <code>BA</code>, so capacity is controlled by rank rather than by unlocking every parameter in <code>W</code>.',
         why:
-          'This is the most reusable PEFT intuition to have in interviews. It explains why LoRA can be cheap, modular, and surprisingly strong when the task does not require rewriting the whole representation space.',
+          'LoRA is the most important PEFT mechanism to recognize quickly because it explains why adapters can be cheap, modular, and still strong enough for many domain tasks.',
         interview:
-          'The sentence worth remembering is: <em>LoRA freezes the base weights and learns a low-rank delta that captures the task-specific correction.</em>',
+          'The sentence worth remembering is: <em>LoRA freezes the base weights and learns a low-rank correction that captures the task-specific change.</em>',
         details: [
-          'Higher rank means more expressive updates, but also more trainable parameters and larger adapter checkpoints.',
-          'DoRA changes the decomposition but keeps the same spirit: separate a smaller adaptation signal from the frozen backbone.',
+          'Higher rank buys a richer correction, but it also grows the trainable adapter and optimizer state.',
+          'Variants like DoRA change the decomposition details, but the teaching idea is the same: separate a small adaptation path from the frozen backbone.',
         ],
         math: {
           title: 'Low-rank update',
@@ -2181,9 +2164,9 @@ const chapters = {
           { key: 'coverage', label: 'Target layer coverage', min: 0.1, max: 0.95, step: 0.01, value: 0.52, format: 'percent' },
         ],
         presets: [
-          { label: 'Tiny adapter', values: { rank: 2, coverage: 0.34 } },
-          { label: 'Practical LoRA', values: { rank: 8, coverage: 0.52 } },
-          { label: 'High-capacity adapter', values: { rank: 24, coverage: 0.82 } },
+          { label: 'Rank-2 sketch', values: { rank: 2, coverage: 0.34 } },
+          { label: 'Typical LoRA', values: { rank: 8, coverage: 0.52 } },
+          { label: 'High-rank catch-up', values: { rank: 24, coverage: 0.82 } },
         ],
       },
       {
@@ -2192,16 +2175,16 @@ const chapters = {
         label: 'Concept 04',
         title: 'Quantization: fewer bits buy memory and throughput at the price of numerical fidelity',
         summary:
-          'Quantization stores weights or activations with fewer bits, shrinking memory and often improving throughput, but it also introduces approximation error.',
+          'Quantization swaps full-precision weights for coarser buckets, buying memory and throughput as long as the rounding error stays tolerable.',
         what:
-          'The easiest way to picture quantization is that you replace a smooth range of real numbers with a smaller set of buckets. Fewer buckets means cheaper storage and faster kernels, but also more rounding error. Good quantization is about making that error small enough that the product trade still wins.',
+          'Use the bucket picture first: <strong>more bits means more buckets and less error</strong>; fewer bits means cheaper storage, lower memory traffic, and usually faster serving. The whole game is keeping the approximation error small enough that the product still wins on cost and latency.',
         why:
-          'This is one of the most important deployment levers for large models because memory often becomes the real bottleneck before raw compute does.',
+          'This matters because serving bottlenecks are often about memory bandwidth and KV-cache footprint, not just raw FLOPs. Quantization is one of the simplest levers for changing that budget.',
         interview:
-          'The short line is: <em>quantization trades numerical precision for memory savings and often higher serving throughput.</em>',
+          'The short line is: <em>quantization trades numerical fidelity for a smaller, cheaper model that usually serves faster.</em>',
         details: [
-          'Very low-bit setups can work surprisingly well when the model has redundancy, but sensitive layers may still need special handling.',
-          'Quantization is especially valuable when memory bandwidth, batch size, or KV-cache growth is the bottleneck.',
+          '8-bit is often close to lossless, while 4-bit is a more aggressive deployment trade that usually needs calibration and careful layer handling.',
+          'The main win is often memory traffic: fewer bits let more weights and cache state fit on faster hardware.',
         ],
         math: {
           title: 'Bucketed approximation',
@@ -2243,9 +2226,9 @@ const chapters = {
           { key: 'context', label: 'Memory pressure', min: 0.1, max: 0.98, step: 0.01, value: 0.58, format: 'percent' },
         ],
         presets: [
-          { label: 'FP16-ish', values: { bits: 16, context: 0.46 } },
-          { label: '8-bit deploy', values: { bits: 8, context: 0.58 } },
-          { label: 'Aggressive low-bit', values: { bits: 4, context: 0.84 } },
+          { label: 'Near-lossless 16-bit', values: { bits: 16, context: 0.46 } },
+          { label: 'Practical 8-bit', values: { bits: 8, context: 0.58 } },
+          { label: 'Aggressive 4-bit squeeze', values: { bits: 4, context: 0.84 } },
         ],
       },
       {
@@ -2254,16 +2237,16 @@ const chapters = {
         label: 'Concept 05',
         title: 'Knowledge distillation: a smaller student can learn from a softer teacher signal',
         summary:
-          'Distillation trains a smaller model not just on hard labels, but on the teacher’s probability distribution, which carries extra structure about confusable alternatives.',
+          'Distillation trains a smaller student on the teacher’s full probability pattern, so the student learns not just the winner but also the close runner-up answers.',
         what:
-          'A hard label only tells you the correct answer. A teacher distribution says more: which wrong answers were close, how confident the teacher was, and which alternatives looked similar. <strong>Distillation uses that softer target to compress behavior into a smaller student.</strong>',
+          'A one-hot label says only "this class wins." A teacher distribution says more: <strong>which alternatives were close, which ones were clearly wrong, and how confident the teacher was</strong>. Distillation uses that softer signal to compress much of the teacher’s behavior into a cheaper student.',
         why:
-          'This is the classic quality-speed tradeoff for deployment. You give up some flexibility and ceiling, but you can gain a much cheaper model that still preserves important behavior.',
+          'This is a practical deployment move: keep more of the teacher’s judgment while shrinking cost, latency, and memory enough to serve the model in a real product.',
         interview:
-          'The simple sentence is: <em>distillation teaches a smaller student with the teacher’s soft targets, not only with ground-truth labels.</em>',
+          'The simple sentence is: <em>distillation trains a smaller student on the teacher’s soft targets, not only on hard labels.</em>',
         details: [
-          'Temperature makes the teacher distribution softer so the student can see relative preference structure instead of only the top class.',
-          'Distillation is especially attractive when a large teacher is too expensive to serve but can still be used offline during training.',
+          'Temperature softens the teacher distribution so relative similarities become visible instead of collapsing into only the top class.',
+          'Distillation is especially useful when the large teacher is too expensive to serve but still affordable offline during training.',
         ],
         math: {
           title: 'Distillation loss',
@@ -2302,8 +2285,8 @@ const chapters = {
           { key: 'temperature', label: 'Teacher softness', min: 0.6, max: 4.0, step: 0.05, value: 2.0, format: 'decimal2' },
         ],
         presets: [
-          { label: 'Tiny fast student', values: { student: 0.22, temperature: 2.4 } },
-          { label: 'Balanced student', values: { student: 0.46, temperature: 2.0 } },
+          { label: 'Tiny speed-first student', values: { student: 0.22, temperature: 2.4 } },
+          { label: 'Balanced student copy', values: { student: 0.46, temperature: 2.0 } },
           { label: 'Large faithful student', values: { student: 0.74, temperature: 1.2 } },
         ],
       },
@@ -2313,16 +2296,16 @@ const chapters = {
         label: 'Concept 06',
         title: 'Serving tradeoffs: latency, throughput, and memory cannot all be optimized at once',
         summary:
-          'Inference systems are not judged only by quality. They are judged by how much memory they consume, how many requests they can serve, and how quickly users get the first token.',
+          'Serving is where model quality meets the real product budget: how fast the answer starts, how many requests you can carry, and how much memory the workload burns.',
         what:
-          'The practical mental model is a triangle: <strong>latency</strong>, <strong>throughput</strong>, and <strong>memory footprint</strong>. Batching helps throughput but can hurt latency. Longer contexts improve answer quality but blow up KV cache. Lower precision shrinks memory but may cost some accuracy. Serving is mostly about choosing where to spend pain.',
+          'Use an SLA-first mental model: <strong>latency</strong>, <strong>throughput</strong>, and <strong>memory footprint</strong> pull against each other. Batching helps throughput but makes requests wait. Longer contexts improve answer quality but blow up KV-cache memory. Lower precision shrinks the footprint, but you are spending some numerical fidelity to buy it.',
         why:
-          'Interview answers sound much stronger when they acknowledge that deployment is a resource allocation problem, not just a model-quality problem.',
+          'Strong serving answers sound practical because they start from product constraints: first-token wait, tail latency, hardware budget, and workload shape. The right model is the one that meets that envelope.',
         interview:
-          'The concise answer is: <em>serving is a systems tradeoff between memory, latency, throughput, and quality under a real workload.</em>',
+          'The concise answer is: <em>serving is choosing the latency-throughput-memory-quality trade your workload and SLA can afford.</em>',
         details: [
-          'First-token latency and total completion latency matter differently depending on the product surface.',
-          'For long-context workloads, KV-cache memory can dominate even if the weights themselves are already quantized.',
+          'First-token latency and full completion latency matter differently for chat, search, and backend batch jobs.',
+          'For long contexts, KV-cache growth can dominate the memory budget even after the model weights are already quantized.',
         ],
         code: {
           title: 'Code sketch',
@@ -2357,9 +2340,9 @@ const chapters = {
           { key: 'precision', label: 'Precision budget', min: 0.1, max: 0.98, step: 0.01, value: 0.62, format: 'percent' },
         ],
         presets: [
-          { label: 'Low-latency chat', values: { batch: 0.16, context: 0.38, precision: 0.74 } },
-          { label: 'Balanced service', values: { batch: 0.44, context: 0.56, precision: 0.62 } },
-          { label: 'Throughput-heavy backend', values: { batch: 0.82, context: 0.74, precision: 0.34 } },
+          { label: 'Chat: low wait', values: { batch: 0.16, context: 0.38, precision: 0.74 } },
+          { label: 'Balanced production', values: { batch: 0.44, context: 0.56, precision: 0.62 } },
+          { label: 'Batch-heavy backend', values: { batch: 0.82, context: 0.74, precision: 0.34 } },
         ],
       },
     ],
@@ -2369,7 +2352,7 @@ const chapters = {
     eyebrow: 'Reinforcement Learning',
     title: 'RL gets less mystical once you see it as learning from delayed consequences instead of labeled answers.',
     lede:
-      'This chapter rebuilds reinforcement learning from the environment loop upward: states, actions, rewards, returns, TD learning, Q-learning, DQN, and the exploration tradeoffs that make online learning hard in practice.',
+      'This chapter rebuilds reinforcement learning as one connected story: actions change future data, delayed rewards create credit-assignment problems, value functions summarize long-run payoff, TD methods bootstrap from partial evidence, and exploration is the price of discovering a better policy in the first place.',
     sections: [
       {
         id: 'mdp',
@@ -2436,13 +2419,13 @@ const chapters = {
         label: 'Concept 02',
         title: 'Return and value: good actions are the ones that make future reward look better',
         summary:
-          'The point of RL is not to chase the next reward only. It is to choose actions that improve the total discounted return over time.',
+          'The point of RL is not to optimize the next reward only. It is to choose states and actions that improve the whole discounted future return.',
         what:
-          'The <strong>return</strong> is the total future reward, usually discounted so that near-term outcomes count more than far-away ones. A <strong>value function</strong> predicts that return from a state, while an <strong>action-value</strong> function predicts it from a state-action pair.',
+          'Keep the three quantities separate. <strong>Reward</strong> is the one-step signal you just got. <strong>Return</strong> is the discounted stream of rewards that follows. A <strong>value function</strong> predicts that return from a state, while an <strong>action-value</strong> function predicts it from a state-action pair. The visual should feel like future reward “bubbling backward” from the goal into earlier states.',
         why:
-          'This is how RL stops being greedy. The action with the best immediate reward may still be terrible if it traps the agent in bad future states.',
+          'This is how RL stops being greedy. The action with the best immediate reward may still be terrible if it traps the agent in bad future states, and Bellman backups are the mechanism that spread that long-run story across the state space.',
         interview:
-          'The compact line is: <em>value functions summarize expected future return, not just immediate reward.</em>',
+          'The compact line is: <em>reward is the immediate signal, return is the discounted future sum, and value functions estimate that long-run return from states or actions.</em>',
         details: [
           'Discounting with γ is partly mathematical convenience and partly a way of expressing how much the future should matter.',
           'Q-values are often easier to use directly for control because they score actions, not just states.',
@@ -2497,32 +2480,32 @@ const chapters = {
         id: 'td-learning',
         nav: 'TD',
         label: 'Concept 03',
-        title: 'Temporal difference learning: update from one real reward plus one estimated future',
+        title: 'Temporal difference learning: learn online from one real reward plus one bootstrapped next estimate',
         summary:
-          'TD learning avoids waiting until the whole episode is over. It bootstraps by combining the observed immediate reward with the current estimate of the next state.',
+          'TD learning is the bridge from “wait for the whole episode” to “learn after every step.” It bootstraps by mixing one observed reward with the current estimate of what comes next.',
         what:
-          'The key idea is <strong>bootstrapping</strong>: instead of waiting for the full final return, you use today’s reward plus your current guess about tomorrow. That makes learning online and incremental, even though it also means you are learning partly from your own imperfect estimates.',
+          'The key idea is <strong>bootstrapping</strong>: instead of waiting for the full final return, you use today’s reward plus your current guess about tomorrow. That makes learning online and incremental, even though it also means you are learning partly from your own imperfect estimates. In practice, this visual is the control version of TD: the update is pushing a Q estimate toward a one-step target so you can watch the TD error propagate through experience.',
         why:
-          'This is one of the core ideas that powers modern RL. Without TD-style updates, many RL problems would learn far too slowly from long trajectories.',
+          'This is one of the core ideas that powers modern RL. Without TD-style updates, many RL problems would learn far too slowly from long trajectories. The practical intuition is that each surprise now becomes training signal now.',
         interview:
-          'The useful phrase is: <em>TD learning updates toward a target that mixes one-step evidence with a bootstrapped value estimate.</em>',
+          'The useful phrase is: <em>TD learning updates toward a target that mixes one-step evidence with a bootstrapped next estimate, so learning can happen online instead of only after full returns are known.</em>',
         details: [
           'Monte Carlo waits for complete returns; TD updates early using partial information.',
           'The TD error tells you whether the current estimate was too optimistic or too pessimistic.',
         ],
         math: {
-          title: 'TD update',
+          title: 'One-step TD target',
           formula: [
-            '\\delta_t = r_{t+1} + \\gamma V(s_{t+1}) - V(s_t)',
-            'V(s_t) \\leftarrow V(s_t) + \\alpha \\delta_t',
+            '\\delta_t = r_{t+1} + \\gamma \\widehat{V}_{\\text{next}} - Q(s_t, a_t)',
+            'Q(s_t, a_t) \\leftarrow Q(s_t, a_t) + \\alpha \\delta_t',
           ],
-          note: 'The TD error is the surprise. The update moves the old estimate in the direction of that surprise.',
+          note: 'Same pattern across TD methods: observed reward plus a bootstrapped next estimate creates the surprise, and the current estimate moves partway toward it.',
         },
         code: {
           title: 'Code sketch',
           lang: 'python',
           snippet:
-            'td_error = reward + gamma * V[next_state] - V[state]\nV[state] += alpha * td_error',
+            'bootstrap = reward + gamma * next_estimate\ntd_error = bootstrap - Q[state, action]\nQ[state, action] += alpha * td_error',
         },
         quiz: {
           prompt: 'What is the main benefit of TD learning over waiting for full returns?',
@@ -2561,13 +2544,13 @@ const chapters = {
         label: 'Concept 04',
         title: 'Q-learning: learn action values by backing up from the best next action',
         summary:
-          'Q-learning updates one state-action estimate toward the immediate reward plus the best value available in the next state.',
+          'Q-learning updates one state-action estimate toward the immediate reward plus the best value available in the next state. Putting it next to SARSA makes the off-policy versus on-policy difference visible instead of purely verbal.',
         what:
-          'The useful picture is a table of action values. Each time the agent acts, it revises one cell using the reward it saw plus the best-looking option in the next state. That <strong>max over next actions</strong> is what makes Q-learning an off-policy control method.',
+          'The useful picture is a table of action values. Each time the agent acts, it revises one cell using the reward it saw plus the best-looking option in the next state. That <strong>max over next actions</strong> is what makes Q-learning an off-policy control method. In this card, the comparison to SARSA matters because it shows the practical consequence: Q-learning backs up from the greedy future, while SARSA backs up from the exploratory future it is actually living through.',
         why:
-          'This is one of the most reusable RL algorithms to understand in interviews because it directly connects exploration, bootstrapping, and control.',
+          'This is one of the most reusable RL algorithms to understand in interviews because it directly connects exploration, bootstrapping, and control. The cliff-walking comparison is the intuition to keep: Q-learning learns the optimal path, while SARSA learns the safer path for the noisy policy it is actually executing.',
         interview:
-          'The crisp line is: <em>Q-learning learns action values off-policy by updating toward reward plus the max next-state Q-value.</em>',
+          'The crisp line is: <em>Q-learning learns action values off-policy by updating toward reward plus the max next-state Q-value, while SARSA updates toward the next action actually sampled by its current policy.</em>',
         details: [
           'Because it uses the best next action in the target, Q-learning can learn a greedy policy even while the behavior policy is still exploring.',
           'The same bootstrapping idea from TD learning is still there, just applied to action values instead of state values.',
@@ -2621,11 +2604,11 @@ const chapters = {
         label: 'Concept 05',
         title: 'DQN: replace the Q-table with a neural approximator, then stabilize the updates',
         summary:
-          'When the state space is too large for a table, DQN uses a neural network to predict Q-values. But that makes learning less stable, so replay buffers and target networks become crucial.',
+          'When the state space is too large for a table, DQN uses a neural network to predict Q-values. But the default “just use a network” version is unstable, so replay buffers and target networks are the whole teaching point.',
         what:
-          'The two stabilizers to remember are <strong>experience replay</strong> and a <strong>target network</strong>. Replay breaks up highly correlated online experience by sampling shuffled past transitions. The target network keeps the bootstrap target from chasing a moving network every single step.',
+          'The two stabilizers to remember are <strong>experience replay</strong> and a <strong>target network</strong>. Replay breaks up highly correlated online experience by sampling shuffled past transitions. The target network keeps the bootstrap target from chasing a moving network every single step. The visual should read as two failures being repaired: replay fixes the data stream, target networks fix the moving-target problem.',
         why:
-          'This is the bridge from tabular RL to deep RL. It explains why naive “just replace the table with a neural net” usually behaves badly without extra machinery.',
+          'This is the bridge from tabular RL to deep RL. It explains why naive “just replace the table with a neural net” usually behaves badly without extra machinery, and it gives the learner a concrete debugging lens for unstable deep RL training.',
         interview:
           'The reliable sentence is: <em>DQN approximates Q-values with a neural network and stabilizes training with replay and target networks.</em>',
         details: [
@@ -2676,17 +2659,17 @@ const chapters = {
       },
       {
         id: 'exploration',
-        nav: 'Explore',
+        nav: 'Bandits',
         label: 'Concept 06',
-        title: 'Exploration versus exploitation: you need enough randomness to discover better actions before you can commit',
+        title: 'Bandits and exploration: you must spend some reward to learn which arm is actually best',
         summary:
-          'If you exploit too early, you can get trapped in a mediocre policy. If you explore forever, you waste reward. RL is always balancing those two errors.',
+          'Bandits strip RL down to the pure explore-versus-exploit problem. Exploit too early and you lock into a mediocre arm; explore forever and you keep paying unnecessary regret.',
         what:
-          'The easiest way to see the issue is epsilon-greedy behavior: most of the time you choose the current best-looking action, but some fraction of the time you deliberately try something else. That random exploration is expensive in the short term, but it is often the only way to discover a better long-run policy.',
+          'The easiest way to see the issue is a multi-armed bandit. Each arm has an unknown payoff, so the learner has to balance <strong>exploitation</strong> (pull the arm that currently looks best) against <strong>exploration</strong> (sample uncertain arms to find out whether they are better). This card makes that trade concrete by comparing ε-greedy, UCB, and Thompson sampling on the same regret curve.',
         why:
-          'This tradeoff sits under bandits, Q-learning, DQN, and modern RL systems. It is one of the most interview-friendly intuitions because it exposes why online learning is hard.',
+          'This tradeoff sits under bandits, Q-learning, DQN, and modern RL systems. Bandits are the cleanest teaching lab because there is no state-transition complexity to hide behind — only the cost of acting before you know enough.',
         interview:
-          'The line to keep is: <em>without exploration, the agent cannot discover whether its current best-looking action is actually best.</em>',
+          'The line to keep is: <em>without exploration, the agent cannot discover whether its current best-looking action is actually best, and bandits isolate that problem in its purest form.</em>',
         details: [
           'Annealing exploration over time is common because the agent needs more discovery early than late.',
           'Exploration is not free; in real products it can mean real user cost, latency, or risk.',
@@ -2695,7 +2678,7 @@ const chapters = {
           title: 'Code sketch',
           lang: 'python',
           snippet:
-            'if random.random() < epsilon:\n    action = random_action()\nelse:\n    action = np.argmax(Q[state])',
+            'if random.random() < epsilon:\n    arm = random.randrange(K)\nelse:\n    arm = np.argmax(estimated_means)',
         },
         quiz: {
           prompt: 'What is the main failure mode of too little exploration?',
@@ -2723,9 +2706,9 @@ const chapters = {
           { key: 'valueGap', label: 'Arm gap', min: 0.02, max: 0.4, step: 0.01, value: 0.14, format: 'decimal2' },
         ],
         presets: [
-          { label: 'Under-exploring', values: { epsilon: 0.03, valueGap: 0.08 } },
-          { label: 'Balanced search', values: { epsilon: 0.12, valueGap: 0.14 } },
-          { label: 'Too random', values: { epsilon: 0.34, valueGap: 0.24 } },
+          { label: 'Greedy too early', values: { epsilon: 0.03, valueGap: 0.08 } },
+          { label: 'Healthy exploration', values: { epsilon: 0.12, valueGap: 0.14 } },
+          { label: 'Overpaying for search', values: { epsilon: 0.34, valueGap: 0.24 } },
         ],
       },
     ],
@@ -2735,7 +2718,7 @@ const chapters = {
     eyebrow: 'Metrics And Calibration',
     title: 'A model score is only useful if you know how to read it.',
     lede:
-      'This chapter is about evaluation choices that people casually name-drop but often explain badly: threshold metrics, calibration, and ranking quality. The goal is to make metric selection feel tied to the product question, not to a memorized acronym.',
+      'This chapter is about evaluation choices that people casually name-drop but often explain badly: threshold metrics, calibration, and ranking quality. The goal is to make metric selection feel tied to the product question and the specific failure you can afford, not to a memorized acronym.',
     bestFor: 'Interview prep / evaluation refresh',
     studyMove: 'Ask what decision the metric is supposed to support',
     sections: [
@@ -2808,9 +2791,9 @@ const chapters = {
         label: 'Concept 02',
         title: 'Calibration: a 70% score should mean something like 70% in the real world',
         summary:
-          'Ranking tells you who looks more risky. Calibration tells you whether the number itself can be trusted as a probability.',
+          'Ranking tells you who looks more risky. Calibration tells you whether the number itself can be trusted as a probability, not just as a sorting score.',
         what:
-          'A calibrated model does not just sort examples well. It also makes confidence estimates that match reality. If the model says 70% on many cases, then roughly 70% of those cases should actually be positive.',
+          'A calibrated model does not just sort examples well. It also makes confidence estimates that match reality. If the model says 70% on many cases, then roughly 70% of those cases should actually be positive. The shortest mental model is: <strong>good ranking can still give you bad probabilities.</strong>',
         why:
           'This matters whenever scores drive thresholds, triage, pricing, policy, or anything else where the numeric probability itself is consumed by a downstream decision.',
         interview:
@@ -2869,9 +2852,9 @@ const chapters = {
         label: 'Concept 03',
         title: 'Ranking metrics: the order of the top results matters more than the tail',
         summary:
-          'Search and recommendation often care less about perfect labels everywhere and more about whether the most relevant items rise to the top positions users actually see.',
+          'Search and recommendation often care less about perfect labels everywhere and more about whether the most relevant items rise to the top positions users actually see first.',
         what:
-          'A ranking metric rewards useful ordering. Putting the best item in position 1 is more valuable than hiding it at position 10, and pushing irrelevant items down is often more important than classifying every item globally.',
+          'A ranking metric rewards useful ordering. Putting the best item in position 1 is more valuable than hiding it at position 10, and pushing irrelevant items down is often more important than classifying every item globally. The learner sentence to keep is: <strong>the top of the list is the product.</strong>',
         why:
           'This is why search, feeds, and recommenders use metrics like NDCG or MRR instead of pretending the task is just standard binary classification.',
         interview:
@@ -2942,13 +2925,13 @@ const chapters = {
         label: 'Concept 01',
         title: 'Retrieval versus ranking: if recall is bad early, later stages cannot save you',
         summary:
-          'Recommendation pipelines are funnels. Retrieval finds a manageable candidate set, and ranking spends more compute choosing the final few items.',
+          'Recommendation systems work because the early stage keeps enough plausible items alive, then the later stage spends extra compute deciding their order.',
         what:
-          'The retrieval stage is optimized for <strong>coverage and speed</strong>. The ranking stage is optimized for <strong>precision and ordering</strong>. If the relevant item never makes it into the candidate set, the ranker never gets a chance.',
+          'The retrieval stage is optimized for <strong>coverage and speed</strong>. The ranking stage is optimized for <strong>precision and ordering</strong>. The clean first-read rule is: <strong>retrieval decides what the ranker is even allowed to see.</strong> If the relevant item never makes it into the candidate set, later intelligence cannot rescue it.',
         why:
-          'People often talk as if “the model” recommends an item. In practice, different models do different parts of the job, and the earliest mistakes are often the hardest to recover from.',
+          'People often talk as if “the model” recommends an item. In practice, different models do different jobs, and the most expensive ranker in the world is still capped by the recall of the cheaper stage upstream.',
         interview:
-          'The compact interview answer is: <em>retrieval protects recall, ranking spends compute on precision.</em>',
+          'The compact interview answer is: <em>retrieval protects recall and latency, then ranking spends compute on ordering the survivors.</em>',
         details: [
           'Two-tower models are popular for retrieval because they make nearest-neighbor search cheap at serving time.',
           'Cross-encoders and heavier rankers are valuable later because the candidate list is already much smaller.',
@@ -2997,13 +2980,13 @@ const chapters = {
         label: 'Concept 02',
         title: 'Cold start: when history is missing, content has to carry the recommendation',
         summary:
-          'Collaborative filtering is powerful because it uses behavior. Cold start happens precisely when that behavior is not available yet.',
+          'Cold start is the phase where the system cannot lean on behavior yet, so metadata, content, and safe priors have to carry the first few recommendations.',
         what:
-          'For new users or items, there is not enough interaction history to learn from neighbors or embeddings. That means the system leans more heavily on <strong>content features</strong>, metadata, and simple heuristics until enough behavior arrives.',
+          'For new users or new items, there is not enough interaction history to learn from neighbors or embeddings. That means the system leans more heavily on <strong>content features</strong>, metadata, and simple heuristics until enough behavior arrives. The shortest intuition is: <strong>when history is missing, content has to do the retrieval work.</strong>',
         why:
-          'This explains why even sophisticated recommender systems still depend on metadata quality, onboarding signals, and fallback logic.',
+          'This is why even sophisticated recommender systems still depend on metadata quality, onboarding signals, fallback logic, and a little exploration. Cold start is usually a product experience problem before it is a model sophistication problem.',
         interview:
-          'The key sentence is: <em>cold start is not a bug in collaborative filtering; it is the regime where collaborative evidence literally does not exist yet.</em>',
+          'The key sentence is: <em>cold start is the regime where collaborative evidence does not exist yet, so the system must bootstrap with content, priors, and exploration.</em>',
         details: [
           'Hybrid systems matter because they let content and collaborative signals trade responsibility over time.',
           'Cold-start strategy often shapes the first-user experience more than the ranking model does.',
@@ -3044,6 +3027,7 @@ const chapters = {
           { key: 'history', label: 'Behavior history', min: 0.0, max: 1.0, step: 0.01, value: 0.28, format: 'percent' },
           { key: 'content', label: 'Content quality', min: 0.2, max: 1.0, step: 0.01, value: 0.76, format: 'percent' },
         ],
+        defaultPreset: 0,
         presets: [
           { label: 'New user', values: { history: 0.08, content: 0.74 } },
           { label: 'Warm user', values: { history: 0.74, content: 0.66 } },
@@ -3055,11 +3039,11 @@ const chapters = {
   generative: {
     navMeta: 'chapter 14 / generation and decision-making',
     eyebrow: 'Generation And Decision-Making',
-    title: 'Sampling and action selection are easier to read once you see the tradeoff.',
+    title: 'Generation and decision-making both become intuitive once the tradeoff is visible.',
     lede:
-      'Generative models and reinforcement learning can feel distant from each other, but they share a common pattern: the system repeatedly chooses between noisy possibilities and better-structured ones.',
+      'Read this chapter as two concrete stories. Diffusion starts with a messy sample and repeatedly removes uncertainty until structure appears. Bandits start with uncertain options and spend a small exploration budget to discover which choice is actually worth exploiting.',
     bestFor: 'Modern ML refresh / high-level intuition before deeper math',
-    studyMove: 'Use the presets, then move one knob and say what changes before you read the takeaway',
+    studyMove: 'Start from the default preset, say what the stage is doing in plain language, then move one knob and predict what will worsen or improve before you read the takeaway',
     sections: [
       {
         id: 'diffusion',
@@ -3067,13 +3051,13 @@ const chapters = {
         label: 'Concept 01',
         title: 'Diffusion: generation as progressive denoising',
         summary:
-          'A diffusion model learns how to reverse a process that gradually adds noise. Generation starts from noise and repeatedly denoises toward structure.',
+          'Diffusion is easiest to understand as repeated cleanup: start with a noisy sample, apply many small denoising steps, and watch structure emerge instead of appearing all at once.',
         what:
-          'Instead of producing the sample in one shot, diffusion walks from a noisy state toward a cleaner one. Each step removes a bit of uncertainty, and enough good steps can turn random noise into a coherent output.',
+          'Instead of producing the sample in one shot, diffusion walks from a noisy state toward a cleaner one. Each reverse step removes some uncertainty, so the right first-read picture is <strong>target structure vs noisy sample vs denoised path</strong>, not “magic generation from nowhere.”',
         why:
-          'This mental model makes diffusion far less mystical. The model is not “imagining” from nowhere. It is repeatedly correcting a noisy sample toward something more plausible.',
+          'This makes diffusion feel concrete instead of mystical. The model is not inventing a perfect sample in one jump; it is repeatedly correcting a messy sample until the important shape survives the noise.',
         interview:
-          'The compact explanation is: <em>diffusion generation is iterative denoising guided by a learned reverse process.</em>',
+          'The compact explanation is: <em>diffusion generation is iterative denoising — start noisy, remove uncertainty step by step, and approach a coherent sample.</em>',
         details: [
           'Classifier-free guidance changes how strongly the denoising process is pulled toward a condition or prompt.',
           'Latent diffusion makes the process cheaper by denoising in a compressed latent space instead of raw pixels.',
@@ -3126,13 +3110,13 @@ const chapters = {
         label: 'Concept 02',
         title: 'Exploration versus exploitation: you need some curiosity, but not forever',
         summary:
-          'A bandit problem captures a recurring RL tension: should you choose the option that already looks best, or spend some effort testing alternatives in case they are better?',
+          'A bandit makes the explore-versus-exploit problem brutally clear: sample uncertain arms long enough to learn, then stop paying unnecessary curiosity tax once the winner is obvious.',
         what:
-          'Exploitation means choosing the arm that currently seems strongest. Exploration means deliberately trying other arms to reduce uncertainty. Good policies use exploration as a tool for learning, not as a permanent habit.',
+          'Exploitation means choosing the arm that currently seems strongest. Exploration means deliberately trying other arms to reduce uncertainty. The clean picture is: <strong>exploration buys information now so exploitation can earn more reward later.</strong> Too little exploration locks in the wrong winner; too much keeps wasting pulls after the gap is already clear.',
         why:
-          'This is one of the simplest ways to build RL intuition. Many larger RL systems are still balancing these same incentives, just in more complicated state spaces.',
+          'This is one of the simplest ways to build RL intuition because there is no state-transition complexity hiding the lesson. You can watch uncertainty, reward gap, and regret directly, then carry that instinct into bigger RL systems.',
         interview:
-          'The useful sentence is: <em>exploration buys information; exploitation cashes in what you already know.</em>',
+          'The useful sentence is: <em>exploration buys information; exploitation cashes in what you already know, so the right policy explores early and wastes less exploration later.</em>',
         details: [
           'If the reward gap is obvious, excessive exploration mostly burns reward.',
           'If the gap is subtle or uncertain, too little exploration can lock the system into a mediocre option.',
@@ -3188,7 +3172,7 @@ const chapters = {
     eyebrow: 'Recommendation Depth',
     title: 'Modern recommenders work because different signals take turns carrying the job.',
     lede:
-      'This chapter moves past the basic funnel and into the ideas that repeatedly show up in real recommender interviews: shared latent space, efficient retrieval, and ranking losses that reflect user order rather than binary classification alone.',
+      'Read this chapter as one serving pipeline: use sparse behavior to learn a shared taste space, retrieve quickly from cached item vectors, then spend extra compute making sure the best items really reach the top of the list.',
     bestFor: 'Recommendation interviews / product ML refresh',
     studyMove: 'Ask what signal is doing the heavy lifting in each stage',
     sections: [
@@ -3198,13 +3182,13 @@ const chapters = {
         label: 'Concept 01',
         title: 'Matrix factorization: users and items live in the same preference space',
         summary:
-          'The classic recommender intuition is that users and items can both be embedded into one latent space where compatibility becomes a dot product.',
+          'Matrix factorization turns a sparse user-item table into one shared taste space, so missing preferences can be estimated from geometric alignment instead of exact overlap alone.',
         what:
-          'Instead of memorizing every user-item interaction separately, matrix factorization learns a low-dimensional representation for each user and each item. The closer their vectors align, the stronger the predicted preference.',
+          'The clean picture is: sparse ratings are the observations, and the model explains them by placing both users and items in the same latent space. If a user vector points toward an item vector, the predicted preference rises even when that exact pair was never observed.',
         why:
-          'This is the bridge from classical collaborative filtering to modern embedding-based retrieval systems.',
+          'This is the bridge from old-school collaborative filtering to modern embedding retrieval: first learn shared geometry from sparse behavior, then use that geometry to generalize beyond the cells you actually saw.',
         interview:
-          'The crisp line is: <em>matrix factorization replaces the sparse interaction table with user and item vectors whose dot product predicts affinity.</em>',
+          'The crisp line is: <em>matrix factorization says the huge sparse table is really generated by user and item vectors in one shared space, so missing entries can be predicted from alignment.</em>',
         details: [
           'The latent dimensions are not hand-labeled features. They are learned axes of taste or utility.',
           'Cold start remains hard because new users or items do not yet have enough behavior to place them reliably in the space.',
@@ -3245,13 +3229,13 @@ const chapters = {
         label: 'Concept 02',
         title: 'Two-tower retrieval: push query and item understanding apart so serving can be fast',
         summary:
-          'Two-tower models let you precompute item embeddings offline and only encode the query or user at request time, which makes nearest-neighbor retrieval practical.',
+          'Two-tower models make retrieval fast by precomputing item vectors offline, encoding only the live query or user online, then letting approximate nearest-neighbor search fetch candidates quickly.',
         what:
-          'One tower encodes the user or query, and the other tower encodes the item. Because the item representation is independent, you can precompute and index it, then retrieve by similarity at serving time.',
+          'The first-read story should be operational, not mystical: item embeddings are built ahead of time and stored in an index; at request time you compute one fresh user/query vector, retrieve the nearest items, then let a later ranker recover the pair-specific detail this fast stage leaves out.',
         why:
-          'This is the standard retrieval story in recommendation and semantic search because it balances representation learning with latency constraints.',
+          'This is the standard retrieval pattern in recommendation and semantic search because it turns a huge serving problem into one cheap online encoding plus fast vector lookup, while keeping reranking as a separate place to spend extra intelligence.',
         interview:
-          'The memorable line is: <em>two-tower models buy serving speed by making the item side precomputable.</em>',
+          'The memorable line is: <em>two-tower buys serving speed by caching item vectors offline, then uses a reranker later when you need richer user-item interaction.</em>',
         details: [
           'The tradeoff is that you lose some interaction richness compared with a cross-encoder that scores the pair jointly.',
           'That is why two-tower often handles retrieval while a more expensive model handles ranking later.',
@@ -3277,13 +3261,13 @@ const chapters = {
         },
         viz: 'two-tower',
         controls: [
-          { key: 'latency', label: 'Serving latency budget', min: 0.1, max: 0.95, step: 0.01, value: 0.68, format: 'percent' },
-          { key: 'interaction', label: 'Cross-feature richness', min: 0.1, max: 0.95, step: 0.01, value: 0.52, format: 'percent' },
+          { key: 'latency', label: 'Latency pressure', min: 0.1, max: 0.95, step: 0.01, value: 0.68, format: 'percent' },
+          { key: 'interaction', label: 'Pair-detail needed', min: 0.1, max: 0.95, step: 0.01, value: 0.52, format: 'percent' },
         ],
         presets: [
-          { label: 'Fast retrieval', values: { latency: 0.86, interaction: 0.34 } },
-          { label: 'Balanced stack', values: { latency: 0.68, interaction: 0.52 } },
-          { label: 'Heavy reranking need', values: { latency: 0.24, interaction: 0.86 } },
+          { label: 'Serve fast', values: { latency: 0.86, interaction: 0.34 } },
+          { label: 'Retrieve then rerank', values: { latency: 0.68, interaction: 0.52 } },
+          { label: 'Need richer ranking', values: { latency: 0.24, interaction: 0.86 } },
         ],
       },
       {
@@ -3292,13 +3276,13 @@ const chapters = {
         label: 'Concept 03',
         title: 'Ranking objectives: pairwise and listwise losses care about order, not just labels',
         summary:
-          'Feeds and search results are ordered experiences, so the training objective often has to reflect relative order rather than only yes/no labels.',
+          'Ranking losses should reward what the product actually shows: getting the best items to the top matters far more than being vaguely correct somewhere deep in the list.',
         what:
-          'Pointwise losses treat each example independently. Pairwise losses ask which of two items should rank higher. Listwise losses consider the whole ordered slate and better match what users actually experience.',
+          'Pointwise loss looks at each item independently. Pairwise loss asks which of two items should rank higher. Listwise loss looks at the whole slate. The first-read lesson is simple: <strong>the top of the list is the product, so the objective should care about order where users actually look.</strong>',
         why:
-          'This is why ranking teams do not stop at logistic loss. The metric and the training objective both need to reflect order sensitivity.',
+          'This is why recommendation teams pair ranking metrics with ranking losses. It is not enough that a relevant item exists somewhere — the user experience depends on whether the best options surface early.',
         interview:
-          'The concise answer is: <em>pairwise and listwise ranking losses are about relative ordering, which is usually closer to the product surface than plain classification.</em>',
+          'The concise answer is: <em>pairwise and listwise ranking losses train relative order so the best items rise to the top, which is closer to the real product surface than plain binary classification.</em>',
         details: [
           'Pairwise losses are often an easier conceptual upgrade from classification.',
           'Listwise losses align better with top-of-list metrics but are more complex to implement and optimize.',
@@ -3324,13 +3308,13 @@ const chapters = {
         },
         viz: 'ranking-metrics',
         controls: [
-          { key: 'topQuality', label: 'Top-rank quality', min: 0.1, max: 0.95, step: 0.01, value: 0.7, format: 'percent' },
-          { key: 'tailNoise', label: 'Tail noise', min: 0.05, max: 0.95, step: 0.01, value: 0.36, format: 'percent' },
+          { key: 'topQuality', label: 'Top-slot quality', min: 0.1, max: 0.95, step: 0.01, value: 0.7, format: 'percent' },
+          { key: 'tailNoise', label: 'Tail clutter', min: 0.05, max: 0.95, step: 0.01, value: 0.36, format: 'percent' },
         ],
         presets: [
-          { label: 'Weak ordering', values: { topQuality: 0.24, tailNoise: 0.42 } },
-          { label: 'Balanced ranking', values: { topQuality: 0.7, tailNoise: 0.36 } },
-          { label: 'Great top slate', values: { topQuality: 0.88, tailNoise: 0.66 } },
+          { label: 'Good item buried', values: { topQuality: 0.24, tailNoise: 0.42 } },
+          { label: 'Healthy ordering', values: { topQuality: 0.7, tailNoise: 0.36 } },
+          { label: 'Strong top slate', values: { topQuality: 0.88, tailNoise: 0.66 } },
         ],
       },
     ],
@@ -3340,9 +3324,9 @@ const chapters = {
     eyebrow: 'Classical ML And Stats',
     title: 'A lot of ML questions are really statistics questions in disguise.',
     lede:
-      'This chapter is the compact statistical spine of the project: likelihood versus prior, fitting versus generalization, and why shrinkage often helps more than it feels like it should.',
+      'This chapter turns three interview staples into one connected story: MAP means data plus prior, bias-variance means the best fit is not automatically the best generalizer, and regularization is the practical knob that shrinks fragile solutions back toward something stabler.',
     bestFor: 'Core interview prep / fundamentals refresh',
-    studyMove: 'Translate each visualization into a sentence about uncertainty or generalization',
+    studyMove: 'Read each visualization as one decision: how much should the data dominate, how much flexibility is healthy, and how much shrinkage keeps the model honest?',
     sections: [
       {
         id: 'mle-map',
@@ -3350,13 +3334,13 @@ const chapters = {
         label: 'Concept 01',
         title: 'MLE versus MAP: data fit alone versus data fit plus prior belief',
         summary:
-          'Maximum likelihood picks the parameter that best explains the data. MAP adds a prior, so the chosen parameter balances the data with what was plausible beforehand.',
+          'MLE is the data-only answer. MAP asks for the best answer after the data and your prior belief both get a vote, so the estimate is pulled toward whichever side is more confident.',
         what:
-          'If likelihood asks “what parameter best fits this dataset?”, MAP asks “what parameter is most plausible after combining the data with a prior belief?” Small datasets feel the prior strongly; large datasets eventually overwhelm it.',
+          'The clean first-read story is: <strong>MAP sits between the prior and the data-only estimate.</strong> With weak or noisy data, the prior pulls harder. With abundant clean data, the posterior peak slides toward the MLE and the prior mostly fades into the background.',
         why:
-          'This connects Bayesian intuition to regularization and helps explain why priors matter most when data is scarce or noisy.',
+          'This is the bridge from Bayesian intuition to practical shrinkage: MAP explains why priors matter most when evidence is scarce and why regularization can be understood as preferring plausible parameters before the data has spoken loudly enough.',
         interview:
-          'The short line is: <em>MAP is MLE plus a prior, so it shrinks the estimate toward what you considered plausible before seeing the data.</em>',
+          'The short line is: <em>MLE is data only; MAP is data plus prior, so small datasets get pulled toward what you already considered plausible.</em>',
         details: [
           'A Gaussian prior over weights often corresponds to L2-style shrinkage.',
           'When data is abundant, the likelihood usually dominates and MLE and MAP become closer.',
@@ -3385,8 +3369,8 @@ const chapters = {
         },
         viz: 'mle-map',
         controls: [
-          { key: 'samples', label: 'Dataset strength', min: 0.1, max: 0.95, step: 0.01, value: 0.38, format: 'percent' },
-          { key: 'prior', label: 'Prior strength', min: 0.05, max: 0.95, step: 0.01, value: 0.52, format: 'percent' },
+          { key: 'samples', label: 'Data evidence', min: 0.1, max: 0.95, step: 0.01, value: 0.38, format: 'percent' },
+          { key: 'prior', label: 'Prior confidence', min: 0.05, max: 0.95, step: 0.01, value: 0.52, format: 'percent' },
         ],
         presets: [
           { label: 'Weak data', values: { samples: 0.18, prior: 0.72 } },
@@ -3400,13 +3384,13 @@ const chapters = {
         label: 'Concept 02',
         title: 'Bias versus variance: simple models miss structure, flexible models chase noise',
         summary:
-          'The generalization problem is often about balancing underfitting and overfitting rather than maximizing training fit blindly.',
+          'Read the chart from left to right: too simple misses the pattern, too flexible chases sample noise, and the useful regime lives in the middle where test error is lowest.',
         what:
-          'High-bias models are too rigid and miss real structure. High-variance models are too sensitive and memorize noise. Good model capacity usually lives in the middle, where the model captures signal without reacting wildly to every fluctuation.',
+          'High bias means the model is too rigid to follow the real signal. High variance means the model is so flexible that a different sample would produce a noticeably different fit. The practical picture is the familiar U-curve: <strong>training error keeps falling, but test error bottoms out and then turns upward.</strong>',
         why:
-          'This is still one of the clearest mental models for feature engineering, model capacity, regularization, and cross-validation.',
+          'This is the cleanest mental model for why validation curves matter, why more capacity is not automatically better, and why regularization or better data can improve generalization even when training fit gets slightly worse.',
         interview:
-          'The memorable line is: <em>training error usually falls with complexity, but test error is U-shaped because variance eventually catches up.</em>',
+          'The memorable line is: <em>going right on complexity usually lowers training error, but after the sweet spot test error rises because variance is starting to dominate.</em>',
         details: [
           'Cross-validation is one way to estimate where that generalization sweet spot sits.',
           'Regularization, early stopping, and better data are all attempts to manage variance without giving up too much fit.',
@@ -3432,13 +3416,13 @@ const chapters = {
         },
         viz: 'bias-variance',
         controls: [
-          { key: 'complexity', label: 'Model complexity', min: 0.1, max: 0.95, step: 0.01, value: 0.52, format: 'percent' },
-          { key: 'noise', label: 'Data noise', min: 0.05, max: 0.95, step: 0.01, value: 0.36, format: 'percent' },
+          { key: 'complexity', label: 'Model flexibility', min: 0.1, max: 0.95, step: 0.01, value: 0.52, format: 'percent' },
+          { key: 'noise', label: 'Noise level', min: 0.05, max: 0.95, step: 0.01, value: 0.36, format: 'percent' },
         ],
         presets: [
-          { label: 'Underfit', values: { complexity: 0.14, noise: 0.24 } },
-          { label: 'Generalization sweet spot', values: { complexity: 0.52, noise: 0.36 } },
-          { label: 'Overfit', values: { complexity: 0.9, noise: 0.64 } },
+          { label: 'Too simple', values: { complexity: 0.14, noise: 0.24 } },
+          { label: 'Sweet spot', values: { complexity: 0.52, noise: 0.36 } },
+          { label: 'Too wiggly', values: { complexity: 0.9, noise: 0.64 } },
         ],
       },
       {
@@ -3447,13 +3431,13 @@ const chapters = {
         label: 'Concept 03',
         title: 'Regularization: sometimes the best fit is too fragile to trust',
         summary:
-          'Regularization deliberately penalizes complexity so the model prefers simpler, stabler solutions instead of chasing every wiggle in the data.',
+          'Regularization is the knob that says “fit the data, but do not trust every wiggle.” A little penalty can trade a tiny bit of fit for a noticeably stabler model.',
         what:
-          'Without regularization, a flexible model may exploit accidental quirks of the training set. Regularization adds pressure toward smaller weights or simpler solutions, which can hurt training fit a little while helping unseen data.',
+          'Without regularization, a flexible model may spend all its freedom chasing quirks of the training sample. Regularization adds a cost for large or overly complex solutions, which nudges the model toward smaller weights and smoother behavior. The learner sentence to keep is: <strong>accept a little more bias so variance stops exploding.</strong>',
         why:
-          'This connects directly to MAP estimation, weight decay, dropout intuition, and why “best training loss” is not the same as “best model.”',
+          'This is the practical version of the whole chapter: MAP adds a prior, bias-variance explains the tradeoff, and regularization is the control you actually turn when you want the solution to stop being so fragile.',
         interview:
-          'The compact answer is: <em>regularization accepts a little more bias in exchange for less variance.</em>',
+          'The compact answer is: <em>regularization shrinks weights toward simpler solutions, sacrificing a little training fit so test behavior becomes more stable.</em>',
         details: [
           'L1 encourages sparsity. L2 encourages shrinkage without hard zeroing.',
           'Early stopping often behaves like an implicit regularizer because it prevents late-stage overfitting.',
@@ -3482,7 +3466,7 @@ const chapters = {
         },
         viz: 'regularization',
         controls: [
-          { key: 'lambda', label: 'Regularization strength', min: 0.05, max: 0.95, step: 0.01, value: 0.42, format: 'percent' },
+          { key: 'lambda', label: 'Shrinkage strength λ', min: 0.05, max: 0.95, step: 0.01, value: 0.42, format: 'percent' },
           { key: 'capacity', label: 'Model flexibility', min: 0.1, max: 0.95, step: 0.01, value: 0.72, format: 'percent' },
         ],
         presets: [
@@ -3645,23 +3629,23 @@ const chapters = {
     eyebrow: 'GBDTs And Tabular ML',
     title: 'Tabular models win by making many small, useful corrections.',
     lede:
-      'Gradient-boosted trees are still one of the highest-value topics for practical ML interviews because they dominate so many structured-data problems. This chapter keeps the focus on splits, residual correction, and why boosting feels different from deep learning.',
+      'This chapter should read as one causal story: first a tree finds a simple cut that makes the next groups easier to predict, then boosting stacks many of those small corrections until a strong tabular model emerges. The goal is not tree trivia — it is to see why structured-data systems still love simple splits plus stagewise residual repair.',
     bestFor: 'Tabular ML interviews / practical modeling refresh',
-    studyMove: 'Watch what each new tree is correcting rather than thinking about one huge model',
+    studyMove: 'Track the one split or one residual correction that changes the prediction next',
     sections: [
       {
         id: 'tree-split',
         nav: 'Tree split',
         label: 'Concept 01',
-        title: 'Tree splits: a good split makes the child nodes more pure than the parent',
+        title: 'Tree splits: a good cut makes the next groups easier to predict than the mixed parent',
         summary:
-          'Decision trees work by partitioning the space so that each child node has a clearer label pattern than the mixed parent node.',
+          'A decision tree only asks one question at a time: which feature and threshold create child groups that are noticeably cleaner than the parent node?',
         what:
-          'A split is useful when it separates the examples into groups that behave differently. The tree is not trying to fit a smooth function everywhere at once; it is carving the space into simpler local regions.',
+          'A split is useful when one side of the cut starts collecting mostly one outcome and the other side collects a meaningfully different mix. The key quantity is not the threshold itself; it is the weighted impurity after the split compared with the impurity before the split.',
         why:
-          'This is the core intuition behind trees, GBDTs, random forests, and a lot of feature interaction reasoning on tabular data.',
+          'This is the local move underneath decision trees, random forests, and gradient-boosted trees. If you can read one split clearly, the rest of the tree story becomes much easier to explain.',
         interview:
-          'The compact line is: <em>a tree split is valuable when it reduces impurity by making the child groups more homogeneous.</em>',
+          'The compact line is: <em>a tree chooses the split that most reduces weighted child impurity.</em>',
         details: [
           'For classification, common impurity measures are Gini and entropy. For regression, the analogue is usually variance reduction.',
           'Because trees split recursively, they naturally model nonlinear interactions without requiring manual feature crosses.',
@@ -3687,28 +3671,28 @@ const chapters = {
         },
         viz: 'tree-split',
         controls: [
-          { key: 'separation', label: 'Feature separation', min: 0.1, max: 0.95, step: 0.01, value: 0.62, format: 'percent' },
+          { key: 'separation', label: 'Class separation', min: 0.1, max: 0.95, step: 0.01, value: 0.62, format: 'percent' },
           { key: 'noise', label: 'Label noise', min: 0.05, max: 0.95, step: 0.01, value: 0.28, format: 'percent' },
         ],
         presets: [
-          { label: 'Messy split', values: { separation: 0.24, noise: 0.72 } },
-          { label: 'Useful split', values: { separation: 0.62, noise: 0.28 } },
-          { label: 'Very clean split', values: { separation: 0.9, noise: 0.12 } },
+          { label: 'Hard to split', values: { separation: 0.24, noise: 0.72 } },
+          { label: 'Useful boundary', values: { separation: 0.62, noise: 0.28 } },
+          { label: 'Easy boundary', values: { separation: 0.9, noise: 0.12 } },
         ],
       },
       {
         id: 'boosting',
         nav: 'Boosting',
         label: 'Concept 02',
-        title: 'Boosting: each new tree is trying to fix the residual mistakes of the current ensemble',
+        title: 'Boosting: each new tree is trying to fix what the current ensemble still gets wrong',
         summary:
-          'Gradient boosting does not build one giant tree. It builds many small trees, where each new one is trained to correct what the current ensemble still gets wrong.',
+          'Gradient boosting is easiest to read as a repair loop: make a rough prediction, measure the residual error, fit a small tree to that leftover error, then add only part of that correction back in.',
         what:
-          'The ensemble starts simple and then keeps adding weak learners that target the remaining error. The model improves stage by stage rather than all at once.',
+          'The ensemble does not restart from scratch. It keeps a running prediction and trains each new weak learner on the mistakes that remain after the earlier trees have already spoken.',
         why:
-          'This is the idea that makes XGBoost, LightGBM, and CatBoost so effective on tabular data.',
+          'This stagewise residual-correction loop is why XGBoost, LightGBM, and CatBoost can turn many shallow trees into a very strong tabular model without needing one huge tree.',
         interview:
-          'The memorable line is: <em>gradient boosting is stagewise residual correction.</em>',
+          'The memorable line is: <em>boosting keeps fitting the residuals that the current ensemble leaves behind.</em>',
         details: [
           'Learning rate matters because it controls how aggressively each new tree changes the ensemble.',
           'Shallow trees often work surprisingly well because the power comes from many small corrections, not one huge tree.',
@@ -3739,7 +3723,7 @@ const chapters = {
         ],
         presets: [
           { label: 'Too timid', values: { rounds: 0.42, rate: 0.14 } },
-          { label: 'Balanced ensemble', values: { rounds: 0.58, rate: 0.36 } },
+          { label: 'Balanced repair', values: { rounds: 0.58, rate: 0.36 } },
           { label: 'Aggressive fit', values: { rounds: 0.88, rate: 0.74 } },
         ],
       },
@@ -3760,16 +3744,17 @@ const chapters = {
         label: 'Concept 01',
         title: 'Leakage: the model secretly sees information that would not exist at prediction time',
         summary:
-          'Leakage creates models that look brilliant offline because they are cheating with future or target-adjacent information.',
+          'Leakage creates models that look brilliant offline because they are cheating with information that crosses the prediction-time boundary.',
         what:
-          'A feature is leaky when it contains information that would not be available at the moment you truly need the prediction. The model then appears to perform well, but only because evaluation let it peek ahead.',
+          'A feature is leaky when it contains information that would not be available at the exact moment you truly need the prediction. The clean test is a timeline test: <strong>could the system know this value before the outcome happened?</strong> If not, the model is being graded with a cheat sheet. That is why leakage often shows up as an <strong>offline-vs-live mismatch</strong>: evaluation looked amazing because the feature crossed the prediction-time boundary, but production cannot reproduce that advantage.',
         why:
-          'Leakage is one of the fastest ways to build a useless model that still looks excellent on paper.',
+          'Leakage is one of the fastest ways to build a useless model that still looks excellent on paper. It does not just inflate a metric; it makes the metric dishonest.',
         interview:
-          'The sentence to remember is: <em>a leaky feature makes offline evaluation overly optimistic because it encodes future information or target proxies.</em>',
+          'The sentence to remember is: <em>a leaky feature makes offline evaluation overly optimistic because it uses information that will not exist at real prediction time, so the live score collapses when that shortcut disappears.</em>',
         details: [
           'Time-based leakage is especially common when joins or aggregations accidentally use future events.',
           'Leakage can hide in innocent-looking features like status fields, post-event labels, or features computed after the outcome is already partly known.',
+          'Target proxies are dangerous even when they are not literally the label. If they are only created after the outcome or strongly summarize it, they still create offline-only performance.',
         ],
         code: {
           title: 'Code sketch',
@@ -3787,13 +3772,13 @@ const chapters = {
         },
         viz: 'feature-leakage',
         controls: [
-          { key: 'future', label: 'Future info leakage', min: 0.05, max: 0.95, step: 0.01, value: 0.34, format: 'percent' },
-          { key: 'proxy', label: 'Target proxy strength', min: 0.05, max: 0.95, step: 0.01, value: 0.58, format: 'percent' },
+          { key: 'future', label: 'After-the-fact feature access', min: 0.05, max: 0.95, step: 0.01, value: 0.34, format: 'percent' },
+          { key: 'proxy', label: 'Outcome-proxy shortcut', min: 0.05, max: 0.95, step: 0.01, value: 0.58, format: 'percent' },
         ],
         presets: [
-          { label: 'Clean feature set', values: { future: 0.08, proxy: 0.16 } },
-          { label: 'Suspicious uplift', values: { future: 0.34, proxy: 0.58 } },
-          { label: 'Obvious leakage', values: { future: 0.88, proxy: 0.82 } },
+          { label: 'Prediction-time safe', values: { future: 0.08, proxy: 0.16 } },
+          { label: 'Offline looks too good', values: { future: 0.34, proxy: 0.58 } },
+          { label: 'Post-outcome cheat path', values: { future: 0.88, proxy: 0.82 } },
         ],
       },
       {
@@ -3802,16 +3787,17 @@ const chapters = {
         label: 'Concept 02',
         title: 'Feature shift and missingness: the same schema can hide a different world',
         summary:
-          'Features can keep the same column names while their meaning, frequency, or missingness pattern changes underneath you.',
+          'Features can keep the same column names while their train-time and live-time distributions quietly drift apart underneath you.',
         what:
-          'Distribution shift is not always dramatic. Sometimes the same feature quietly arrives with a new range, a different missingness pattern, or a new user population. That is enough to make a model brittle.',
+          'Distribution shift is not always dramatic. Sometimes the same feature quietly arrives with a new range, a new typical value, or a different missingness pattern. In other words, <strong>train saw one distribution and production is now sending another.</strong> The schema can still validate while the model is effectively meeting a different population than the one it learned from.',
         why:
-          'This is why feature monitoring matters even when the serving pipeline is technically healthy.',
+          'This is why feature monitoring matters even when the serving pipeline is technically healthy. A valid column can still be a damaged signal.',
         interview:
-          'The useful line is: <em>schema stability is not the same as distribution stability.</em>',
+          'The useful line is: <em>schema stability is not the same as distribution stability, so you monitor train-vs-live drift and missingness, not just whether the column still exists.</em>',
         details: [
           'Missingness itself can carry signal, but it can also indicate upstream breakage.',
           'Shift becomes especially dangerous when the model relied heavily on the drifting feature during training.',
+          'A common production checklist is: compare train vs live distributions, track missing-rate changes, and alert when a feature crosses a practical threshold rather than waiting for model KPIs to crater.',
         ],
         math: {
           title: 'Feature distribution change',
@@ -3834,13 +3820,13 @@ const chapters = {
         },
         viz: 'feature-shift',
         controls: [
-          { key: 'shift', label: 'Mean/range shift', min: 0.05, max: 0.95, step: 0.01, value: 0.42, format: 'percent' },
-          { key: 'missing', label: 'Missingness change', min: 0.05, max: 0.95, step: 0.01, value: 0.28, format: 'percent' },
+          { key: 'shift', label: 'Train vs live drift', min: 0.05, max: 0.95, step: 0.01, value: 0.42, format: 'percent' },
+          { key: 'missing', label: 'Live missing-rate jump', min: 0.05, max: 0.95, step: 0.01, value: 0.28, format: 'percent' },
         ],
         presets: [
-          { label: 'Stable live data', values: { shift: 0.1, missing: 0.08 } },
-          { label: 'Noticeable drift', values: { shift: 0.42, missing: 0.28 } },
-          { label: 'Broken upstream feed', values: { shift: 0.84, missing: 0.78 } },
+          { label: 'Train and live still match', values: { shift: 0.1, missing: 0.08 } },
+          { label: 'Drift worth monitoring', values: { shift: 0.42, missing: 0.28 } },
+          { label: 'Upstream feed breaking', values: { shift: 0.84, missing: 0.78 } },
         ],
       },
     ],
@@ -3860,21 +3846,21 @@ const chapters = {
         label: 'Concept 01',
         title: 'Classifier-free guidance: stronger steering can improve fidelity while hurting diversity',
         summary:
-          'Guidance is a steering knob. Turning it up can make outputs follow the prompt more strongly, but too much guidance can make samples brittle or repetitive.',
+          'Guidance is an inference-time steering knob. Turning it up makes the sample hug the prompt more tightly, but pushing too far usually trades away diversity and some realism.',
         what:
-          'Classifier-free guidance mixes an unconditional and conditional denoising signal. The bigger that guidance scale becomes, the harder the generation process is pushed toward the conditioning signal.',
+          'Classifier-free guidance mixes an unconditional denoising signal with a prompt-conditioned one. As the guidance scale grows, the conditional signal pulls harder, so the sample follows the prompt more aggressively instead of wandering across many plausible outputs.',
         why:
-          'This is the cleanest modern example of a quality-diversity tradeoff in generative modeling.',
+          'This is the cleanest first-read example of a generation tradeoff: more control is useful, but control is not free.',
         interview:
-          'The compact answer is: <em>guidance strengthens prompt adherence, but too much guidance often hurts diversity and realism.</em>',
+          'The compact answer is: <em>guidance strengthens prompt adherence, but past the sweet spot it often makes samples repetitive or brittle.</em>',
         details: [
-          'This is why many diffusion systems tune guidance rather than always maxing it out.',
-          'The same pattern shows up more broadly in generation: stronger steering often trades breadth for control.',
+          'The practical lesson is not “always increase guidance,” but “tune for the best steering-strength sweet spot.”',
+          'The same pattern shows up beyond diffusion too: stronger steering usually narrows the set of outputs the model is willing to produce.',
         ],
         math: {
           title: 'Guided denoising',
           formula: '\\hat{\\epsilon}_{guided} = \\hat{\\epsilon}_{uncond} + w(\\hat{\\epsilon}_{cond} - \\hat{\\epsilon}_{uncond})',
-          note: 'The guidance scale w controls how strongly the conditional signal pulls the sample.',
+          note: 'w is the steering strength: 0 leans toward the unconditional model, higher values pull harder toward the prompt-conditioned direction.',
         },
         code: {
           title: 'Code sketch',
@@ -3892,12 +3878,12 @@ const chapters = {
         },
         viz: 'guidance',
         controls: [
-          { key: 'guidance', label: 'Guidance scale', min: 0.05, max: 0.95, step: 0.01, value: 0.48, format: 'percent' },
+          { key: 'guidance', label: 'Steering strength', min: 0.05, max: 0.95, step: 0.01, value: 0.48, format: 'percent' },
           { key: 'noise', label: 'Prompt ambiguity', min: 0.05, max: 0.95, step: 0.01, value: 0.36, format: 'percent' },
         ],
         presets: [
-          { label: 'Loose generation', values: { guidance: 0.16, noise: 0.42 } },
-          { label: 'Balanced guidance', values: { guidance: 0.48, noise: 0.36 } },
+          { label: 'Loose steering', values: { guidance: 0.16, noise: 0.42 } },
+          { label: 'Balanced steering', values: { guidance: 0.48, noise: 0.36 } },
           { label: 'Over-steered', values: { guidance: 0.88, noise: 0.62 } },
         ],
       },
@@ -3907,21 +3893,21 @@ const chapters = {
         label: 'Concept 02',
         title: 'Preference optimization: train the model to prefer chosen answers over rejected ones',
         summary:
-          'Methods like DPO make alignment feel less magical: instead of maximizing an abstract reward directly, they push the policy toward responses humans preferred in pairwise comparisons.',
+          'DPO makes alignment concrete: for one prompt, the model sees a chosen answer and a rejected answer, then learns to make the chosen one relatively more likely.',
         what:
-          'The system sees a prompt, a preferred answer, and a rejected answer. Training nudges the policy so the preferred answer becomes more likely relative to the rejected one.',
+          'The training example is a preference pair: same prompt, one human-preferred completion, one rejected completion. Optimization moves probability mass toward the chosen answer relative to the rejected one, usually while staying anchored to a reference policy.',
         why:
-          'This is one of the most practical ways to explain modern preference tuning without diving straight into full RLHF mechanics.',
+          'This is the shortest path to explaining modern preference tuning without first teaching the whole reward-model-plus-RLHF pipeline.',
         interview:
-          'The clear line is: <em>preference optimization learns from relative human choices, not just absolute labels.</em>',
+          'The clear line is: <em>DPO learns from pairwise human choices by pushing chosen responses above rejected ones for the same prompt.</em>',
         details: [
-          'Pairwise preference data is often easier for humans to produce consistently than assigning absolute quality scores.',
-          'The optimization is still only as good as the preference data and the objective you derive from it.',
+          'Pairwise preferences are often easier for humans to provide consistently than absolute quality scores.',
+          'The method is still only as good as the preference data and the “stay near the reference model” pressure you choose.',
         ],
         math: {
           title: 'Preference margin',
           formula: '\\log \\sigma\\big(\\beta[(\\log \\pi(y^+\\mid x) - \\log \\pi(y^-\\mid x)) - (\\log \\pi_{ref}(y^+\\mid x) - \\log \\pi_{ref}(y^-\\mid x))]\\big)',
-          note: 'The point is not to memorize the whole expression. The important idea is: make preferred responses relatively more likely than rejected ones.',
+          note: 'Do not memorize the whole expression. Read it as: for the same prompt, increase the chosen-vs-rejected gap while β controls how hard you pull away from the reference policy.',
         },
         code: {
           title: 'Code sketch',
@@ -3939,12 +3925,12 @@ const chapters = {
         },
         viz: 'dpo',
         controls: [
-          { key: 'margin', label: 'Chosen-rejected gap', min: 0.05, max: 0.95, step: 0.01, value: 0.54, format: 'percent' },
-          { key: 'beta', label: 'Optimization pressure', min: 0.05, max: 0.95, step: 0.01, value: 0.42, format: 'percent' },
+          { key: 'margin', label: 'Chosen-vs-rejected gap', min: 0.05, max: 0.95, step: 0.01, value: 0.54, format: 'percent' },
+          { key: 'beta', label: 'Stay-close pressure', min: 0.05, max: 0.95, step: 0.01, value: 0.42, format: 'percent' },
         ],
         presets: [
           { label: 'Weak preference signal', values: { margin: 0.18, beta: 0.24 } },
-          { label: 'Healthy preference push', values: { margin: 0.54, beta: 0.42 } },
+          { label: 'Healthy pairwise push', values: { margin: 0.54, beta: 0.42 } },
           { label: 'Over-hard push', values: { margin: 0.86, beta: 0.82 } },
         ],
       },
@@ -3954,16 +3940,16 @@ const chapters = {
         label: 'Concept 03',
         title: 'Reward hacking: optimizing the proxy too hard can move you away from the real objective',
         summary:
-          'Alignment problems often come from the system maximizing a measurable proxy that only imperfectly reflects what humans really meant.',
+          'Reward hacking happens when the measurable score is only a proxy for what humans actually want. The system looks better on the metric while drifting away from the real goal.',
         what:
-          'The proxy reward is a stand-in for the real objective. If the stand-in is imperfect, aggressive optimization can exploit that gap and produce behavior that scores well while feeling wrong to humans.',
+          'A proxy reward is a stand-in objective. If that stand-in misses something important, strong optimization pressure can expose the loophole: the model keeps improving the number you track while the true objective stalls or even gets worse.',
         why:
-          'This is one of the most reusable alignment intuitions across RL, recommender systems, and LLM tuning.',
+          'This is one of the most reusable alignment intuitions across RL, recommender systems, and LLM tuning: scoreboards can be gamed when they are not the same thing as the real objective.',
         interview:
-          'The memorable sentence is: <em>when you optimize the proxy too hard, you often uncover the proxy’s blind spots instead of solving the real problem better.</em>',
+          'The memorable sentence is: <em>optimize the proxy too hard and you eventually learn the proxy’s loopholes, not the human intent behind it.</em>',
         details: [
-          'Goodhart’s law is the general warning: when a measure becomes a target, it stops being a good measure.',
-          'The fix is usually not “optimize less forever” but to improve the objective, add checks, and monitor for proxy drift.',
+          'Goodhart’s law is the general warning: once a measure becomes the target, it stops being a reliable measure.',
+          'The practical fix is to improve the objective, add audits, and watch for drift between proxy score and real-world quality.',
         ],
         code: {
           title: 'Code sketch',
@@ -3982,7 +3968,7 @@ const chapters = {
         viz: 'reward-hacking',
         controls: [
           { key: 'pressure', label: 'Optimization pressure', min: 0.05, max: 0.95, step: 0.01, value: 0.56, format: 'percent' },
-          { key: 'proxyGap', label: 'Proxy-objective gap', min: 0.05, max: 0.95, step: 0.01, value: 0.34, format: 'percent' },
+          { key: 'proxyGap', label: 'Proxy mismatch', min: 0.05, max: 0.95, step: 0.01, value: 0.34, format: 'percent' },
         ],
         presets: [
           { label: 'Low-risk objective', values: { pressure: 0.28, proxyGap: 0.12 } },
@@ -4598,13 +4584,30 @@ function renderMathLines(formula) {
 }
 
 const formulaAnnotations = {
+  distribution: [
+    ['x_i', 'one possible outcome', 'one face of a die, such as 4.'],
+    ['p(x_i)', 'the probability of that outcome', 'for a fair die, p(4) = 1/6. The six probabilities add to 1.'],
+    ['p(x)\\,dx', 'probability in a tiny interval for a continuous variable', 'for delivery time, an area under the density curve gives the chance of arriving within a time range. The density height alone is not a probability.'],
+  ],
+  expectation: [
+    ['E[X]', 'the probability-weighted average', 'a fair die averages (1 + 2 + 3 + 4 + 5 + 6) / 6 = 3.5.'],
+    ['x_i p(x_i)', 'an outcome multiplied by its frequency', 'rolling a 6 with chance 1/6 contributes 1 to the weighted sum.'],
+    ['\\operatorname{Var}(X)', 'the average squared distance from the mean', 'a die roll of 6 is 2.5 above the mean of 3.5; its squared distance is 6.25. Average these distances over all faces.'],
+  ],
+  loss: [
+    ['y_i, \\hat y_i', 'the observed value and the prediction for example i', 'a delivery took 30 minutes (y), but the model predicted 20 (y-hat).'],
+    ['n', 'the number of examples being averaged', '100 recorded deliveries means n = 100.'],
+    ['\\hat p_i', 'the predicted probability of the positive class', 'in binary classification, 0.8 means an 80% predicted chance of class 1; the observed label y is 0 or 1.'],
+  ],
   bayes: [
-    ['P(H \\mid E)', 'your updated belief after seeing the evidence', 'after a positive medical test, this is the actual chance the patient has the disease.'],
-    ['P(E \\mid H)', 'how likely that evidence would be if the hypothesis were true', 'if someone really has the disease, how often does the test come back positive?'],
-    ['P(H)', 'your starting belief before the new evidence', 'the disease might affect only 1% of the population before you run the test.'],
-    ['P(E)', 'how often that evidence appears overall, across all cases', 'positive tests also come from false positives, so this is bigger than just the true-positive rate.'],
+    ['P(H \\mid E)', 'the fraction supporting H among the cases with evidence E', '99 sick people among 198 positive tests: 99/198 = 50%.'],
+    ['P(E \\mid H)', 'the likelihood of the evidence if H is true', '99 of the 100 sick people test positive: 99%.'],
+    ['P(H)', 'the prior, before looking at the evidence', '100 sick people out of 10,000: 1%.'],
+    ['P(E)', 'the fraction of everyone who produces this evidence', '99 real detections + 99 false alarms = 198 positives out of 10,000, or 1.98%.'],
+    ['\\neg H', 'the hypothesis is false', 'the person is healthy. P(E | not H) = 1% is the false-alarm rate.'],
   ],
   entropy: [
+    ['I(x)', 'the surprise of one outcome, in bits', 'heads with probability 1/2 gives -log2(1/2) = 1 bit.'],
     ['H(p)', 'the baseline uncertainty in the real outcome distribution', 'a 50/50 coin flip has higher entropy than a coin that lands heads 99% of the time.'],
     ['H(p, q)', 'the surprise you pay when the world follows p but your model predicts q', 'if spam is usually rare but your classifier is confidently wrong, cross-entropy rises.'],
     ['KL(p \\parallel q)', 'the extra cost caused purely by your model being mismatched to reality', 'if the true class probability is 0.7 and your model says 0.2, this mismatch penalty is large.'],
@@ -4667,9 +4670,9 @@ const formulaAnnotations = {
     ['Q^{\\pi}(s,a)', 'the expected return from taking action a in state s, then following policy π', 'how good “move left now” is in this state if you continue with the current policy afterwards.'],
   ],
   'td-learning': [
-    ['\\delta_t', 'the temporal-difference error or one-step surprise', 'if the reward plus next-state estimate is much better than expected, δ is positive and the current value was too low.'],
+    ['\\delta_t', 'the temporal-difference error or one-step surprise', 'if the reward plus bootstrapped next estimate is much better than expected, δ is positive and the current estimate was too low.'],
     ['\\alpha', 'the learning rate that controls how hard you chase the TD target', 'small α changes values cautiously; large α reacts strongly to each new transition.'],
-    ['r_{t+1} + \\gamma V(s_{t+1})', 'the bootstrapped target mixing one real reward with one estimated future value', 'you observed one reward now, then rely on your current guess about how good the next state is.'],
+    ['r_{t+1} + \\gamma \\widehat{V}_{\\text{next}}', 'the bootstrapped target mixing one real reward with one estimated future quantity', 'you observed one reward now, then rely on your current guess about the best or sampled next estimate.'],
   ],
   'q-learning': [
     ['Q(s,a)', 'the current estimate of how good action a is in state s', 'in a grid world, this could be the value of moving right from one particular cell.'],
@@ -4982,7 +4985,7 @@ function renderChapterPage(chapterKey) {
 
   if (navMeta) navMeta.textContent = chapter.navMeta;
   if (eyebrow) eyebrow.textContent = chapter.eyebrow;
-  if (title) title.textContent = chapter.title;
+  if (title) title.textContent = chapter.displayTitle || chapter.eyebrow;
   if (lede) lede.textContent = chapter.lede;
   if (map) {
     map.innerHTML = chapter.sections.map((section) => `<a href="#${section.id}">${section.nav}</a>`).join('');
@@ -4991,11 +4994,7 @@ function renderChapterPage(chapterKey) {
   document.querySelector('.chapter-guide')?.remove();
   const guideMarkup = renderChapterGuide(chapterKey);
   if (guideMarkup) {
-    if (map) {
-      map.insertAdjacentHTML('afterend', guideMarkup);
-    } else {
-      root.insertAdjacentHTML('beforebegin', guideMarkup);
-    }
+    root.insertAdjacentHTML('afterend', guideMarkup);
   }
 
   root.innerHTML = '';
@@ -5088,31 +5087,9 @@ function renderSectionMarkup(section, previousSection, nextSection) {
     </div>
     <div class="concept-layout">
       <div class="concept-column">
-        <div class="fact-grid">
-          <article class="fact-card">
-            <p class="fact-label">What this means</p>
-            <p>${section.what}</p>
-          </article>
-          <article class="fact-card">
-            <p class="fact-label">Why it matters</p>
-            <p>${section.why}</p>
-          </article>
-          <article class="fact-card">
-            <p class="fact-label">Interview refresh</p>
-            <p>${section.interview}</p>
-          </article>
-        </div>
-        <details class="fold">
-          <summary>Reference notes</summary>
-          <div class="fold-body">
-            <ul>${section.details.map((item) => `<li>${item}</li>`).join('')}</ul>
-          </div>
-        </details>
-      </div>
-      <div class="concept-column">
         <section class="viz-panel" data-viz="${section.viz}">
           <div class="viz-toolbar">
-            <span class="viz-toolbar-label">Interactive visualization</span>
+            <span class="viz-toolbar-label">Explore the idea</span>
             <button type="button" class="viz-expand-button" aria-expanded="false">Expand view</button>
           </div>
           <div class="viz-shell">
@@ -5121,7 +5098,7 @@ function renderSectionMarkup(section, previousSection, nextSection) {
                 ${section.presets
                   .map(
                     (preset, index) =>
-                      `<button class="preset-button${index === 1 || (index === 0 && section.presets.length === 1) ? ' active' : ''}" type="button" data-preset='${JSON.stringify(
+                      `<button class="preset-button${index === (section.defaultPreset ?? (section.presets.length === 1 ? 0 : 1)) ? ' active' : ''}" type="button" data-preset='${JSON.stringify(
                         preset.values
                       )}'>${preset.label}</button>`
                   )
@@ -5152,7 +5129,7 @@ function renderSectionMarkup(section, previousSection, nextSection) {
                   .join('')}
               </div>
             </div>
-            <div class="viz-stage" tabindex="0" role="button" aria-label="Expand visualization">
+            <div class="viz-stage" role="group" aria-label="Interactive example">
               <div class="viz-stage-root" data-stage-root></div>
             </div>
             <div class="lab-readout">
@@ -5165,6 +5142,15 @@ function renderSectionMarkup(section, previousSection, nextSection) {
       </div>
     </div>
     <div class="study-tool-grid">
+      <details class="fold concept-explanation">
+        <summary>Read the explanation</summary>
+        <div class="fold-body explanation-body">
+          <p>${section.what}</p>
+          <p>${section.why}</p>
+          <p>${section.interview}</p>
+          <ul>${section.details.map((item) => `<li>${item}</li>`).join('')}</ul>
+        </div>
+      </details>
       ${section.math ? renderMathTool(section.math, section.id) : ''}
       ${section.geometry ? renderGeometryTool(section.geometry) : ''}
       ${section.code ? renderCodeTool(section.code) : ''}
@@ -5297,7 +5283,7 @@ function mountVisualization(card, section) {
             ${section.presets
               .map(
                 (preset, index) =>
-                  `<button class="preset-button${index === 1 || (index === 0 && section.presets.length === 1) ? ' active' : ''}" type="button" data-preset='${JSON.stringify(
+                  `<button class="preset-button${index === (section.defaultPreset ?? (section.presets.length === 1 ? 0 : 1)) ? ' active' : ''}" type="button" data-preset='${JSON.stringify(
                     preset.values
                   )}'>${preset.label}</button>`
               )
@@ -5333,6 +5319,7 @@ function mountVisualization(card, section) {
   `;
   document.body.appendChild(overlay);
   const overlayDialog = overlay.querySelector('.viz-lightbox__dialog');
+  overlayDialog.dataset.viz = section.viz;
   const overlayStageRoot = overlay.querySelector('[data-overlay-stage-root]');
   const overlayTakeaway = overlay.querySelector('[data-overlay-takeaway]');
   const overlayMetrics = overlay.querySelector('[data-overlay-metrics]');
@@ -5344,9 +5331,32 @@ function mountVisualization(card, section) {
   const overlayPresetButtons = Array.from(overlay.querySelectorAll('.preset-button'));
   const overlayClose = overlay.querySelector('.viz-lightbox__close');
   const localCanvasViz = new Set([
+    'matrix-factorization',
+    'two-tower',
+    'threshold-metrics',
+    'calibration',
+    'ranking-metrics',
+    'retrieval-funnel',
+    'cold-start',
     'serving-skew',
     'online-offline',
     'data-drift',
+    'tree-split',
+    'boosting',
+    'feature-leakage',
+    'feature-shift',
+    'diffusion',
+    'bandit',
+    'guidance',
+    'dpo',
+    'reward-hacking',
+    'tokenization',
+    'embeddings',
+    'positional',
+    'transformer-block',
+    'attention',
+    'kv-cache',
+    'rag',
   ]);
 
   function getState() {
@@ -5380,6 +5390,12 @@ function mountVisualization(card, section) {
 
   function renderTarget(targetStageRoot, targetTakeaway, targetMetrics, datasetNode) {
     const state = getState();
+    if (window.AtelierLessons?.has(section.viz)) {
+      window.AtelierLessons.render(section.viz, targetStageRoot);
+      datasetNode.dataset.rendererKind = 'lesson';
+      targetTakeaway.closest('.lab-readout').hidden = true;
+      return;
+    }
     if (isHybridViz(section.viz) && !localCanvasViz.has(section.viz)) {
       hybridRenderers[section.viz].render(targetStageRoot, section, state, {
         takeaway: targetTakeaway,
@@ -5468,10 +5484,15 @@ function mountVisualization(card, section) {
     if (renderer) renderer(ctx, state, targetTakeaway, targetMetrics);
   }
 
+  let previousFocus = null;
+  let inertSiblings = [];
   function closeOverlay() {
     overlay.hidden = true;
     document.body.classList.remove('viz-expanded-open');
-    if (stage) stage.setAttribute('aria-label', 'Expand visualization');
+    expandButton?.setAttribute('aria-expanded', 'false');
+    inertSiblings.forEach(([node, wasInert]) => { node.inert = wasInert; });
+    inertSiblings = [];
+    (previousFocus?.isConnected ? previousFocus : expandButton)?.focus({ preventScroll: true });
   }
 
   function openOverlay() {
@@ -5480,8 +5501,11 @@ function mountVisualization(card, section) {
       openOverlayRoot.__close();
     }
     overlay.hidden = false;
+    previousFocus = document.activeElement;
+    inertSiblings = [...document.body.children].filter(node => node !== overlay && node.tagName !== 'SCRIPT').map(node => [node, node.inert]);
+    inertSiblings.forEach(([node]) => { node.inert = true; });
     document.body.classList.add('viz-expanded-open');
-    if (stage) stage.setAttribute('aria-label', 'Expanded visualization');
+    expandButton?.setAttribute('aria-expanded', 'true');
     render();
     overlayClose.focus();
   }
@@ -5532,12 +5556,6 @@ function mountVisualization(card, section) {
     });
   });
 
-  if (typeof ResizeObserver !== 'undefined') {
-    const observer = new ResizeObserver(() => render());
-    observer.observe(stageRoot);
-    observer.observe(overlayStageRoot);
-  }
-
   if (expandButton) {
     expandButton.addEventListener('click', () => {
       if (overlay.hidden) openOverlay();
@@ -5546,14 +5564,20 @@ function mountVisualization(card, section) {
   }
 
   if (stage) {
-    stage.addEventListener('click', () => openOverlay());
-    stage.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openOverlay();
-      }
+    stage.addEventListener('click', (event) => {
+      if (event.target.closest('button, input, select, textarea, a, summary, [role="button"], [role="slider"]')) return;
+      if (window.getSelection()?.toString()) return;
+      openOverlay();
     });
   }
+
+  overlay.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    const focusable = [...overlay.querySelectorAll('button, input, select, a[href], summary, [tabindex="0"]')].filter(node => !node.disabled && node.getClientRects().length);
+    const first = focusable[0], last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
 
   overlayClose.addEventListener('click', closeOverlay);
   overlay.addEventListener('click', (event) => {
@@ -5568,20 +5592,40 @@ function mountVisualization(card, section) {
     });
   }
 
-  const localCanvasViz = new Set([
-    'tokenization',
-    'embeddings',
-    'positional',
-    'transformer-block',
-    'attention',
-    'kv-cache',
-    'rag',
-  ]);
-
   // Lazy-mount / unmount based on viewport proximity. Without this, chapter
   // pages with many React viz bring the browser to a crawl because every
   // framer-motion animation composites every frame even off-screen.
   let isMounted = false;
+  let lastInlineWidth = 0;
+  let lastOverlayWidth = 0;
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!isMounted) return;
+        const isOverlayEntry = entry.target === overlayStageRoot;
+        if (isOverlayEntry && overlay.hidden) return;
+        const width = Math.round(entry.contentRect?.width || entry.target.getBoundingClientRect().width || 0);
+        if (!width) return;
+
+        if (isOverlayEntry) {
+          if (Math.abs(width - lastOverlayWidth) < 2) return;
+          lastOverlayWidth = width;
+        } else {
+          if (Math.abs(width - lastInlineWidth) < 2) return;
+          lastInlineWidth = width;
+        }
+
+        requestAnimationFrame(() => {
+          if (!isMounted) return;
+          if (isOverlayEntry && overlay.hidden) return;
+          render();
+        });
+      });
+    });
+    observer.observe(stageRoot);
+    observer.observe(overlayStageRoot);
+  }
 
   const insertPlaceholder = () => {
     if (stageRoot && !stageRoot.querySelector('.viz-placeholder')) {
@@ -5600,12 +5644,14 @@ function mountVisualization(card, section) {
       const placeholder = stageRoot?.querySelector('.viz-placeholder');
       if (placeholder) placeholder.remove();
       render();
+      lastInlineWidth = Math.round(stageRoot?.getBoundingClientRect().width || 0);
+      lastOverlayWidth = Math.round(overlayStageRoot?.getBoundingClientRect().width || 0);
       pretextFontsReady.then(() => {
         if (isMounted) render();
       });
     };
     // Ensure React bundle is loaded before trying to render React viz.
-    if (isHybridViz(section.viz) && !localCanvasViz.has(section.viz)) {
+    if (!window.AtelierLessons?.has(section.viz) && isHybridViz(section.viz) && !localCanvasViz.has(section.viz)) {
       ensureReactBundle().then(doMount, (err) => {
         console.error('[atelier]', err);
       });
@@ -5618,6 +5664,7 @@ function mountVisualization(card, section) {
     if (!isMounted) return;
     // Don't unmount if the lightbox is open — user is actively using the viz.
     if (!overlay.hidden) return;
+    const previousHeight = stageRoot.getBoundingClientRect().height;
     isMounted = false;
     // Unmount any React root so framer-motion animations stop running.
     if (stageRoot) {
@@ -5626,7 +5673,11 @@ function mountVisualization(card, section) {
       }
       stageRoot.replaceChildren();
     }
+    lastInlineWidth = 0;
+    lastOverlayWidth = 0;
     insertPlaceholder();
+    const placeholder = stageRoot.querySelector('.viz-placeholder');
+    if (placeholder && previousHeight) placeholder.style.minHeight = `${previousHeight}px`;
   };
 
   if (typeof IntersectionObserver === 'undefined' || !panel || localCanvasViz.has(section.viz)) {
@@ -7668,12 +7719,12 @@ function drawTdLearning(ctx, state, takeaway, metrics) {
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('TD learning nudges a value toward one real reward plus one estimated future', 56, 58);
+  ctx.fillText('TD learning nudges one estimate toward one real reward plus one estimated future', 56, 58);
 
   const cards = [
-    { x: 92, label: 'current V(s)', value: current, color: '#6ea5c9' },
+    { x: 92, label: 'current Q(s,a)', value: current, color: '#6ea5c9' },
     { x: 274, label: 'TD target', value: target / 1.4, color: '#c9a96e' },
-    { x: 456, label: 'updated V(s)', value: updated / 1.4, color: '#c96e8a' },
+    { x: 456, label: 'updated Q(s,a)', value: updated / 1.4, color: '#c96e8a' },
   ];
   cards.forEach((card) => {
     const h = 182 * card.value;
@@ -8026,57 +8077,60 @@ function drawRankingMetrics(ctx, state, takeaway, metrics) {
 
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('A ranking surface where the top positions matter most', 56, 58);
+  ctx.fillText('The top of the list is the product', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('A relevant item hidden low in the list helps far less than one surfaced early.', 56, 84);
 
   relevance.forEach((rel, index) => {
-    const y = 104 + index * 42;
-    ctx.fillStyle = index === 0 ? 'rgba(201,169,110,0.2)' : 'rgba(255,255,255,0.03)';
-    roundRect(ctx, 84, y, 320, 28, 14, true, false);
+    const y = 118 + index * 40;
+    ctx.fillStyle = index < 2 ? 'rgba(201,169,110,0.16)' : 'rgba(255,255,255,0.03)';
+    roundRect(ctx, 84, y, 332, 28, 14, true, false);
     ctx.fillStyle = rel > 0.65 ? '#c9a96e' : rel > 0.35 ? '#6ea5c9' : '#8a8680';
-    roundRect(ctx, 84, y, 320 * rel, 28, 14, true, false);
+    roundRect(ctx, 84, y, 332 * rel, 28, 14, true, false);
     ctx.fillStyle = '#e8e4de';
     ctx.font = '16px "EB Garamond", serif';
     ctx.fillText(`#${index + 1}`, 52, y + 19);
-    ctx.fillText(`relevance ${rel.toFixed(2)}`, 420, y + 19);
+    ctx.fillText(index === 0 ? 'users see this first' : index === 1 ? 'still high-leverage' : 'discounted attention', 430, y + 19);
   });
 
-  ctx.fillStyle = '#8a8680';
+  ctx.fillStyle = '#c9ced9';
   ctx.font = '12px "JetBrains Mono", monospace';
-  ctx.fillText('TOP OF LIST', 84, 324);
-  ctx.fillText('LOWER POSITIONS ARE DISCOUNTED', 278, 324);
+  ctx.fillText('top slots dominate experience', 84, 334);
+  ctx.fillText('relevance deeper in the slate is discounted', 254, 334);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();
-  ctx.moveTo(540, 104);
-  ctx.lineTo(540, 286);
+  ctx.moveTo(560, 104);
+  ctx.lineTo(560, 286);
   ctx.stroke();
 
   const stats = [
     ['NDCG@5', ndcg],
     ['MRR', mrr],
-    ['TOP QUALITY', topQuality],
+    ['Top-slot quality', topQuality],
   ];
   stats.forEach(([label, value], index) => {
     const y = 128 + index * 46;
     ctx.fillStyle = '#8a8680';
     ctx.font = '12px "JetBrains Mono", monospace';
-    ctx.fillText(String(label), 566, y);
-    ctx.fillStyle = label === 'TOP QUALITY' ? '#c9a96e' : '#e8e4de';
+    ctx.fillText(String(label), 586, y);
+    ctx.fillStyle = label === 'Top-slot quality' ? '#c9a96e' : '#e8e4de';
     ctx.font = '28px "EB Garamond", serif';
-    ctx.fillText(`${Math.round(Number(value) * 100)}%`, 566, y + 30);
+    ctx.fillText(`${Math.round(Number(value) * 100)}%`, 586, y + 30);
   });
 
   takeaway.textContent =
     ndcg > 0.82
-      ? 'The useful items are surfacing early, which is exactly what ranking metrics are designed to reward.'
+      ? 'The strongest items are already landing in the first few slots, which is exactly what pairwise and listwise objectives are trying to enforce.'
       : firstStrong > 1
-        ? 'There may be a good item in the list, but it is landing too low to feel satisfying in a real product.'
-        : 'Ranking quality lives at the top of the list, not in whether some relevant item exists somewhere in the tail.';
+        ? 'A useful item exists, but it is buried too low. Ranking losses help when the goal is to move that item upward, not merely label it relevant.'
+        : 'Ranking quality is not about whether relevance exists somewhere in the tail; it is about whether the user sees the best options before attention runs out.';
 
   metrics.innerHTML = metricMarkup([
     ['NDCG@5', ndcg.toFixed(2)],
     ['MRR', mrr.toFixed(2)],
-    ['Top-rank quality', `${Math.round(topQuality * 100)}%`],
+    ['Top-slot quality', `${Math.round(topQuality * 100)}%`],
   ]);
 }
 
@@ -8084,31 +8138,73 @@ function drawMatrixFactorization(ctx, state, takeaway, metrics) {
   const alignment = state.alignment;
   const sparsity = state.sparsity;
   const score = clamp01(0.2 + alignment * 0.74 - sparsity * 0.12);
-  const reconstruction = clamp01(0.28 + alignment * 0.6 - sparsity * 0.24);
   const coldStartRisk = clamp01(0.18 + sparsity * 0.62 - alignment * 0.1);
+  const observedCoverage = clamp01(1 - sparsity);
 
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('One user and several items inside a shared preference space', 56, 58);
+  ctx.fillText('Sparse ratings become one shared map of taste', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Read left-to-right: observed ratings -> shared latent space -> predicted missing preferences', 56, 84);
 
-  const user = { x: 182, y: 188 };
+  const matrixX = 72;
+  const matrixY = 126;
+  const cell = 24;
+  const observedCells = Math.round(12 + observedCoverage * 9);
+  for (let r = 0; r < 4; r += 1) {
+    for (let c = 0; c < 4; c += 1) {
+      const idx = r * 4 + c;
+      const observed = idx < observedCells;
+      ctx.fillStyle = observed ? 'rgba(201, 169, 110, 0.72)' : 'rgba(255,255,255,0.06)';
+      roundRect(ctx, matrixX + c * (cell + 6), matrixY + r * (cell + 6), cell, cell, 7, true, false);
+      if (!observed) {
+        ctx.fillStyle = '#8a8680';
+        ctx.font = '13px "JetBrains Mono", monospace';
+        ctx.fillText('?', matrixX + c * (cell + 6) + 7, matrixY + r * (cell + 6) + 17);
+      }
+    }
+  }
+  ctx.fillStyle = '#c9ced9';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('observed ratings', matrixX, 112);
+  ctx.fillText(`${Math.round(observedCoverage * 100)}% coverage`, matrixX, 248);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(214, 174);
+  ctx.lineTo(284, 174);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(276, 168);
+  ctx.lineTo(284, 174);
+  ctx.lineTo(276, 180);
+  ctx.stroke();
+
+  const user = { x: 382, y: 186 };
   const items = [
-    { label: 'item A', x: 182 + alignment * 120, y: 188 - alignment * 34, color: '#c9a96e' },
-    { label: 'item B', x: 102 + sparsity * 60, y: 116 + sparsity * 56, color: '#6ea5c9' },
-    { label: 'item C', x: 286 - alignment * 28, y: 252 - sparsity * 24, color: '#c96e8a' },
+    { label: 'action fan', x: 382 + alignment * 112, y: 186 - alignment * 34, color: '#c9a96e' },
+    { label: 'romance fan', x: 314 + sparsity * 52, y: 126 + sparsity * 54, color: '#6ea5c9' },
+    { label: 'art-film fan', x: 486 - alignment * 30, y: 252 - sparsity * 26, color: '#c96e8a' },
   ];
 
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.beginPath();
-  ctx.arc(user.x, user.y, 126, 0, Math.PI * 2);
+  ctx.arc(user.x, user.y, 118, 0, Math.PI * 2);
   ctx.stroke();
+  ctx.fillStyle = '#c9ced9';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('shared taste space', 330, 112);
+  ctx.fillText('closer vectors -> higher predicted preference', 300, 316);
+
   ctx.fillStyle = '#e8e4de';
   ctx.beginPath();
   ctx.arc(user.x, user.y, 8, 0, Math.PI * 2);
   ctx.fill();
   ctx.font = '16px "EB Garamond", serif';
-  ctx.fillText('user vector', user.x - 26, user.y + 26);
+  ctx.fillText('user', user.x - 14, user.y + 28);
 
   items.forEach((item) => {
     ctx.strokeStyle = `${item.color}88`;
@@ -8126,32 +8222,34 @@ function drawMatrixFactorization(ctx, state, takeaway, metrics) {
 
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.beginPath();
-  ctx.moveTo(456, 102);
-  ctx.lineTo(456, 286);
+  ctx.moveTo(570, 108);
+  ctx.lineTo(570, 304);
   ctx.stroke();
 
-  [['Affinity', score], ['Reconstruction', reconstruction], ['Cold-start risk', coldStartRisk]].forEach(([label, value], i) => {
-    const y = 124 + i * 56;
+  [['Predicted match', score], ['Observed coverage', observedCoverage], ['Cold-start risk', coldStartRisk]].forEach(([label, value], i) => {
+    const y = 132 + i * 58;
     ctx.fillStyle = '#8a8680';
     ctx.font = '12px "JetBrains Mono", monospace';
-    ctx.fillText(label.toUpperCase(), 488, y);
+    ctx.fillText(label.toUpperCase(), 596, y);
     ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    roundRect(ctx, 488, y + 10, 170, 18, 10, true, false);
+    roundRect(ctx, 596, y + 10, 120, 18, 10, true, false);
     ctx.fillStyle = i === 2 ? '#c96e8a' : i === 1 ? '#6ea5c9' : '#c9a96e';
-    roundRect(ctx, 488, y + 10, 170 * Number(value), 18, 10, true, false);
+    roundRect(ctx, 596, y + 10, 120 * Number(value), 18, 10, true, false);
     ctx.fillStyle = '#e8e4de';
     ctx.font = '16px "EB Garamond", serif';
-    ctx.fillText(`${Math.round(Number(value) * 100)}%`, 620, y);
+    ctx.fillText(`${Math.round(Number(value) * 100)}%`, 680, y);
   });
 
   takeaway.textContent =
     sparsity > 0.7
-      ? 'The shared latent space is still useful, but sparse history makes placement uncertain and cold-start risk high.'
-      : 'Shared embeddings work because user-item preference becomes geometric alignment instead of a giant sparse lookup table.';
+      ? 'There are not many observed ratings, so the main job of factorization is to infer a shared taste space that can still guess the missing cells — but cold-start risk stays high.'
+      : score > 0.76
+        ? 'The observed ratings are rich enough to place this user near the right item cluster, so the missing preferences become a geometry problem instead of a sparse-table lookup.'
+        : 'Matrix factorization is useful because it turns sparse history into one shared map where nearby user and item vectors imply higher predicted preference.';
 
   metrics.innerHTML = metricMarkup([
-    ['Affinity', `${Math.round(score * 100)}%`],
-    ['Reconstruction', `${Math.round(reconstruction * 100)}%`],
+    ['Predicted match', `${Math.round(score * 100)}%`],
+    ['Observed coverage', `${Math.round(observedCoverage * 100)}%`],
     ['Cold-start risk', `${Math.round(coldStartRisk * 100)}%`],
   ]);
 }
@@ -8161,45 +8259,77 @@ function drawTwoTower(ctx, state, takeaway, metrics) {
   const interaction = state.interaction;
   const retrievalSpeed = clamp01(0.26 + latency * 0.68);
   const pairRichness = clamp01(0.18 + interaction * 0.72 - latency * 0.08);
-  const annWin = clamp01(0.22 + latency * 0.58);
+  const rerankNeed = clamp01(0.24 + interaction * 0.62 - latency * 0.16);
 
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('Split the model so item embeddings can be precomputed offline', 56, 58);
+  ctx.fillText('Offline items, online user, then rerank the shortlist', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Read left-to-right: cache item vectors -> encode one live query -> ANN retrieve -> rerank if needed', 56, 84);
 
-  const boxes = [
-    { x: 74, y: 126, w: 132, h: 82, title: 'user tower', color: '#6ea5c9' },
-    { x: 284, y: 126, w: 132, h: 82, title: 'item tower', color: '#c9a96e' },
-    { x: 500, y: 116, w: 146, h: 102, title: 'ANN index', color: '#c96e8a' },
+  const stages = [
+    { x: 70, y: 132, w: 148, h: 84, title: 'offline item tower', note: 'encode catalog once', color: '#c9a96e' },
+    { x: 278, y: 132, w: 148, h: 84, title: 'online user tower', note: 'encode current request', color: '#6ea5c9' },
+    { x: 486, y: 122, w: 168, h: 104, title: 'ANN retrieve top-K', note: 'cheap candidate search', color: '#c96e8a' },
   ];
-  boxes.forEach((box) => {
+  stages.forEach((box) => {
     ctx.fillStyle = `${box.color}18`;
     ctx.strokeStyle = box.color;
     roundRect(ctx, box.x, box.y, box.w, box.h, 20, true, true);
     ctx.fillStyle = '#e8e4de';
-    ctx.font = '20px "EB Garamond", serif';
-    ctx.fillText(box.title, box.x + 20, box.y + 44);
+    ctx.font = '19px "EB Garamond", serif';
+    ctx.fillText(box.title, box.x + 16, box.y + 36);
+    ctx.fillStyle = '#c9ced9';
+    ctx.font = '12px "JetBrains Mono", monospace';
+    ctx.fillText(box.note, box.x + 16, box.y + 62);
   });
+
   ctx.strokeStyle = '#8a8680';
   ctx.lineWidth = 1.2;
-  [[206, 167, 284, 167], [416, 167, 500, 167]].forEach(([x1,y1,x2,y2]) => {
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  [[218, 174, 278, 174], [426, 174, 486, 174]].forEach(([x1, y1, x2, y2]) => {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2 - 8, y2 - 6);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x2 - 8, y2 + 6);
+    ctx.stroke();
   });
 
+  ctx.fillStyle = '#c9ced9';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('latency pressure mostly changes how valuable the offline cache becomes', 70, 258);
+  ctx.fillText('pair-detail needed decides how much intelligence must happen after retrieval', 70, 278);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath();
+  ctx.moveTo(520, 252);
+  ctx.lineTo(520, 308);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(201,169,110,0.16)';
+  roundRect(ctx, 548, 244, 122, 64, 18, true, false);
   ctx.fillStyle = '#e8e4de';
-  ctx.font = '15px "EB Garamond", serif';
-  wrapText(ctx, 'Precompute item vectors once. Only encode the user at request time, then retrieve by nearest neighbors.', 74, 254, 590, 22);
+  ctx.font = '18px "EB Garamond", serif';
+  ctx.fillText('rerank', 584, 270);
+  ctx.fillStyle = '#c9ced9';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText(rerankNeed > 0.62 ? 'worth the extra model' : 'light touch is enough', 560, 292);
 
   takeaway.textContent =
-    interaction > 0.75
-      ? 'You want richer pair interactions than a pure two-tower setup can express, so a second-stage ranker becomes more valuable.'
-      : 'Two-tower models are fast because the item side is precomputed and indexed before serving starts.';
+    rerankNeed > 0.72
+      ? 'The cheap retrieval stage is doing its job, but this request needs richer pair-specific reasoning, so a stronger reranker should spend the expensive compute later.'
+      : latency > 0.75
+        ? 'This is the sweet spot for two-tower: cache the item side ahead of time, encode one user online, then let ANN search do the fast first cut.'
+        : 'Two-tower is best read as a pipeline split: offline item understanding for speed now, optional reranking later when you need more detail.';
 
   metrics.innerHTML = metricMarkup([
     ['Retrieval speed', `${Math.round(retrievalSpeed * 100)}%`],
-    ['Pair richness', `${Math.round(pairRichness * 100)}%`],
-    ['ANN benefit', `${Math.round(annWin * 100)}%`],
+    ['Pair detail needed', `${Math.round(pairRichness * 100)}%`],
+    ['Rerank need', `${Math.round(rerankNeed * 100)}%`],
   ]);
 }
 
@@ -8213,7 +8343,10 @@ function drawMleMap(ctx, state, takeaway, metrics) {
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('Likelihood pulls toward the data. MAP also listens to the prior.', 56, 58);
+  ctx.fillText('MAP sits between prior belief and the data-only estimate', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Read left-to-right: prior -> MAP compromise -> MLE', 56, 84);
 
   const originX = 84;
   const originY = 286;
@@ -8239,24 +8372,35 @@ function drawMleMap(ctx, state, takeaway, metrics) {
   drawCurve(mlePeak, 0.1 + (1 - samples) * 0.1, '#c9a96e');
   drawCurve(mapPeak, 0.09, '#c96e8a');
 
+  ctx.strokeStyle = 'rgba(232, 228, 222, 0.28)';
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(toX(priorPeak), originY + 18);
+  ctx.lineTo(toX(mlePeak), originY + 18);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.78)';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('MAP slides on this line as evidence changes', originX + 46, originY + 38);
+
   [['PRIOR', priorPeak, '#6ea5c9'], ['MLE', mlePeak, '#c9a96e'], ['MAP', mapPeak, '#c96e8a']].forEach(([label, peak, color], i) => {
     const x = toX(Number(peak));
     ctx.strokeStyle = color;
     ctx.beginPath(); ctx.moveTo(x, 112); ctx.lineTo(x, 286); ctx.stroke();
     ctx.fillStyle = color;
     ctx.font = '12px "JetBrains Mono", monospace';
-    ctx.fillText(String(label), x - 14, 104 + i * 12);
+    ctx.fillText(String(label), x - 18, 104 + i * 12);
   });
 
   takeaway.textContent =
     samples < 0.3
-      ? 'With weak data, the prior noticeably pulls the estimate away from pure MLE.'
-      : 'As data gets stronger, MAP and MLE move closer because the likelihood starts dominating the prior.';
+      ? 'With weak data, MAP stays closer to the prior because the evidence is not strong enough to fully trust the MLE.'
+      : 'As data gets stronger, the posterior peak slides toward the MLE because the likelihood is becoming the more confident voice.';
 
   metrics.innerHTML = metricMarkup([
+    ['Prior peak', priorPeak.toFixed(2)],
     ['MLE peak', mlePeak.toFixed(2)],
     ['MAP peak', mapPeak.toFixed(2)],
-    ['Prior pull', Math.abs(mapPeak - mlePeak).toFixed(2)],
   ]);
 }
 
@@ -8271,7 +8415,10 @@ function drawBiasVariance(ctx, state, takeaway, metrics) {
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('Training error falls, but validation error eventually bends upward', 56, 58);
+  ctx.fillText('Generalization lives between underfit and overfit', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Left: bias dominates. Right: variance dominates.', 56, 84);
 
   const ox = 84, oy = 286, w = 360, h = 170;
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -8298,21 +8445,37 @@ function drawBiasVariance(ctx, state, takeaway, metrics) {
   }
   ctx.stroke();
 
+  const sweetSpot = 0.48;
+  ctx.strokeStyle = 'rgba(201, 169, 110, 0.55)';
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(toX(sweetSpot), oy - h);
+  ctx.lineTo(toX(sweetSpot), oy + 10);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(201, 169, 110, 0.86)';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('sweet spot', toX(sweetSpot) - 32, oy - h - 10);
+
   const x = toX(complexity);
   const y = toY(valErr);
   ctx.fillStyle = '#c96e8a';
   ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6ea5c9';
+  ctx.fillText('train', ox + w - 42, toY(clamp01(0.9 - 0.95 * 0.7)) - 8);
+  ctx.fillStyle = '#c9a96e';
+  ctx.fillText('test', ox + w - 36, toY(clamp01(0.28 + ((0.95 - 0.48) ** 2) * 1.7 + noise * 0.28)) + 16);
 
   takeaway.textContent =
     complexity < 0.3
-      ? 'This is the underfit regime: bias dominates because the model is too rigid.'
+      ? 'This is the underfit regime: the model is too simple, so bias dominates and both train and test performance stay mediocre.'
       : complexity > 0.75
-        ? 'This is the overfit regime: variance is catching up and validation error is paying for it.'
-        : 'The middle region is where the model is expressive enough without becoming too unstable.';
+        ? 'This is the overfit regime: training keeps improving, but the sampled curve is too wiggly, so variance pushes test error back up.'
+        : 'This middle region is the useful compromise: the model is flexible enough to follow the signal without becoming hostage to sample noise.';
 
   metrics.innerHTML = metricMarkup([
     ['Train error', trainErr.toFixed(2)],
-    ['Val error', valErr.toFixed(2)],
+    ['Test error', valErr.toFixed(2)],
     ['Bias / variance', `${bias.toFixed(2)} / ${variance.toFixed(2)}`],
   ]);
 }
@@ -8327,7 +8490,10 @@ function drawRegularization(ctx, state, takeaway, metrics) {
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('A little shrinkage can hurt fit slightly while helping stability', 56, 58);
+  ctx.fillText('Shrinkage trades a little fit for a stabler solution', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Think of λ as how hard you pull weights back toward simpler answers.', 56, 84);
 
   const bars = [
     { x: 98, label: 'weight norm', value: weightNorm, color: '#6ea5c9' },
@@ -8345,10 +8511,18 @@ function drawRegularization(ctx, state, takeaway, metrics) {
     ctx.fillText(bar.label, bar.x, 304);
   });
 
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.72)';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('smaller weights', 104, 118);
+  ctx.fillText('fit you give up', 284, 118);
+  ctx.fillText('generalization gain', 430, 118);
+
   takeaway.textContent =
     lambda > 0.8
-      ? 'This is over-regularized: the model is too constrained to express useful structure.'
-      : 'Regularization is helpful when it trims fragile solutions without collapsing the model into underfit.';
+      ? 'This is over-regularized: the shrinkage is so strong that the model cannot express the real pattern anymore.'
+      : lambda < 0.2
+        ? 'This is barely regularized: the fit looks attractive on train data, but the model is still free to chase fragile quirks.'
+        : 'This is the useful middle: enough shrinkage to calm variance, but not so much that the model collapses into obvious underfit.';
 
   metrics.innerHTML = metricMarkup([
     ['Weight norm', `${Math.round(weightNorm * 100)}%`],
@@ -8499,79 +8673,175 @@ function drawDataDrift(ctx, state, takeaway, metrics) {
 function drawTreeSplit(ctx, state, takeaway, metrics) {
   const separation = state.separation;
   const noise = state.noise;
-  const gain = clamp01(0.18 + separation * 0.72 - noise * 0.28);
-  const leftPurity = clamp01(0.3 + separation * 0.56 - noise * 0.12);
-  const rightPurity = clamp01(0.34 + separation * 0.5 - noise * 0.16);
+  const parentImpurity = clamp01(0.62 - separation * 0.18 + noise * 0.2);
+  const leftPurity = clamp01(0.36 + separation * 0.52 - noise * 0.16);
+  const rightPurity = clamp01(0.34 + separation * 0.44 - noise * 0.18);
+  const weightedChildImpurity = clamp01((1 - leftPurity) * 0.44 + (1 - rightPurity) * 0.56);
+  const gain = clamp01(parentImpurity - weightedChildImpurity + 0.02);
+  const threshold = 0.32 + separation * 0.4;
+  const totalPoints = 30;
 
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('A split helps when the children are cleaner than the parent', 56, 58);
+  ctx.fillText('A tree chooses the cut that leaves the next groups easier to predict', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Read left-to-right: mixed parent -> threshold cut -> child groups weighted by size', 56, 84);
 
-  const nodes = [
-    { x: 156, y: 126, label: 'parent', purity: clamp01(0.46 - separation * 0.18 + noise * 0.2), color: '#8a8680' },
-    { x: 88, y: 226, label: 'left child', purity: leftPurity, color: '#6ea5c9' },
-    { x: 258, y: 226, label: 'right child', purity: rightPurity, color: '#c9a96e' },
+  const plot = { x: 66, y: 112, w: 300, h: 188 };
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  roundRect(ctx, plot.x, plot.y, plot.w, plot.h, 22, true, true);
+
+  const thresholdX = plot.x + plot.w * threshold;
+  ctx.strokeStyle = '#c9a96e';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(thresholdX, plot.y + 8);
+  ctx.lineTo(thresholdX, plot.y + plot.h - 8);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#c9a96e';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText(`threshold x < ${threshold.toFixed(2)}`, thresholdX - 48, plot.y - 10);
+
+  for (let i = 0; i < totalPoints; i += 1) {
+    const column = i % 6;
+    const row = Math.floor(i / 6);
+    const px = plot.x + 28 + column * 42 + ((row % 2) * 6);
+    const py = plot.y + 28 + row * 30;
+    const normalizedX = (px - plot.x) / plot.w;
+    const classOneBias = separation * (normalizedX - threshold + 0.5) + (i % 3) * 0.05;
+    const noisyFlip = ((i * 17) % 100) / 100 < noise * 0.55;
+    const isPositive = noisyFlip ? classOneBias < 0.5 : classOneBias > 0.5;
+    ctx.fillStyle = isPositive ? '#6ea5c9' : '#c96e8a';
+    ctx.beginPath();
+    ctx.arc(px, py, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#c9ced9';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('mixed parent node', plot.x, plot.y + plot.h + 22);
+  ctx.fillText('after one candidate split', plot.x + 146, plot.y + plot.h + 22);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(392, 182);
+  ctx.lineTo(446, 182);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(438, 176);
+  ctx.lineTo(446, 182);
+  ctx.lineTo(438, 188);
+  ctx.stroke();
+
+  const cards = [
+    { x: 470, y: 118, title: 'parent impurity', value: parentImpurity, color: '#8a8680', note: 'before the cut' },
+    { x: 470, y: 176, title: 'weighted child impurity', value: weightedChildImpurity, color: '#6ea5c9', note: 'after the cut' },
+    { x: 470, y: 234, title: 'information gain', value: gain, color: '#c9a96e', note: 'parent - weighted children' },
   ];
-  nodes.forEach((node) => {
-    ctx.fillStyle = `${node.color}20`;
-    ctx.strokeStyle = node.color;
-    roundRect(ctx, node.x, node.y, 116, 58, 18, true, true);
+  cards.forEach((card) => {
+    ctx.fillStyle = `${card.color}18`;
+    ctx.strokeStyle = card.color;
+    roundRect(ctx, card.x, card.y, 202, 44, 16, true, true);
+    ctx.fillStyle = '#c9ced9';
+    ctx.font = '11px "JetBrains Mono", monospace';
+    ctx.fillText(card.title.toUpperCase(), card.x + 14, card.y + 16);
+    ctx.fillText(card.note.toUpperCase(), card.x + 14, card.y + 33);
     ctx.fillStyle = '#e8e4de';
-    ctx.font = '17px "EB Garamond", serif';
-    ctx.fillText(node.label, node.x + 18, node.y + 24);
-    ctx.font = '14px "EB Garamond", serif';
-    ctx.fillText(`purity ${Math.round(node.purity * 100)}%`, node.x + 18, node.y + 42);
+    ctx.font = '24px "EB Garamond", serif';
+    ctx.fillText(card.value.toFixed(2), card.x + 150, card.y + 30);
   });
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-  ctx.beginPath(); ctx.moveTo(214, 184); ctx.lineTo(146, 226); ctx.moveTo(272, 184); ctx.lineTo(316, 226); ctx.stroke();
 
   takeaway.textContent =
-    gain < 0.25
-      ? 'This split is not buying much because the children are still too mixed.'
-      : 'A good tree split earns its keep by creating cleaner child regions than the parent node.';
+    gain < 0.16
+      ? 'This candidate cut is weak: class overlap and label noise keep the child nodes almost as mixed as the parent, so even after weighting the children by size the impurity barely falls.'
+      : gain > 0.24
+        ? 'This is the teaching target for a good split: one threshold creates noticeably cleaner child groups, and after weighting those groups by size the post-split impurity drops enough to justify the cut.'
+        : 'The split helps, but only moderately. After weighting the child nodes by how many samples they hold, the impurity still drops from the parent — but not by enough to stop the tree from needing more refinement later.';
 
   metrics.innerHTML = metricMarkup([
-    ['Split gain', `${Math.round(gain * 100)}%`],
-    ['Left purity', `${Math.round(leftPurity * 100)}%`],
-    ['Right purity', `${Math.round(rightPurity * 100)}%`],
+    ['Parent impurity', parentImpurity.toFixed(2)],
+    ['Weighted child impurity', weightedChildImpurity.toFixed(2)],
+    ['Information gain', gain.toFixed(2)],
   ]);
 }
 
 function drawBoosting(ctx, state, takeaway, metrics) {
-  const rounds = state.rounds;
+  const rounds = Math.round(2 + state.rounds * 10);
   const rate = state.rate;
-  const stage1 = clamp01(0.82 - rate * 0.08);
-  const stage2 = clamp01(stage1 - rounds * rate * 0.34);
-  const stage3 = clamp01(stage2 - rounds * rate * 0.22);
-  const overfitRisk = clamp01(rounds * 0.46 + rate * 0.42 - 0.22);
+  const startResidual = 0.96;
+  const afterFirst = clamp01(startResidual - rate * 0.28);
+  const afterLater = clamp01(afterFirst - state.rounds * rate * 0.42);
+  const finalResidual = clamp01(afterLater - state.rounds * rate * 0.18);
+  const overfitRisk = clamp01(state.rounds * 0.46 + rate * 0.42 - 0.24);
 
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('Each new tree tries to reduce the residual error left by the ensemble', 56, 58);
+  ctx.fillText('Boosting keeps fitting what the current ensemble still gets wrong', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Residual = what the current ensemble still misses; the next tree only fixes part of it', 56, 84);
 
-  const residuals = [stage1, stage2, stage3];
-  residuals.forEach((value, idx) => {
-    const x = 108 + idx * 158;
-    const height = 170 * value;
-    const y = 270 - height;
-    ctx.fillStyle = idx === 0 ? 'rgba(201,110,138,0.2)' : idx === 1 ? 'rgba(110,165,201,0.2)' : 'rgba(201,169,110,0.2)';
-    ctx.strokeStyle = idx === 0 ? '#c96e8a' : idx === 1 ? '#6ea5c9' : '#c9a96e';
-    roundRect(ctx, x, y, 98, height, 18, true, true);
+  const stages = [
+    { x: 72, title: 'current ensemble', residual: startResidual, note: 'start with visible mistakes', color: '#c96e8a' },
+    { x: 268, title: 'next tree', residual: afterFirst, note: 'fit the leftover error', color: '#6ea5c9' },
+    { x: 464, title: 'updated ensemble', residual: finalResidual, note: 'add only lr * tree', color: '#c9a96e' },
+  ];
+
+  stages.forEach((stage, index) => {
+    ctx.fillStyle = `${stage.color}18`;
+    ctx.strokeStyle = stage.color;
+    roundRect(ctx, stage.x, 116, 152, 156, 22, true, true);
     ctx.fillStyle = '#e8e4de';
-    ctx.font = '16px "EB Garamond", serif';
-    ctx.fillText(`tree ${idx + 1}`, x + 22, 304);
+    ctx.font = '20px "EB Garamond", serif';
+    ctx.fillText(stage.title, stage.x + 14, 142);
+    ctx.fillStyle = '#c9ced9';
+    ctx.font = '11px "JetBrains Mono", monospace';
+    ctx.fillText(stage.note.toUpperCase(), stage.x + 14, 160);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    roundRect(ctx, stage.x + 16, 182, 120, 58, 14, true, false);
+    ctx.fillStyle = stage.color;
+    roundRect(ctx, stage.x + 16, 182, 120 * stage.residual, 58, 14, true, false);
+    ctx.fillStyle = '#e8e4de';
+    ctx.font = '28px "EB Garamond", serif';
+    ctx.fillText(stage.residual.toFixed(2), stage.x + 86, 218);
+    if (index < stages.length - 1) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(stage.x + 164, 194);
+      ctx.lineTo(stage.x + 188, 194);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(stage.x + 180, 188);
+      ctx.lineTo(stage.x + 188, 194);
+      ctx.lineTo(stage.x + 180, 200);
+      ctx.stroke();
+    }
   });
 
+  ctx.fillStyle = '#c9ced9';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText(`~${rounds} boosting rounds`, 74, 304);
+  ctx.fillText(`learning rate ${rate.toFixed(2)}`, 250, 304);
+  ctx.fillText('too much of both -> chase noise', 430, 304);
+
   takeaway.textContent =
-    overfitRisk > 0.62
-      ? 'The ensemble is correcting aggressively enough that it is starting to chase noise rather than just residual signal.'
-      : 'Boosting works because many small corrections can outperform one giant tree.';
+    overfitRisk > 0.66
+      ? 'The repair loop is becoming too aggressive: many rounds plus a high learning rate can make the new trees start fitting noise instead of just the residual signal that remains.'
+      : finalResidual < 0.28
+        ? 'This is the core boosting intuition: each shallow tree only fixes part of the current error, but enough small corrections compound into a strong ensemble.'
+        : 'The ensemble is improving, but it is still early in the repair loop. More rounds or a slightly larger learning rate would let later trees keep shaving down the remaining residual.';
 
   metrics.innerHTML = metricMarkup([
-    ['Residual after t1', stage1.toFixed(2)],
-    ['Residual after t3', stage3.toFixed(2)],
+    ['Residual after 1st fix', afterFirst.toFixed(2)],
+    ['Residual after later rounds', finalResidual.toFixed(2)],
     ['Overfit risk', `${Math.round(overfitRisk * 100)}%`],
   ]);
 }
@@ -8580,17 +8850,61 @@ function drawFeatureLeakage(ctx, state, takeaway, metrics) {
   const future = state.future;
   const proxy = state.proxy;
   const offline = clamp01(0.42 + future * 0.36 + proxy * 0.28);
-  const live = clamp01(offline - future * 0.52 - proxy * 0.18);
+  const cleanFuture = 0.08;
+  const cleanProxy = 0.16;
+  const shortcutPenalty = Math.max(0, future - cleanFuture) * 0.42 + Math.max(0, proxy - cleanProxy) * 0.24;
+  const live = clamp01(offline - shortcutPenalty);
   const gap = offline - live;
+  const timelineRisk = clamp01(Math.max(0, future - cleanFuture) * 0.9 + Math.max(0, proxy - cleanProxy) * 0.42);
+  const boundaryX = 346;
 
   clearCanvas(ctx);
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText('TRAIN / EVAL TIMELINE', 56, 34);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('Leakage makes the offline score sparkle for the wrong reason', 56, 58);
+  ctx.fillText('Leakage means the feature crosses the prediction-time boundary', 56, 64);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(86, 120);
+  ctx.lineTo(650, 120);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#c96e8a';
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(boundaryX, 88);
+  ctx.lineTo(boundaryX, 200);
+  ctx.stroke();
+  ctx.setLineDash([]);
 
   [
-    { x: 140, label: 'offline eval', value: offline, color: '#c9a96e' },
-    { x: 374, label: 'live reality', value: live, color: '#6ea5c9' },
+    { x: 92, w: 128, title: 'valid features', note: 'already known before scoring time', color: '#6ea5c9' },
+    { x: 226, w: 110, title: 'predict now', note: 'this is the real boundary', color: '#c9a96e' },
+    { x: 362, w: 132, title: 'outcome arrives', note: 'future info begins here', color: '#c96e8a' },
+    { x: 504, w: 118, title: 'post-event fields', note: 'status, refunds, labels', color: '#c96e8a' },
+  ].forEach((box) => {
+    ctx.fillStyle = `${box.color}18`;
+    ctx.strokeStyle = box.color;
+    roundRect(ctx, box.x, 96, box.w, 48, 16, true, true);
+    ctx.fillStyle = '#e8e4de';
+    ctx.font = '16px "EB Garamond", serif';
+    ctx.fillText(box.title, box.x + 10, 116);
+    ctx.fillStyle = '#8a8680';
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillText(box.note.toUpperCase(), box.x + 10, 132);
+  });
+
+  ctx.fillStyle = '#c96e8a';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('DO NOT CROSS', boundaryX - 44, 84);
+
+  [
+    { x: 124, label: 'offline eval', helper: 'looks great with leakage', value: offline, color: '#c9a96e' },
+    { x: 330, label: 'live reality', helper: 'feature is no longer available', value: live, color: '#6ea5c9' },
   ].forEach((bar) => {
     const height = 176 * bar.value;
     const y = 270 - height;
@@ -8600,20 +8914,36 @@ function drawFeatureLeakage(ctx, state, takeaway, metrics) {
     ctx.fillStyle = '#e8e4de';
     ctx.font = '18px "EB Garamond", serif';
     ctx.fillText(bar.label, bar.x + 6, 304);
+    ctx.fillStyle = '#8a8680';
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillText(bar.helper.toUpperCase(), bar.x + 6, 321);
   });
   ctx.fillStyle = '#c96e8a';
-  ctx.font = '18px "EB Garamond", serif';
-  ctx.fillText(`gap ${Math.round(gap * 100)} pts`, 548, 188);
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText(`leakage gap ${Math.round(gap * 100)} pts`, 494, 176);
+  ctx.fillStyle = '#e8e4de';
+  ctx.font = '16px "EB Garamond", serif';
+  wrapText(
+    ctx,
+    timelineRisk > 0.62
+      ? 'The feature depends heavily on information created after the prediction should already have been made. Offline wins here are not reproducible in production.'
+      : 'Even partial leakage is enough to make the offline metric lie. The key question is always what the system truly knows at prediction time.',
+    494,
+    198,
+    180,
+    22
+  );
 
   takeaway.textContent =
     gap > 0.22
-      ? 'This is the classic leakage signature: unbelievable offline performance that collapses once future information disappears.'
-      : 'A feature can look predictive offline simply because evaluation let it peek into the future.';
+      ? `Classic leakage pattern: offline score jumps to ${Math.round(offline * 100)}%, but live falls to ${Math.round(live * 100)}% once the post-outcome shortcut disappears at prediction time.`
+      : 'Leakage is a timing bug, not a modeling win: if the feature is unavailable when you predict, the offline gain is fake.';
 
   metrics.innerHTML = metricMarkup([
     ['Offline score', `${Math.round(offline * 100)}%`],
     ['Live score', `${Math.round(live * 100)}%`],
     ['Leakage gap', `${Math.round(gap * 100)} pts`],
+    ['Prediction-time risk', `${Math.round(timelineRisk * 100)}%`],
   ]);
 }
 
@@ -8622,14 +8952,27 @@ function drawFeatureShift(ctx, state, takeaway, metrics) {
   const missing = state.missing;
   const stability = clamp01(0.92 - shift * 0.44 - missing * 0.34);
   const monitorNeed = clamp01(0.16 + shift * 0.54 + missing * 0.42);
+  const trainMean = 0.34;
+  const stableShift = 0.10;
+  const stableMissing = 0.08;
+  const liveMean = trainMean + Math.max(0, shift - stableShift) * 0.42;
+  const trainMissing = 0.06;
+  const liveMissing = clamp01(trainMissing + Math.max(0, missing - stableMissing) * 0.72);
+  const psiLike = clamp01(Math.max(0, shift - stableShift) * 0.9 + Math.max(0, missing - stableMissing) * 0.48);
 
   clearCanvas(ctx);
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText('TRAIN SNAPSHOT ↔ LIVE SNAPSHOT', 56, 34);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('The column name stayed the same, but the feature stopped behaving the same', 56, 58);
+  ctx.fillText('The schema stayed stable, but the live feature distribution moved', 56, 64);
 
-  [['train mean', 0.34, '#6ea5c9'], ['live mean', 0.34 + shift * 0.34, '#c9a96e']].forEach(([label, mean, color], idx) => {
-    const x = 100 + idx * 220;
+  [
+    ['train mean', trainMean, '#6ea5c9'],
+    ['live mean', liveMean, '#c9a96e'],
+  ].forEach(([label, mean, color], idx) => {
+    const x = 84 + idx * 172;
     const h = 170 * Number(mean);
     const y = 270 - h;
     ctx.fillStyle = `${color}20`;
@@ -8639,21 +8982,47 @@ function drawFeatureShift(ctx, state, takeaway, metrics) {
     ctx.font = '17px "EB Garamond", serif';
     ctx.fillText(String(label), x + 12, 304);
   });
-  ctx.fillStyle = 'rgba(201,110,138,0.2)';
-  ctx.strokeStyle = '#c96e8a';
-  roundRect(ctx, 540, 120, 96, 150 * missing, 18, true, true);
+
+  [
+    { x: 430, label: 'train missing', helper: 'baseline', value: trainMissing, color: '#8a8680' },
+    { x: 554, label: 'live missing', helper: 'watch this jump', value: liveMissing, color: '#c96e8a' },
+  ].forEach((bar) => {
+    const height = 162 * bar.value;
+    const y = 270 - height;
+    ctx.fillStyle = `${bar.color}20`;
+    ctx.strokeStyle = bar.color;
+    roundRect(ctx, bar.x, y, 86, height, 18, true, true);
+    ctx.fillStyle = '#e8e4de';
+    ctx.font = '16px "EB Garamond", serif';
+    ctx.fillText(bar.label, bar.x - 4, 304);
+    ctx.fillStyle = '#8a8680';
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.fillText(bar.helper.toUpperCase(), bar.x - 4, 321);
+  });
+
   ctx.fillStyle = '#e8e4de';
-  ctx.fillText('missingness', 532, 304);
+  ctx.font = '16px "EB Garamond", serif';
+  wrapText(
+    ctx,
+    monitorNeed > 0.62
+      ? 'The train and live populations now disagree enough that the feature should be on a monitoring dashboard with alerts for both drift and missing-rate jumps.'
+      : 'This is the basic monitoring job: compare train vs live behavior continuously, because a healthy pipeline can still send meaningfully different data.',
+    430,
+    102,
+    214,
+    22
+  );
 
   takeaway.textContent =
     monitorNeed > 0.62
-      ? 'The schema may still validate, but the feature has drifted enough that relying on it blindly is risky.'
-      : 'Feature monitoring is about behavior, not just whether the column still exists.';
+      ? `Train vs live drift is now material: the live mean moved from ${Math.round(trainMean * 100)}% to ${Math.round(liveMean * 100)}%, and missingness rose to ${Math.round(liveMissing * 100)}%, so the feature needs active monitoring.`
+      : 'Feature monitoring is about behavior, not just existence: compare train vs live distributions and watch missingness before the model KPI is the first alarm.';
 
   metrics.innerHTML = metricMarkup([
     ['Stability', `${Math.round(stability * 100)}%`],
-    ['Missingness change', `${Math.round(missing * 100)}%`],
+    ['Live missing rate', `${Math.round(liveMissing * 100)}%`],
     ['Monitor need', `${Math.round(monitorNeed * 100)}%`],
+    ['Train-live gap', `${Math.round(psiLike * 100)}%`],
   ]);
 }
 
@@ -8668,31 +9037,39 @@ function drawGuidance(ctx, state, takeaway, metrics) {
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
   ctx.fillText('Guidance steers toward the prompt, but too much steering gets brittle', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Read the bars together: more steering raises adherence, but diversity and realism stop being free.', 56, 84);
 
   [
-    { x: 96, label: 'prompt adherence', value: adherence, color: '#c9a96e' },
-    { x: 286, label: 'diversity', value: diversity, color: '#6ea5c9' },
-    { x: 476, label: 'realism', value: realism, color: '#c96e8a' },
+    { x: 96, label: 'prompt adherence', helper: 'how closely the sample follows the prompt', value: adherence, color: '#c9a96e' },
+    { x: 286, label: 'diversity', helper: 'how many plausible variants stay alive', value: diversity, color: '#6ea5c9' },
+    { x: 476, label: 'realism', helper: 'whether the sample still feels natural', value: realism, color: '#c96e8a' },
   ].forEach((bar) => {
-    const h = 170 * bar.value;
-    const y = 270 - h;
+    const h = 158 * bar.value;
+    const y = 268 - h;
     ctx.fillStyle = `${bar.color}20`;
     ctx.strokeStyle = bar.color;
-    roundRect(ctx, bar.x, y, 106, h, 18, true, true);
+    roundRect(ctx, bar.x, y, 122, h, 18, true, true);
     ctx.fillStyle = '#e8e4de';
-    ctx.font = '16px "EB Garamond", serif';
-    ctx.fillText(bar.label, bar.x - 4, 304);
+    ctx.font = '17px "EB Garamond", serif';
+    ctx.fillText(bar.label, bar.x - 2, 300);
+    ctx.fillStyle = '#8a8680';
+    ctx.font = '11px "JetBrains Mono", monospace';
+    wrapText(ctx, bar.helper.toUpperCase(), bar.x - 2, 318, 126, 14);
   });
 
   takeaway.textContent =
     guidance > 0.8
-      ? 'This is over-steered: the sample hugs the prompt harder, but diversity and realism are starting to pay the price.'
-      : 'Guidance is a steering knob, not a monotonic quality knob.';
+      ? 'This is over-steered: the sample hugs the prompt harder, but diversity and realism are now paying the bill.'
+      : guidance < 0.25
+        ? 'This is loose steering: you keep breadth and variety, but the sample is not being pulled very hard toward the prompt yet.'
+        : 'This is the useful middle: steering is strong enough to improve prompt adherence without obviously collapsing the rest of the sample quality.';
 
   metrics.innerHTML = metricMarkup([
-    ['Adherence', `${Math.round(adherence * 100)}%`],
-    ['Diversity', `${Math.round(diversity * 100)}%`],
-    ['Realism', `${Math.round(realism * 100)}%`],
+    ['Prompt adherence', `${Math.round(adherence * 100)}%`],
+    ['Diversity left', `${Math.round(diversity * 100)}%`],
+    ['Realism left', `${Math.round(realism * 100)}%`],
   ]);
 }
 
@@ -8706,34 +9083,52 @@ function drawDpo(ctx, state, takeaway, metrics) {
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('Push the policy to prefer the chosen answer over the rejected one', 56, 58);
+  ctx.fillText('Same prompt, two answers: DPO pushes the chosen one above the rejected one', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('The visual question is simple: how far apart are the chosen and rejected answers after tuning?', 56, 84);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  roundRect(ctx, 72, 118, 150, 96, 18, true, true);
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText('PROMPT', 88, 140);
+  ctx.fillStyle = '#e8e4de';
+  ctx.font = '17px "EB Garamond", serif';
+  wrapText(ctx, '“Explain why the model should pick the better answer.”', 88, 168, 118, 22);
 
   [
-    { x: 142, label: 'chosen response', value: chosen, color: '#c9a96e' },
-    { x: 380, label: 'rejected response', value: rejected, color: '#c96e8a' },
+    { x: 270, label: 'chosen answer', helper: 'human preferred', value: chosen, color: '#c9a96e' },
+    { x: 458, label: 'rejected answer', helper: 'human rejected', value: rejected, color: '#c96e8a' },
   ].forEach((bar) => {
-    const h = 176 * bar.value;
-    const y = 270 - h;
+    const h = 148 * bar.value;
+    const y = 276 - h;
     ctx.fillStyle = `${bar.color}20`;
     ctx.strokeStyle = bar.color;
     roundRect(ctx, bar.x, y, 120, h, 18, true, true);
     ctx.fillStyle = '#e8e4de';
-    ctx.font = '18px "EB Garamond", serif';
-    ctx.fillText(bar.label, bar.x - 6, 304);
+    ctx.font = '17px "EB Garamond", serif';
+    ctx.fillText(bar.label, bar.x - 2, 302);
+    ctx.fillStyle = '#8a8680';
+    ctx.font = '11px "JetBrains Mono", monospace';
+    ctx.fillText(bar.helper.toUpperCase(), bar.x - 2, 320);
   });
   ctx.fillStyle = '#6ea5c9';
   ctx.font = '18px "EB Garamond", serif';
-  ctx.fillText(`preference gain ${Math.round(preferenceGain * 100)}%`, 482, 170);
+  ctx.fillText(`preference gap ${Math.round(preferenceGain * 100)}%`, 472, 166);
 
   takeaway.textContent =
     beta > 0.75
-      ? 'The preference push is strong, which can help quickly but risks becoming brittle if the preference data is noisy.'
-      : 'Preference tuning is about relative likelihood: chosen answers should outrank rejected ones.';
+      ? 'The pairwise push is strong, which can move the chosen answer up quickly but becomes brittle if the preference data is noisy.'
+      : margin < 0.25
+        ? 'The chosen and rejected answers are still too close together, so the model has not learned a strong preference signal yet.'
+        : 'This is the core DPO story: for the same prompt, the chosen answer is being pulled above the rejected one while the reference model still acts as an anchor.';
 
   metrics.innerHTML = metricMarkup([
-    ['Chosen prob.', `${Math.round(chosen * 100)}%`],
-    ['Rejected prob.', `${Math.round(rejected * 100)}%`],
-    ['Preference gain', `${Math.round(preferenceGain * 100)}%`],
+    ['Chosen answer', `${Math.round(chosen * 100)}%`],
+    ['Rejected answer', `${Math.round(rejected * 100)}%`],
+    ['Preference gap', `${Math.round(preferenceGain * 100)}%`],
   ]);
 }
 
@@ -8747,7 +9142,10 @@ function drawRewardHacking(ctx, state, takeaway, metrics) {
   clearCanvas(ctx);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('The proxy keeps going up even while the real objective bends away', 56, 58);
+  ctx.fillText('The proxy can keep climbing even while the real objective bends away', 56, 58);
+  ctx.fillStyle = 'rgba(232, 228, 222, 0.82)';
+  ctx.font = '16px "JetBrains Mono", monospace';
+  ctx.fillText('Watch the two curves split: reward hacking begins when the measurable score and human goal stop moving together.', 56, 84);
 
   const ox = 94, oy = 286, w = 360, h = 170;
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -8777,17 +9175,23 @@ function drawRewardHacking(ctx, state, takeaway, metrics) {
   const x = toX(pressure);
   ctx.fillStyle = '#6ea5c9';
   ctx.beginPath(); ctx.arc(x, toY(trueObj), 6, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#8a8680';
+  ctx.fillStyle = '#c9a96e';
   ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText('proxy score', 470, 132);
+  ctx.fillStyle = '#c96e8a';
+  ctx.fillText('true objective', 470, 156);
+  ctx.fillStyle = '#8a8680';
   ctx.fillText('optimization pressure', x - 42, 304);
 
   takeaway.textContent =
     exploitRisk > 0.68
-      ? 'The proxy is being optimized hard enough that its blind spots are starting to dominate the behavior.'
-      : 'The danger is not optimization by itself. The danger is optimizing the wrong stand-in for what humans actually care about.';
+      ? 'This is reward hacking territory: optimization is strong enough that the system is learning the proxy’s loopholes instead of serving the real human objective better.'
+      : proxyGap < 0.18
+        ? 'The proxy is still a decent stand-in here, so pushing on the metric mostly helps the real objective too.'
+        : 'The warning sign is visible now: the proxy still rises, but the real objective is no longer keeping up, which is exactly the gap reward hacking exploits.';
 
   metrics.innerHTML = metricMarkup([
-    ['Proxy reward', `${Math.round(proxy * 100)}%`],
+    ['Proxy score', `${Math.round(proxy * 100)}%`],
     ['True objective', `${Math.round(trueObj * 100)}%`],
     ['Exploit risk', `${Math.round(exploitRisk * 100)}%`],
   ]);
@@ -8800,66 +9204,78 @@ function drawRetrievalFunnel(ctx, state, takeaway, metrics) {
   const relevantTotal = 20;
   const retrievedRelevant = relevantTotal * recall;
   const shortlist = 50;
+  const shortlistRelevant = Math.min(retrievedRelevant, shortlist * precision);
   const topK = 10;
-  const topRelevant = Math.min(retrievedRelevant, topK * precision);
+  const topRelevant = Math.min(shortlistRelevant, topK * precision);
+  const droppedRelevant = Math.max(0, relevantTotal - retrievedRelevant);
   const latency = 18 + candidates * 0.03 + shortlist * 0.18;
 
   clearCanvas(ctx);
 
   const stages = [
-    { label: 'retrieve', value: candidates, color: '#6ea5c9', relevant: retrievedRelevant },
-    { label: 'shortlist', value: shortlist, color: '#c9a96e', relevant: Math.min(retrievedRelevant, shortlist * precision) },
-    { label: 'top 10', value: topK, color: '#c96e8a', relevant: topRelevant },
+    { label: 'retrieve', value: candidates, color: '#6ea5c9', relevant: retrievedRelevant, note: 'cheap coverage' },
+    { label: 'rerank', value: shortlist, color: '#c9a96e', relevant: shortlistRelevant, note: 'spend precision' },
+    { label: 'serve', value: topK, color: '#c96e8a', relevant: topRelevant, note: 'final slate' },
   ];
 
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText('CORPUS → RETRIEVE → RERANK → SERVE', 58, 34);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('A pipeline where each stage solves a narrower problem', 56, 60);
+  ctx.fillText('The first stage decides what the expensive ranker is allowed to see', 56, 64);
 
   const maxValue = candidates;
   stages.forEach((stage, index) => {
-    const width = 410 * (stage.value / maxValue);
-    const x = 78;
-    const y = 104 + index * 86;
-    ctx.fillStyle = `${stage.color}25`;
+    const width = 370 * (stage.value / maxValue);
+    const x = 72;
+    const y = 108 + index * 86;
+    ctx.fillStyle = `${stage.color}20`;
     ctx.strokeStyle = stage.color;
-    roundRect(ctx, x, y, width, 46, 16, true, true);
+    roundRect(ctx, x, y, width, 48, 16, true, true);
     ctx.fillStyle = stage.color;
-    roundRect(ctx, x, y, Math.max(14, width * (stage.relevant / stage.value || 0)), 46, 16, true, false);
+    roundRect(ctx, x, y, Math.max(18, width * (stage.relevant / stage.value || 0)), 48, 16, true, false);
     ctx.fillStyle = '#e8e4de';
     ctx.font = '18px "EB Garamond", serif';
-    ctx.fillText(stage.label, x + 18, y + 29);
-    ctx.font = '13px "JetBrains Mono", monospace';
+    ctx.fillText(stage.label, x + 16, y + 20);
     ctx.fillStyle = '#8a8680';
-    ctx.fillText(`${stage.value} items`, x + width + 20, y + 20);
-    ctx.fillText(`${stage.relevant.toFixed(1)} relevant`, x + width + 20, y + 38);
+    ctx.font = '11px "JetBrains Mono", monospace';
+    ctx.fillText(stage.note.toUpperCase(), x + 16, y + 37);
+    ctx.fillText(`${stage.value} items`, x + width + 18, y + 18);
+    ctx.fillText(`${stage.relevant.toFixed(1)} relevant survive`, x + width + 18, y + 36);
   });
 
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText('Relevant items lost before ranking', 470, 108);
+  ctx.fillStyle = droppedRelevant > 6 ? '#c96e8a' : '#c9a96e';
+  ctx.font = '38px "EB Garamond", serif';
+  ctx.fillText(droppedRelevant.toFixed(1), 470, 146);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '16px "EB Garamond", serif';
   wrapText(
     ctx,
     recall < 0.6
-      ? 'The retriever is dropping too many relevant items. The ranker cannot recover items it never sees.'
+      ? 'Weak retrieval is the real failure. The ranker never receives enough of the relevant set to fix the slate later.'
       : precision < 0.55
-        ? 'Retrieval is healthy, but the ranker is still wasting the shortlist on mediocre items.'
-        : 'The pipeline is balanced: retrieval preserves options and ranking uses compute where it matters.',
-    520,
-    126,
-    170,
+        ? 'The candidate set is healthy, but the expensive ranker is still wasting positions on mediocre survivors.'
+        : 'This operating point is healthy: retrieval preserves enough options, then ranking spends compute where order actually matters.',
+    470,
+    178,
+    190,
     22
   );
 
   takeaway.textContent =
     recall < 0.6
-      ? 'The bottleneck is early recall, not the final ranker.'
+      ? `The bottleneck is early recall: about ${droppedRelevant.toFixed(1)} of ${relevantTotal} relevant items are gone before ranking begins.`
       : precision < 0.55
-        ? 'The retriever is doing its job, but the ranking stage still needs better discrimination.'
-        : 'This is why staged systems exist: cheap recall first, expensive precision later.';
+        ? 'Retrieval is doing its job, but ranking still needs better discrimination among the candidates that survived.'
+        : 'This is the teaching target for a staged recommender: cheap breadth first, then expensive ordering on a much smaller set.';
 
   metrics.innerHTML = metricMarkup([
-    ['Top-10 relevant', topRelevant.toFixed(1)],
-    ['Recall kept', `${Math.round(recall * 100)}%`],
+    ['Relevant kept for ranking', `${retrievedRelevant.toFixed(1)} / ${relevantTotal}`],
+    ['Final top-10 relevant', topRelevant.toFixed(1)],
     ['Est. latency', `${latency.toFixed(0)} ms`],
   ]);
 }
@@ -8872,58 +9288,71 @@ function drawColdStart(ctx, state, takeaway, metrics) {
   const collaborativeStrength = collaborativeWeight * 0.88;
   const contentStrength = contentWeight * (0.42 + content * 0.5);
   const blended = collaborativeStrength + contentStrength;
+  const exploration = (1 - history) * 0.22;
+  const scenario = history < 0.2 ? 'NEW USER / NEW ITEM' : history > 0.65 ? 'WARM PROFILE' : 'HYBRID RAMP';
 
   clearCanvas(ctx);
 
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText(`ACTIVE SCENARIO: ${scenario}`, 56, 34);
   ctx.fillStyle = '#e8e4de';
   ctx.font = '28px "EB Garamond", serif';
-  ctx.fillText('How the system shifts responsibility during cold start', 56, 60);
+  ctx.fillText('Cold start asks which signal carries the recommendation before history exists', 56, 64);
 
   const bars = [
-    { x: 90, label: 'collaborative', value: collaborativeStrength, color: '#6ea5c9' },
-    { x: 250, label: 'content', value: contentStrength, color: '#c9a96e' },
-    { x: 410, label: 'blended score', value: blended, color: '#c96e8a' },
+    { x: 88, label: 'collaborative', helper: 'behavior-driven', value: collaborativeStrength, color: '#6ea5c9' },
+    { x: 246, label: 'content', helper: 'metadata + semantics', value: contentStrength, color: '#c9a96e' },
+    { x: 404, label: 'blended', helper: 'served score', value: blended, color: '#c96e8a' },
   ];
 
   bars.forEach((bar) => {
-    const height = 170 * Math.min(bar.value, 1);
-    const y = 270 - height;
-    ctx.fillStyle = `${bar.color}25`;
+    const height = 168 * Math.min(bar.value, 1);
+    const y = 274 - height;
+    ctx.fillStyle = `${bar.color}20`;
     ctx.strokeStyle = bar.color;
-    roundRect(ctx, bar.x, y, 108, height, 18, true, true);
-    ctx.fillStyle = '#8a8680';
-    ctx.font = '12px "JetBrains Mono", monospace';
-    ctx.fillText(bar.label.toUpperCase(), bar.x, 300);
+    roundRect(ctx, bar.x, y, 110, height, 18, true, true);
     ctx.fillStyle = '#e8e4de';
     ctx.font = '24px "EB Garamond", serif';
     ctx.fillText(`${Math.round(bar.value * 100)}%`, bar.x, y - 12);
+    ctx.font = '18px "EB Garamond", serif';
+    ctx.fillText(bar.label, bar.x, 302);
+    ctx.fillStyle = '#8a8680';
+    ctx.font = '11px "JetBrains Mono", monospace';
+    ctx.fillText(bar.helper.toUpperCase(), bar.x, 320);
   });
 
-  ctx.font = '16px "EB Garamond", serif';
+  ctx.fillStyle = '#8a8680';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText('Exploration budget', 560, 108);
+  ctx.fillStyle = '#c9a96e';
+  ctx.font = '38px "EB Garamond", serif';
+  ctx.fillText(`${Math.round(exploration * 100)}%`, 560, 146);
   ctx.fillStyle = '#e8e4de';
+  ctx.font = '16px "EB Garamond", serif';
   wrapText(
     ctx,
     history < 0.2
-      ? 'There is not enough behavior history yet, so metadata and content features are doing most of the work.'
+      ? 'There is almost no behavioral evidence yet, so content quality and safe priors are doing most of the retrieval work.'
       : history > 0.65
-        ? 'The system can trust collaborative patterns because the user or item now has enough interaction history.'
-        : 'The system is in a hybrid regime where content and behavior both matter.',
+        ? 'Enough behavior has arrived that collaborative patterns can carry more of the ranking burden than metadata alone.'
+        : 'This is the handoff regime: content still matters, but collaborative signal is becoming trustworthy enough to take over.',
     560,
-    120,
-    140,
+    178,
+    150,
     22
   );
 
   takeaway.textContent =
     history < 0.2
-      ? 'Cold start means content has to carry the recommendation until behavior arrives.'
+      ? 'Cold start is the regime where collaborative filtering has almost nothing to stand on, so metadata, content similarity, and exploration must bootstrap the first recommendations.'
       : history > 0.65
-        ? 'Once history accumulates, collaborative signals become the stronger guide.'
-        : 'Hybrid recommenders are valuable because signal quality changes over a user or item’s lifetime.';
+        ? 'Once enough interactions accumulate, collaborative signal becomes the stronger guide and the fallback heuristics can fade into the background.'
+        : 'Hybrid recommenders matter because the best signal changes over time; the system has to shift responsibility as evidence arrives.';
 
   metrics.innerHTML = metricMarkup([
-    ['History signal', `${Math.round(history * 100)}%`],
-    ['Content quality', `${Math.round(content * 100)}%`],
+    ['Behavior history', `${Math.round(history * 100)}%`],
+    ['Content carry load', `${Math.round(contentWeight * 100)}%`],
     ['Blended confidence', `${Math.round(blended * 100)}%`],
   ]);
 }

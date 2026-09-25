@@ -764,11 +764,11 @@ code {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 9px;
   font-family: var(--mono);
-  font-size: 0.82rem;
-  color: var(--fg-dim);
-  letter-spacing: 0.06em;
+  font-size: 0.86rem;
+  color: #c9ced9;
+  letter-spacing: 0.07em;
 }
 
 .control-group input[type="range"] {
@@ -826,8 +826,8 @@ code {
 
 .hybrid-stage {
   display: grid;
-  gap: 18px;
-  padding: 26px;
+  gap: 22px;
+  padding: 30px;
   min-height: 420px;
   container-type: inline-size;
   container-name: vizstage;
@@ -863,18 +863,18 @@ code {
 
 .hv-title {
   margin: 0;
-  font-size: clamp(1.08rem, 1.35vw, 1.34rem);
-  line-height: 1.18;
+  font-size: clamp(1.16rem, 1.5vw, 1.5rem);
+  line-height: 1.16;
   color: var(--fg);
-  max-width: 30ch;
+  max-width: 28ch;
 }
 
 .hv-note {
   margin: 0;
-  color: var(--fg-soft);
-  font-size: 0.94rem;
-  line-height: 1.45;
-  max-width: 64ch;
+  color: #d5dae3;
+  font-size: 1rem;
+  line-height: 1.5;
+  max-width: 62ch;
 }
 
 .hv-grid {
@@ -925,9 +925,9 @@ code {
 .hv-card {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
-  padding: 18px;
+  padding: 20px;
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.06);
   background:
@@ -956,8 +956,8 @@ code {
 .hv-svg-kicker,
 .hv-svg-caption {
   margin: 0;
-  font-size: 0.7rem;
-  color: var(--fg-dim);
+  font-size: 0.74rem;
+  color: #c9ced9;
 }
 
 .hv-grid-layer {
@@ -966,9 +966,9 @@ code {
 
 .hv-footnote {
   margin: 0;
-  color: var(--fg-soft);
-  font-size: 0.94rem;
-  line-height: 1.45;
+  color: #d5dae3;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .hv-big-number {
@@ -999,8 +999,8 @@ code {
 
 .hv-bar-label,
 .hv-bar-value {
-  font-size: 0.7rem;
-  color: var(--fg-dim);
+  font-size: 0.74rem;
+  color: #c9ced9;
 }
 
 .hv-bar-track {
@@ -1025,8 +1025,8 @@ code {
   padding: 7px 12px;
   border-radius: 999px;
   background: rgba(255,255,255,0.05);
-  color: var(--fg-soft);
-  font-size: 0.66rem;
+  color: #d5dae3;
+  font-size: 0.7rem;
 }
 
 .hv-inspector {

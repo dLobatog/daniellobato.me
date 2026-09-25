@@ -3,50 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ML Visualizations Atelier</title>
+  <title>Machine Learning Atelier / Daniel Lobato</title>
+  <meta name="description" content="Interactive explanations of machine learning. Explore probability, neural networks, transformers, and the systems that put them to work.">
   <link rel="stylesheet" href="./vendor/katex/katex.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./studio.css?v=43">
+  <link rel="stylesheet" href="./studio.css?v=44">
+  <link rel="stylesheet" href="../typography.css?v=1">
+  <link rel="stylesheet" href="./editorial.css?v=1">
 </head>
 <body class="studio-home">
   <div class="ambient ambient-left" aria-hidden="true"></div>
   <div class="ambient ambient-right" aria-hidden="true"></div>
 
   <header class="site-nav">
-    <a class="nav-link" href="../index.html">Back to current ML site</a>
-    <a
-      class="bmc-pill"
-      href="https://www.buymeacoffee.com/dlobatog"
-      target="_blank"
-      rel="noopener"
-    >
-      <span class="bmc-pill-icon" aria-hidden="true">☕</span>
-      <span>Buy me a coffee</span>
-    </a>
+    <a class="nav-link" href="../index.html">Daniel Lobato</a>
+    <a class="nav-link" href="#chapter-library">Explore the library</a>
   </header>
 
   <main>
-    <section class="hero shell">
-      <p class="eyebrow">Personal Project / ML Visualizations</p>
-      <h1>Machine learning, made visual.</h1>
-      <p class="lede">
-        A visual study library for machine learning, built to make core ideas easier to
-        understand, revisit, and explain.
-      </p>
-
-      <div class="hero-actions">
-        <a class="primary-link" href="./foundations.html">Start with foundations</a>
-        <a class="secondary-link" href="#chapter-library">Browse chapters</a>
+    <section class="hero shell atelier-intro">
+      <div>
+        <p class="eyebrow">The Machine Learning Atelier</p>
+        <h1>See it.<br>Change it.<br><em>Understand it.</em></h1>
+        <p class="lede">Machine learning, one idea at a time. Interactive explanations for the first time it clicks, and the next time you need it.</p>
+        <div class="hero-actions"><a class="primary-link" href="./foundations.html">Explore foundations <span aria-hidden="true">↗</span></a></div>
       </div>
+      <aside class="opening-experiment" aria-label="A quick Bayes experiment">
+        <p class="eyebrow">Start with a surprise</p>
+        <h2>A positive test.<br>How sure are you?</h2>
+        <p>A disease affects <strong>1 in 100 people.</strong> A test catches 99% of sick people, but also flags 1% of healthy people.</p>
+        <p>After a positive result, what is the chance of being sick?</p>
+        <div class="lesson-choices" role="group" aria-label="Predict the chance"><button class="lesson-choice" type="button" data-guess="99">About 99%</button><button class="lesson-choice" type="button" data-guess="50">About 50%</button></div>
+        <div class="opening-answer" hidden aria-live="polite">
+          <div class="opening-counts"><span><strong>99</strong>real detections</span><span class="plus">+</span><span><strong>99</strong>false alarms</span></div>
+          <p data-guess-feedback></p>
+          <a class="text-link" href="./foundations.html#bayes">Follow the people, step by step <span aria-hidden="true">↗</span></a>
+        </div>
+        <noscript><p>It is 50%: in 10,000 people, 99 sick people and 99 healthy people test positive. <a href="./foundations.html#bayes">Explore Bayes</a>.</p></noscript>
+      </aside>
     </section>
 
     <div class="divider"></div>
 
     <section id="chapter-library" class="shell route-section">
       <p class="section-label">Chapter Library</p>
-      <h2 class="section-title">A visual path through the ML stack.</h2>
+      <div class="library-heading"><h2 class="section-title">Find the idea you need.</h2><div class="library-search"><label for="chapter-search">Search chapters</label><input id="chapter-search" type="search" placeholder="Bayes, attention, trees..." autocomplete="off"></div></div>
+      <p class="search-status" aria-live="polite" hidden></p>
 
       <div class="route-grid">
         <article class="route-card route-card-featured">
@@ -54,7 +57,7 @@
             <div>
               <p class="route-kicker">Chapter 01</p>
               <h3>Foundations: uncertainty and loss</h3>
-              <p>Bayes, entropy, and cross-entropy as the backbone of probability and loss.</p>
+              <p>What can happen? What should you expect? How do evidence and surprise change a prediction?</p>
             </div>
             <span class="card-cta">Open chapter</span>
           </a>
@@ -93,7 +96,7 @@
           <a class="route-link" href="./deep-learning.html">
             <div>
               <p class="route-kicker">Chapter 05</p>
-              <h3>Deep learning: update size and gradient flow</h3>
+              <h3>Training deep networks</h3>
               <p>Learning rate intuition and why repeated derivatives make training stable, brittle, or explosive.</p>
             </div>
             <span class="card-cta">Open chapter</span>
@@ -124,7 +127,7 @@
             <div>
               <p class="route-kicker">Chapter 08</p>
               <h3>Metrics and calibration</h3>
-              <p>Thresholds, probability trustworthiness, and ranking quality in the atelier format.</p>
+              <p>When is a score a trustworthy probability? Thresholds, calibration, and ranking metrics.</p>
             </div>
             <span class="card-cta">Open chapter</span>
           </a>
@@ -133,7 +136,7 @@
           <a class="route-link" href="./recommendation-depth.html">
             <div>
               <p class="route-kicker">Chapter 09</p>
-              <h3>Recommendation depth</h3>
+              <h3>Recommender systems</h3>
               <p>Latent factors, two-tower retrieval, and ranking objectives that actually match recommendation surfaces.</p>
             </div>
             <span class="card-cta">Open chapter</span>
@@ -154,7 +157,7 @@
             <div>
               <p class="route-kicker">Chapter 11</p>
               <h3>Production ML systems</h3>
-              <p>Train-serve skew, proxy-vs-live evaluation, and drift in the same authored language.</p>
+              <p>Why does a good offline model fail in production? Training-serving skew, live evaluation, and drift.</p>
             </div>
             <span class="card-cta">Open chapter</span>
           </a>
@@ -203,7 +206,7 @@
           <a class="route-link" href="./alignment-depth.html">
             <div>
               <p class="route-kicker">Chapter 16</p>
-              <h3>Alignment depth</h3>
+              <h3>Objectives and alignment</h3>
               <p>Guidance, preference tuning, and reward hacking once you go beyond the first generative intuition.</p>
             </div>
             <span class="card-cta">Open chapter</span>
@@ -214,9 +217,9 @@
   </main>
 
   <footer class="shell site-footer">
-    <p>Built as a visual reference for interview prep, review, and teaching.</p>
+    <p>A project by <a href="../index.html">Daniel Lobato</a>.</p><a class="text-link" href="https://www.buymeacoffee.com/dlobatog" target="_blank" rel="noopener">Support the project</a>
   </footer>
 
-  <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="dlobatog" data-description="Support me on Buy me a coffee!" data-message="" data-color="#FF813F" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
+  <script defer src="./library.js?v=1"></script>
 </body>
 </html>

@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+:root {
+  --serif: 'Newsreader', Georgia, serif;
+  --sans: 'Source Sans 3', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+body { font-family: var(--sans); }
+h1, h2, h3 { font-family: var(--serif); font-optical-sizing: auto; }
+.lede, .concept-summary, .explanation-body, .tool-note, .formula-copy, .quiz-prompt,
+.quiz-option, .quiz-feedback, .lesson, .opening-experiment > p, .opening-answer,
+.route-link p:not(.route-kicker), .takeaway-line { font-family: var(--sans); }
+.lesson-scene h3, .lesson .surprise-value, .posterior-equation > strong,
+.test-branch strong, .coin-face, .outcome-button > strong, .opening-counts strong { font-family: var(--serif); }
+.atelier-react-stage { font-family: var(--sans) !important; }
+.bio-text, .timeline-desc, .project-desc, .ac-desc { font-family: var(--sans); }

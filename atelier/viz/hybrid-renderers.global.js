@@ -590,7 +590,7 @@ function renderForwardPass(stageRoot, section, state, context) {
   const dominant = h1 >= h2 ? 'hidden feature 1' : 'hidden feature 2';
 
   const root = buildHybridRoot(stageRoot, 'comparison');
-  buildHeader(root, 'Inputs become hidden features, then a prediction', 'A forward pass is just feature construction. Hidden units mix the raw inputs in different ways, and the output layer reads those hidden features.');
+  buildHeader(root, 'Inputs become hidden features, then one prediction', 'Read the network left to right: raw inputs mix into hidden features, then the output layer reads those features into a final probability.');
   const grid = buildGrid(root, 'hv-grid-forward');
 
   const left = buildCard(grid, 'Feature construction');
@@ -603,7 +603,7 @@ function renderForwardPass(stageRoot, section, state, context) {
     html(
       'p',
       'hv-footnote',
-      'Both hidden units see the same raw inputs, but with different weights. That is why they respond to different patterns before the output layer combines them.'
+      'Each hidden unit sees the same raw inputs, but with different weights. That is the whole point of the forward pass: one input vector gets remixed into several more useful features before the model makes its prediction.'
     )
   );
 
@@ -678,7 +678,7 @@ function renderForwardPass(stageRoot, section, state, context) {
   setTakeaway(
     context,
     prediction > 0.72
-      ? `The forward pass has assembled a strong positive case, mostly through ${dominant}.`
+      ? `The forward pass is saying “x -> features -> prediction,” and ${dominant} is carrying most of that evidence right now.`
       : prediction < 0.4
         ? 'The hidden features are not building enough evidence yet, so the output stays cautious.'
         : 'The forward pass is combining moderate hidden signals, so the output lands in the uncertain middle.'
@@ -694,13 +694,13 @@ function renderChainRule(stageRoot, section, state, context) {
   const factors = [Math.abs(state.error), state.slope, state.input];
   const gradient = factors.reduce((acc, value) => acc * value, 1);
   const root = buildHybridRoot(stageRoot, 'pipeline');
-  buildHeader(root, 'Backprop works because gradients are products of local sensitivities', 'Each local derivative acts like a gain knob. One tiny factor can choke the whole signal.');
+  buildHeader(root, 'Gradient = downstream error × local slope × local activity', 'The chain rule stops the mystery: each edge contributes one small multiplier, and the final gradient is just their product.');
   const grid = buildGrid(root, 'hv-grid-chain');
-  const left = buildCard(grid, 'Local factors');
+  const left = buildCard(grid, 'Three local multipliers');
   [['output error', factors[0], palette.accent3], ['activation slope', factors[1], palette.accent2], ['input path', factors[2], palette.accent]].forEach(
     ([label, value, color]) => buildBarRow(left, label, value, color)
   );
-  const right = buildCard(grid, 'Product path');
+  const right = buildCard(grid, 'Multiply them in order');
   const svg = createSvg(right, '0 0 360 220');
   addGrid(svg, 18, 18, 324, 184, 6, 4);
   const xs = [58, 152, 246, 314];
@@ -716,8 +716,8 @@ function renderChainRule(stageRoot, section, state, context) {
   setTakeaway(
     context,
     gradient < 0.08
-      ? 'A small local factor is suppressing the whole gradient, which is exactly the vanishing-gradient intuition.'
-      : 'The chain rule makes blame compositional: each stage contributes a local sensitivity to the final update signal.'
+      ? 'One small multiplier is choking the whole product. That is the vanishing-gradient story in its simplest possible form.'
+      : 'Read the chain rule left to right: downstream error × local slope × local activity = the gradient on this weight.'
   );
   setMetrics(context, [
     ['Error term', num(factors[0])],
@@ -735,10 +735,10 @@ function renderBackprop(stageRoot, section, state, context) {
   const dominant = Math.abs(dw1) >= Math.abs(dw2) ? 'w1' : 'w2';
 
   const root = buildHybridRoot(stageRoot, 'comparison');
-  buildHeader(root, 'One local delta becomes several parameter gradients', 'Backprop does not invent a different error for each weight. It sends one shared delta backward, and each parameter scales it by the activity that passed through it.');
+  buildHeader(root, 'Same δ, different activity -> different weight gradients', 'Backprop starts with one shared delta from downstream. Each weight only gets a different update because a different amount of forward activity flowed through its path.');
   const grid = buildGrid(root, 'hv-grid-backprop');
-  const left = buildCard(grid, 'Inspect the blame flow');
-  left.appendChild(html('p', 'hv-footnote', 'Hover or click a node to see why one gradient becomes larger than another.'));
+  const left = buildCard(grid, 'Start with one shared δ');
+  left.appendChild(html('p', 'hv-footnote', 'Hover or click a node. The main story is simple: one delta arrives from downstream, then each incoming path scales it by the activity that actually flowed through that path.'));
   const svg = createSvg(left, '0 0 420 272');
   addGrid(svg, 24, 20, 372, 204, 7, 5);
   addText(svg, 44, 40, 'UPSTREAM DELTA', 'hv-svg-kicker');
@@ -828,7 +828,7 @@ function renderBackprop(stageRoot, section, state, context) {
       'Every incoming weight sees the same delta. Their gradients only split because the forward pass sent different amounts of activity down each path.'
     )
   );
-  const right = buildCard(grid, 'Who gets more blame?');
+  const right = buildCard(grid, 'Different activity means different blame');
   buildBarRow(right, '∂L/∂w1 = x1·δ', Math.abs(dw1) / maxGrad, palette.accent2, num(dw1, 3));
   buildBarRow(right, '∂L/∂w2 = x2·δ', Math.abs(dw2) / maxGrad, palette.accent3, num(dw2, 3));
   buildBarRow(right, '∂L/∂b = δ', Math.abs(db) / maxGrad, palette.accent, num(db, 3));
@@ -837,15 +837,15 @@ function renderBackprop(stageRoot, section, state, context) {
     html(
       'p',
       'hv-footnote',
-      'Bias does not multiply an input, so its gradient is just the local delta itself. A weight gets a larger gradient when more signal flowed through that path.'
+      'Bias does not multiply an input, so its gradient is just the delta itself. The weight gradients split only because x1 and x2 carried different amounts of forward signal.'
     )
   );
 
   setTakeaway(
     context,
     Math.abs(dw1) > Math.abs(dw2)
-      ? `w1 gets slightly more blame here because ${num(dw1, 3)} is larger than ${num(dw2, 3)}.`
-      : `w2 gets more blame here because ${num(dw2, 3)} is larger than ${num(dw1, 3)}.`
+      ? `Both paths saw the same δ, but ${dominant} gets more blame because its forward activity made ${num(Math.max(Math.abs(dw1), Math.abs(dw2)), 3)} the larger weight gradient.`
+      : `Both paths saw the same δ, but ${dominant} gets more blame because its forward activity made ${num(Math.max(Math.abs(dw1), Math.abs(dw2)), 3)} the larger weight gradient.`
   );
   setMetrics(context, [
     ['Local δ', num(delta, 3)],
