@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayes from counts</title>
+<meta name="description" content="Conditioning as selecting the evidence group: build the counts, see why the flagged group is the denominator, then attach Bayes' rule, odds, and the recalibration of downsampled models.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=4">
+<style>
+  .legend i.spam { background: var(--w3); border-radius: 50%; }
+  .legend i.legit { background: var(--ink-3); border-radius: 50%; opacity: 0.6; }
+  .legend i.flag { background: none; border: 2px solid var(--ink); border-radius: 50%; }
+  .stage-btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+  .comp { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin: 8px 0 4px; }
+  .comp div { display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 600; color: var(--bg); white-space: nowrap; overflow: hidden; }
+  .case { font-size: 1rem; margin: 4px 0 10px; }
+  .case b { font-weight: 600; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 05 · Probability · ~30 min + code</div>
+  <h1>Bayes from counts</h1>
+  <p class="lede">A spam filter catches 90% of spam and wrongly flags only 5% of legitimate mail. It just flagged a message. How likely is it that the message is actually spam?</p>
+
+  <div class="check" data-gate>
+    <div class="q">Your first instinct, before any calculation:</div>
+    <div class="opts">
+      <button class="opt">About 95%</button>
+      <button class="opt">About 90%</button>
+      <button class="opt">About 50%</button>
+      <button class="opt" data-correct>It depends on something the question didn't say</button>
+    </div>
+    <div class="answer"><p>It depends on how much of the mail is spam to begin with, the <strong>base rate</strong>. In this inbox it's 2%. With that, the answer turns out to be about 27%. Most people guess 90%, which confuses "how often spam gets flagged" with "how often flagged mail is spam". The rest of the lesson makes that difference visible, starting from counts.</p></div>
+  </div>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#counts"><span>1</span>Build the counts</a>
+    <a href="#condition"><span>2</span>Condition</a>
+    <a href="#rule"><span>3</span>Name it</a>
+    <a href="#game"><span>4</span>Play: call the odds</a>
+    <a href="#odds"><span>5</span>Odds and evidence</a>
+    <a href="#fresh"><span>6</span>New cases</a>
+    <a href="#implement"><span>7</span>Implement</a>
+    <a href="#followups"><span>8</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="counts">
+    <div class="kicker">1 · Build the counts</div>
+    <h2>A thousand messages</h2>
+    <p>Take 1,000 messages from this inbox. 2% are spam, so 20 pink dots and 980 grey ones.</p>
+    <div class="fig wide">
+      <div class="legend"><span><i class="spam"></i>spam</span><span><i class="legit"></i>legitimate</span><span><i class="flag"></i>flagged by the filter</span></div>
+      <div class="stage-btns" id="stage-btns"></div>
+      <div class="chart" id="grid"></div>
+      <div class="readouts" id="grid-counts"></div>
+    </div>
+
+    <div class="check" data-gate data-stage="1">
+      <div class="q">The filter flags 90% of spam. How many of the 20 spam messages are flagged?</div>
+      <div class="opts">
+        <button class="opt">2</button>
+        <button class="opt" data-correct>18</button>
+        <button class="opt">20</button>
+      </div>
+      <div class="answer"><p>\(20 \times 0.9 = 18\). Two spam messages slip through.</p></div>
+    </div>
+    <div class="check" data-gate data-stage="1">
+      <div class="q">It also flags 5% of legitimate mail. How many of the 980 legitimate messages are flagged?</div>
+      <div class="opts">
+        <button class="opt">5</button>
+        <button class="opt">18</button>
+        <button class="opt" data-correct>49</button>
+      </div>
+      <div class="answer"><p>\(980 \times 0.05 = 49\). A small rate applied to a big group makes a big number. The ringed dots in the grid are the 67 flagged messages.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="condition">
+    <div class="kicker">2 · Condition</div>
+    <h2>The evidence selects a group</h2>
+    <p>You're told only one thing about the message: it was flagged.</p>
+    <div class="check" data-gate data-stage="2">
+      <div class="q">Which messages could it be?</div>
+      <div class="opts">
+        <button class="opt">Any of the 1,000</button>
+        <button class="opt">Any of the 20 spam messages</button>
+        <button class="opt" data-correct>Any of the 67 flagged messages</button>
+      </div>
+      <div class="answer"><p>Only the flagged ones. The other 933 are ruled out by the evidence, so they drop out of the picture. The grid above now gathers the 67 flagged messages into their own group. That group is the new "everything":</p>
+        <div class="eq">\[ \begin{aligned} P(\text{spam} \mid \text{flagged}) &= \frac{\#\,\text{spam and flagged}}{\#\,\text{flagged}} \\ &= \frac{18}{18 + 49} = \frac{18}{67} \approx 27\% \end{aligned} \]</div>
+        <p>The 49 false alarms outnumber the 18 real catches because legitimate mail is 49 times more common.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="rule">
+    <div class="kicker">3 · Name it</div>
+    <h2>Bayes' rule is that fraction, divided by 1,000</h2>
+    <p>Divide every count by the population size and each one becomes a probability you've already met:</p>
+    <div class="eq">\[ \begin{aligned} \tfrac{18}{1000} &= \underbrace{0.9}_{P(\text{flag}\mid\text{spam})} \times \underbrace{0.02}_{P(\text{spam})} \\[4pt] \tfrac{49}{1000} &= \underbrace{0.05}_{P(\text{flag}\mid\text{legit})} \times \underbrace{0.98}_{P(\text{legit})} \end{aligned} \]</div>
+    <p>So the fraction \(18/(18+49)\) is</p>
+    <div class="eq big">\[ P(\text{spam}\mid\text{flag}) = \frac{P(\text{flag}\mid\text{spam})\,P(\text{spam})}{P(\text{flag})} \]</div>
+    <p>The denominator \(P(\text{flag})\) is the size of the flagged group: <em>every way</em> the evidence can occur. The two conditional probabilities point in opposite directions:</p>
+    <ul>
+      <li>\(P(\text{flag}\mid\text{spam}) = 0.90\) is the <strong>likelihood</strong>, a property of the filter. In ML it's the filter's <strong>recall</strong>.</li>
+      <li>\(P(\text{spam}\mid\text{flag}) = 0.27\) is the <strong>posterior</strong>, what you believe after the evidence. In ML it's the filter's <strong>precision</strong>.</li>
+    </ul>
+    <p>Recall doesn't depend on the base rate. Precision does. Change the inbox and watch:</p>
+    <div class="fig wide">
+      <div class="fig-title">The same filter in different inboxes</div>
+      <div class="chart" id="grid2"></div>
+      <div class="ctl"><label for="prior">spam rate</label><input id="prior" type="range" min="0" max="1" step="0.001" value="0.482"><output id="prior-out"></output></div>
+      <div class="ctl"><label for="sens">recall</label><input id="sens" type="range" min="0.05" max="1" step="0.01" value="0.9"><output id="sens-out"></output></div>
+      <div class="ctl"><label for="fpr">false-positive rate</label><input id="fpr" type="range" min="0" max="0.5" step="0.005" value="0.05"><output id="fpr-out"></output></div>
+      <div class="readouts" id="grid2-out"></div>
+      <p class="fig-note">The spam-rate slider is logarithmic, from 0.1% to 50%. Dot counts are rounded to whole messages; the percentages are exact.</p>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">4 · Play it</div>
+    <h2>Call the odds</h2>
+    <p>Five cases. For each, state your probability. You're scored like lesson 1: the <strong>expected bits you lose</strong> against a perfect Bayesian, \(\mathrm{KL}(\text{truth}\,\|\,\text{you})\). Confident and wrong costs a lot; honest uncertainty costs little.</p>
+    <div class="fig wide" id="odds-game"></div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="odds">
+    <div class="kicker">5 · Odds and evidence</div>
+    <h2>Evidence multiplies odds</h2>
+    <p>Case 3 had two flags. You could redo the counts, but there's a shortcut. Write beliefs as <strong>odds</strong>, spam : legitimate. The prior odds are \(20 : 980 = 1 : 49\). Each piece of evidence multiplies the odds by its <strong>likelihood ratio</strong>:</p>
+    <div class="eq big">\[ \begin{aligned} \underbrace{\frac{P(\text{spam}\mid e)}{P(\text{legit}\mid e)}}_{\text{posterior odds}} &= \underbrace{\frac{P(\text{spam})}{P(\text{legit})}}_{\text{prior odds}} \\ &\quad\times \underbrace{\frac{P(e\mid\text{spam})}{P(e\mid\text{legit})}}_{\text{likelihood ratio}} \end{aligned} \]</div>
+    <div class="check" data-gate>
+      <div class="q">Filter A's flag has likelihood ratio \(0.9/0.05 = 18\). Starting from odds 1 : 49, what are the odds after one flag?</div>
+      <div class="opts">
+        <button class="opt">18 : 1</button>
+        <button class="opt" data-correct>18 : 49, about 27%</button>
+        <button class="opt">1 : 882</button>
+      </div>
+      <div class="answer"><p>\(1/49 \times 18 = 18/49\): exactly the 18 versus 49 counts. A second independent filter (recall 0.8, false-positive rate 0.1, so a ratio of 8) multiplies again: \(18/49 \times 8 = 144/49\), about 75%.</p></div>
+    </div>
+    <p>Take logs and multiplication becomes addition. Each piece of evidence <em>adds</em> its log-likelihood ratio to the log-odds:</p>
+    <div class="eq">\[ \begin{aligned} \log\text{odds}(\text{spam}\mid e_1,\dots,e_n) &= \log\text{odds}(\text{spam}) \\ &\quad+ \sum_i \log\frac{P(e_i\mid\text{spam})}{P(e_i\mid\text{legit})} \end{aligned} \]</div>
+    <p>That's naive Bayes. It's also the form of logistic regression, \(\sigma(b + \sum_i w_i x_i)\), where the intercept plays the prior and each weight plays a log-likelihood ratio. Naive Bayes derives the weights by assuming the features are independent given the class. Logistic regression fits them directly and so can discount correlated evidence that naive Bayes would double-count.</p>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">6 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+    <div class="check">
+      <div class="q">A click model was trained on data where negatives were downsampled to 10% (all positives kept). For an impression it predicts 0.50. What's the calibrated click probability?</div>
+      <div class="opts">
+        <button class="opt">0.50</button>
+        <button class="opt" data-correct>About 0.09</button>
+        <button class="opt">0.05</button>
+      </div>
+      <div class="answer"><p>Downsampling negatives by \(w = 0.1\) multiplied the training odds by \(1/w = 10\). Undo it: true odds = model odds × \(w\) = \(1 \times 0.1\), so \(p = 0.1/1.1 \approx 0.091\). Equivalently \(q = p/(p + (1-p)/w)\), the correction He et al. (2014) use for ads click prediction. Ranking is unaffected, since the map is monotone. Anything that uses the probability's value, like auctions, thresholds or blending, is wrong until you correct it.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">Your fraud model has 95% recall and 90% precision on a test set with 5% fraud. In production fraud is 0.5%. What happens?</div>
+      <div class="opts">
+        <button class="opt">Both stay the same: the model didn't change</button>
+        <button class="opt" data-correct>Recall stays about the same; precision drops a lot</button>
+        <button class="opt">Recall drops; precision stays the same</button>
+      </div>
+      <div class="answer"><p>Recall and the false-positive rate are conditioned on the true class, so they carry over if the classes themselves look the same. Precision is a posterior, and it moves with the base rate. With 10× fewer fraud cases, the false alarms dominate: precision falls to roughly 45%. Always report precision at the deployment base rate.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">A new item has 2 clicks in 3 impressions. The average item's click rate is 2%. What's a sensible estimate of this item's click rate?</div>
+      <div class="opts">
+        <button class="opt">67%: that's the data</button>
+        <button class="opt" data-correct>Much closer to 2% than to 67%</button>
+        <button class="opt">2%: ignore three impressions</button>
+      </div>
+      <div class="answer"><p>Three impressions are weak evidence against a strong prior. With a Beta prior worth, say, 100 pseudo-impressions at 2%, the estimate is \((2 + 2)/(3 + 100) \approx 3.9\%\). The data moves it up from 2%, but not to 67%. This is empirical-Bayes smoothing, standard for cold-start click rates, and it's lesson 1's add-one smoothing with a prior fitted to your data.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">A classifier is 99% accurate on a dataset where 1% of examples are positive. How impressed should you be?</div>
+      <div class="opts">
+        <button class="opt">Very: 99% is excellent</button>
+        <button class="opt" data-correct>Not at all yet: predicting "negative" always also scores 99%</button>
+        <button class="opt">It depends on the learning rate</button>
+      </div>
+      <div class="answer"><p>Accuracy is dominated by the base rate. Look at precision and recall (or PR-AUC) for the positive class, and compare against the trivial baseline.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">7 · Implement, unaided</div>
+    <h2>Write the updates</h2>
+    <p>Plain editor, hidden tests. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: posterior from a test result</h3>
+    <div id="ex-post"></div>
+    <h3>Exercise 2: undo negative downsampling</h3>
+    <div id="ex-recal"></div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">8 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">Likelihood vs posterior: what's the difference, and where does it bite in ML?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Likelihood \(P(\text{data}\mid\theta)\) is a function of \(\theta\) for fixed data. It doesn't sum to 1 over \(\theta\). The posterior \(P(\theta\mid\text{data}) \propto\) likelihood × prior does.</li>
+        <li>MLE maximizes the likelihood. MAP maximizes the posterior, and a Gaussian prior on weights gives L2 regularization (a Laplace prior gives L1).</li>
+        <li>In evaluation: recall is a likelihood-like quantity (conditioned on the true class). Precision is a posterior that depends on the base rate.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">You downsample negatives to train a CTR model. What must you do before using its outputs?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Correct the odds by the sampling rate: \(q = p/(p + (1-p)/w)\), or add \(\log w\) to the logit.</li>
+        <li>Then check calibration on unsampled holdout data (reliability plot, calibration by slice), because the model can be miscalibrated for other reasons.</li>
+        <li>Ranking metrics (AUC, NDCG) are unaffected. Log loss, auctions, and thresholds are not.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How would you estimate click rates for items with very few impressions?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Beta-Binomial empirical Bayes: fit \(\mathrm{Beta}(\alpha,\beta)\) to the click rates of established items, then estimate \((c + \alpha)/(n + \alpha + \beta)\).</li>
+        <li>Shrinkage strength comes from the data, and it can be done per segment (category, creator) for a better prior.</li>
+        <li>For ranking under uncertainty, consider an upper confidence bound or Thompson sampling from the posterior to give new items exposure (explore/exploit).</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Naive Bayes vs logistic regression: when would you choose each?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Both are linear in log-odds. Naive Bayes is generative: it estimates class-conditional feature distributions, assumes independence, and needs little data.</li>
+        <li>Logistic regression is discriminative: it fits the weights directly, handles correlated features, and is usually better calibrated and more accurate with enough data.</li>
+        <li>Ng and Jordan (2002): naive Bayes reaches its (higher) asymptotic error faster. It's a good baseline and a good fit for tiny data.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">An A/B test shows a 2% lift with p = 0.04. What's the probability the variant is actually better?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Not 96%. A p-value is \(P(\text{data this extreme}\mid H_0)\), not \(P(H_0\mid\text{data})\), which is the same inversion as recall vs precision.</li>
+        <li>The probability that a "significant" result is real depends on the prior share of ideas that work and on power. With low base rates and low power, many wins are false.</li>
+        <li>A Bayesian analysis with an informed prior gives that probability directly. Lesson 7 covers tests and peeking.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: He et al., <em>Practical Lessons from Predicting Clicks on Ads at Facebook</em> (ADKDD 2014), for the downsampling recalibration; Ng &amp; Jordan, <em>On Discriminative vs. Generative Classifiers</em> (NeurIPS 2002).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=4"></script>
+<script src="../assets/pyrunner.js?v=4"></script>
+<script src="exercises.js?v=4"></script>
+<script src="lesson.js?v=4"></script>
+</body>
+</html>
