@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Optimizers</title>
+<meta name="description" content="Learning rate, momentum and Adam on a valley you can see: the stability limit 2/λ, condition number, heavy-ball momentum, noise floors and schedules, bias correction and AdamW.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=4">
+<style>
+  .level-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .level-bar .btn { font-size: 0.85rem; padding: 6px 11px; }
+  .level-bar .btn.done::after { content: ' ✓'; color: var(--good); }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  .sub { font-weight: 600; font-size: 0.88rem; }
+  .ctl { grid-template-columns: 9em 1fr 4em; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 08 · Optimization · ~30 min + code</div>
+  <h1>Optimizers: learning rate, momentum, Adam</h1>
+  <p class="lede">Your training loss bounces around and won't go down. You halve the learning rate and it decreases smoothly, but painfully slowly. What exactly limits the learning rate, and what do momentum and Adam change?</p>
+  <p>Everything here happens on a loss surface you can see: a valley, \(L(w) = \tfrac12(\lambda_1 w_1^2 + \lambda_2 w_2^2)\). Near any minimum, a real network's loss looks like this locally, just in millions of directions.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#one"><span>1</span>One direction</a>
+    <a href="#two"><span>2</span>Two directions</a>
+    <a href="#game"><span>3</span>Play: descend the valley</a>
+    <a href="#adam"><span>4</span>Adam</a>
+    <a href="#fresh"><span>5</span>New cases</a>
+    <a href="#implement"><span>6</span>Implement</a>
+    <a href="#followups"><span>7</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="one">
+    <div class="kicker">1 · One direction</div>
+    <h2>What limits the learning rate?</h2>
+    <p>Start with one weight and \(L = \tfrac12 \lambda w^2\). The gradient is \(\lambda w\), so one step of gradient descent is</p>
+    <div class="eq big">\[ w \leftarrow w - \eta\,\lambda w = (1 - \eta\lambda)\, w \]</div>
+    <p>Every step multiplies \(w\) by the same factor. \(\lambda\) is the curvature: how sharply the loss bends.</p>
+    <div class="check" data-gate>
+      <div class="q">For which learning rates does \(w\) shrink to 0?</div>
+      <div class="opts">
+        <button class="opt">Any η &gt; 0: gradient descent always goes downhill</button>
+        <button class="opt">0 &lt; η &lt; 1/λ</button>
+        <button class="opt" data-correct>0 &lt; η &lt; 2/λ</button>
+      </div>
+      <div class="answer"><p>You need \(|1 - \eta\lambda| &lt; 1\). Below \(1/\lambda\), \(w\) shrinks smoothly. At exactly \(1/\lambda\) it lands on the minimum in one step. Between \(1/\lambda\) and \(2/\lambda\) it overshoots, flipping sign each step, but still shrinks. Beyond \(2/\lambda\) every step overshoots by more than it started with, and training diverges. Slide it:</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Gradient descent on ½λw², starting at w = 1</div>
+      <div class="chart" id="one-chart"></div>
+      <div class="ctl"><label for="etal">η × λ</label><input id="etal" type="range" min="0.05" max="2.2" step="0.01" value="0.3"><output id="etal-out"></output></div>
+      <div class="readouts" id="one-out"></div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="two">
+    <div class="kicker">2 · Two directions</div>
+    <h2>One learning rate, two curvatures</h2>
+    <p>Now two weights with curvatures \(\lambda_1 = 1\) (a flat direction) and \(\lambda_2 = 20\) (a steep one). One learning rate has to serve both.</p>
+    <div class="check" data-gate>
+      <div class="q">What's the largest stable η, and how much does the flat direction shrink per step at that η?</div>
+      <div class="opts">
+        <button class="opt">η &lt; 2, shrinking by half each step</button>
+        <button class="opt" data-correct>η &lt; 0.1, shrinking only to 0.9× per step</button>
+        <button class="opt">η &lt; 0.1, shrinking by half each step</button>
+      </div>
+      <div class="answer"><p>The steep direction sets the limit: \(\eta &lt; 2/\lambda_{\max} = 0.1\). At that η the flat direction's factor is \(1 - 0.1 \times 1 = 0.9\), so it crawls. The ratio \(\kappa = \lambda_{\max}/\lambda_{\min}\), the <strong>condition number</strong>, sets how many steps you need: roughly proportional to \(\kappa\) for gradient descent. That's the bouncing-or-crawling dilemma from the opening, in two dimensions.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">3 · Play it</div>
+    <h2>Descend the valley</h2>
+    <p>Reach the minimum (within 0.05) from the ● start. Tune the knobs each level gives you. The path redraws instantly, so you can feel where the limits are.</p>
+    <div class="fig wide">
+      <div class="level-bar" id="levels"></div>
+      <p class="small" id="level-brief"></p>
+      <div class="chart" id="valley"></div>
+      <div id="controls"></div>
+      <div class="readouts" id="valley-out"></div>
+      <div class="debrief" id="valley-debrief" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="adam">
+    <div class="kicker">4 · Adam</div>
+    <h2>A learning rate per parameter</h2>
+    <p>Adam keeps two running averages per parameter: the gradient \(m\) (momentum) and the squared gradient \(v\) (its typical size). Then it divides:</p>
+    <div class="eq">\[ \begin{aligned} m_t &= \beta_1 m_{t-1} + (1-\beta_1)\, g_t, & v_t &= \beta_2 v_{t-1} + (1-\beta_2)\, g_t^2 \\ \hat m_t &= \frac{m_t}{1-\beta_1^t}, & \hat v_t &= \frac{v_t}{1-\beta_2^t} \\ w_t &= w_{t-1} - \eta\, \frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon} \end{aligned} \]</div>
+    <div class="check" data-gate>
+      <div class="q">Why divide by \(1 - \beta^t\)?</div>
+      <div class="opts">
+        <button class="opt">To make the learning rate decay over time</button>
+        <button class="opt" data-correct>Because m and v start at 0, so early averages are biased toward 0</button>
+        <button class="opt">To keep the update from exceeding η</button>
+      </div>
+      <div class="answer"><p>With \(v_0 = 0\) and \(\beta_2 = 0.999\), after one step \(v_1 = 0.001\,g_1^2\), a thousand times too small. Dividing by \(1 - 0.999^1 = 0.001\) fixes it exactly. After correction, the very first step is about \(\eta \cdot \operatorname{sign}(g)\) for every parameter: its size no longer depends on the gradient's scale.</p></div>
+    </div>
+    <p>Dividing by \(\sqrt{\hat v}\) gives each parameter its own effective learning rate: large gradients get damped, small ones boosted. It's a <em>diagonal</em> rescaling, one number per coordinate. Whether that helps depends on how the valley is oriented:</p>
+    <div class="fig wide">
+      <div class="two">
+        <div><div class="sub">Valley aligned with the axes</div><div class="chart" id="adam-a"></div><div class="small" id="adam-a-out"></div></div>
+        <div><div class="sub">Same valley, rotated 45°</div><div class="chart" id="adam-b"></div><div class="small" id="adam-b-out"></div></div>
+      </div>
+      <p class="fig-note"><span style="color:var(--accent)">●</span> gradient descent (η = 0.095, its best) · <span style="color:var(--w1)">●</span> Adam (η = 0.1). Same curvatures (1 and 20), 100 steps.</p>
+    </div>
+    <p>On the aligned valley, Adam's per-coordinate scaling matches the geometry. It takes a smooth path with no zig-zag, because each coordinate gets its own step size. On this noiseless toy it still finishes later than well-tuned gradient descent: Adam isn't magic. Rotate the same valley and the steep and flat directions mix across coordinates. The diagonal scaling no longer lines up, and Adam curls around without settling. In networks, parameters often do differ in scale by layer and type (embeddings vs norms vs attention), which is where the diagonal view helps. Adam's other job is normalizing noisy gradients, which a noiseless valley doesn't show.</p>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">5 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+    <div class="check">
+      <div class="q">A large transformer diverges in the first few hundred steps at a learning rate that works fine later. The standard fix?</div>
+      <div class="opts">
+        <button class="opt">Lower the learning rate for the whole run</button>
+        <button class="opt" data-correct>Warm up: ramp the learning rate from near 0 over the first steps</button>
+        <button class="opt">Switch to plain SGD</button>
+      </div>
+      <div class="answer"><p>Early on, Adam's second-moment estimates are based on very few steps, and the initial loss landscape can be sharp (large curvature). Big steps there blow up. A linear warmup gives the statistics time to settle and the network time to reach flatter regions. Then decay (cosine or linear) so the late phase can settle into a minimum, the noise-floor effect from level 3.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You increase the batch size 4× with SGD. What does the common heuristic say about the learning rate?</div>
+      <div class="opts">
+        <button class="opt">Keep it the same</button>
+        <button class="opt" data-correct>Scale it up about 4× (with warmup), up to a limit</button>
+        <button class="opt">Divide it by 4</button>
+      </div>
+      <div class="answer"><p>A 4× batch averages away 4× the gradient variance, so you can take proportionally bigger steps for similar noise per epoch. That's the linear scaling rule (Goyal et al., 2017). It breaks down beyond a critical batch size, where curvature, not noise, limits the step (section 2's \(2/\lambda_{\max}\)). For Adam, square-root scaling is often closer. Either way, re-tune.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You add L2 regularization to Adam by putting \(\lambda w\) into the gradient. Why is AdamW different?</div>
+      <div class="opts">
+        <button class="opt">It isn't: L2 and weight decay are the same thing</button>
+        <button class="opt" data-correct>Adam divides the L2 term by √v too, so weights with large gradients are barely regularized. AdamW decays weights directly.</button>
+        <button class="opt">AdamW removes the bias correction</button>
+      </div>
+      <div class="answer"><p>For plain SGD, L2 in the gradient and weight decay are equivalent. With Adam the L2 gradient goes through the \(1/\sqrt{\hat v}\) rescaling, so regularization strength ends up varying per parameter. AdamW (Loshchilov &amp; Hutter) applies \(w \leftarrow w - \eta\lambda w\) separately. It's the default for transformers.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">The loss is smooth for 10k steps, then spikes and becomes NaN. What do you check first?</div>
+      <div class="opts">
+        <button class="opt">Nothing: restart with a different seed</button>
+        <button class="opt" data-correct>Gradient norms before the spike, the data batch that caused it, and the learning rate at that point</button>
+        <button class="opt">Increase the learning rate to escape</button>
+      </div>
+      <div class="answer"><p>A spike usually means one step overshot: a large gradient (bad or unusual batch, or a numerically unstable op such as log(0), softmax in fp16, or attention logits growing) times the current learning rate. Mitigations: gradient clipping by global norm, lower peak LR or longer warmup, fp32 for sensitive ops, QK-norm or logit caps, and skipping or inspecting the offending batches. Restart from a checkpoint before the spike.</p></div>
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">6 · Implement, unaided</div>
+    <h2>Write the update rules</h2>
+    <p>Plain editor, numpy, hidden tests. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: momentum and Adam steps</h3>
+    <div id="ex-opt"></div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">7 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">Why is the learning rate the most important hyperparameter?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Stability: above about \(2/\lambda_{\max}\) of the local curvature, training diverges.</li>
+        <li>Speed: progress along flat directions scales with η, so too small wastes compute.</li>
+        <li>Noise: with stochastic gradients, the stationary noise floor scales with η. So schedules matter: warm up, hold, then decay.</li>
+        <li>It interacts with batch size, weight decay and initialization, so re-tune when any of them changes.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">What does momentum actually buy you?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>It averages successive gradients. Oscillating components (steep directions) cancel, and consistent components (flat directions) accumulate, up to a \(1/(1-\beta)\) speed-up.</li>
+        <li>On quadratics, tuned heavy-ball momentum cuts the steps needed from about \(\kappa\) to about \(\sqrt\kappa\).</li>
+        <li>With noisy gradients it also averages noise. The effective learning rate is \(\eta/(1-\beta)\), so re-tune η when changing β.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why is Adam the default for transformers, while SGD is often preferred for CNNs?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Transformers have parameters with very different gradient scales (embeddings, layer norms, attention and MLP weights) and heavy-tailed gradient noise. Per-parameter normalization makes a single learning rate workable.</li>
+        <li>For CNNs, well-tuned SGD with momentum often generalizes as well or better, and uses less memory (Adam stores two extra tensors per parameter).</li>
+        <li>Memory-lighter variants such as Adafactor factorize the second-moment estimates.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Training loss plateaus early. How do you diagnose whether it's the optimizer?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Try to overfit a single batch. If you can't, suspect a bug (labels, loss, masking, data pipeline) before the optimizer.</li>
+        <li>Run a learning-rate sweep or range test. Look at per-layer gradient and update norms (updates should be about 1e-3 of the weights), dead units, and saturated activations.</li>
+        <li>Check the schedule and warmup, the initialization scale, and normalization placement. Compare against a known-good baseline configuration.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: B. Polyak, <em>Some methods of speeding up the convergence of iteration methods</em> (1964); Kingma &amp; Ba, <a href="https://arxiv.org/abs/1412.6980">Adam</a> (2014); Loshchilov &amp; Hutter, <a href="https://arxiv.org/abs/1711.05101">Decoupled Weight Decay Regularization</a> (2017); Goyal et al., <a href="https://arxiv.org/abs/1706.02677">Accurate, Large Minibatch SGD</a> (2017).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=4"></script>
+<script src="../assets/pyrunner.js?v=4"></script>
+<script src="exercises.js?v=5"></script>
+<script src="lesson.js?v=6"></script>
+</body>
+</html>
