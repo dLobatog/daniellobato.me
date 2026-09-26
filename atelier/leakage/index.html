@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leakage and generalization</title>
+<meta name="description" content="Why validation scores lie: target leakage, temporal leakage, group leakage, preprocessing leakage and selection on the test set, with a deploy-to-next-month game and point-in-time features.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=4">
+<style>
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .chips button { font: 500 0.88rem var(--sans); padding: 6px 11px; border-radius: 999px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink-2); cursor: pointer; text-align: left; }
+  .chips button.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .chips button small { display: block; font-weight: 400; font-size: 0.74rem; opacity: 0.8; }
+  .lb td, .lb th { font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 11 · Evaluation · ~30 min + code</div>
+  <h1>Leakage and the leaderboard that lies</h1>
+  <p class="lede">Your churn model scores AUC 0.97 in validation. In production, the next month, it scores 0.62. Nothing is broken in the code. What happened?</p>
+  <p>A validation score is a prediction about the future. It's only as honest as the conditions it was measured under: the same information the model will have, on data it hasn't seen, in the way it will be used. Every leak breaks one of those conditions.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#roles"><span>1</span>What validation promises</a>
+    <a href="#time"><span>2</span>Prediction time</a>
+    <a href="#game"><span>3</span>Play: deploy it</a>
+    <a href="#kinds"><span>4</span>The usual leaks</a>
+    <a href="#fresh"><span>5</span>New cases</a>
+    <a href="#implement"><span>6</span>Implement</a>
+    <a href="#followups"><span>7</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="roles">
+    <div class="kicker">1 · What validation promises</div>
+    <h2>Three sets, three jobs</h2>
+    <p>The <strong>training</strong> set fits parameters. The <strong>validation</strong> set chooses among models: features, hyperparameters, early stopping. The <strong>test</strong> set estimates how the chosen model will do on new data, once.</p>
+    <div class="check" data-gate>
+      <div class="q">You try 200 configurations and report the best one's score on the test set. Is that score a fair estimate of production performance?</div>
+      <div class="opts">
+        <button class="opt">Yes: the model never trained on the test set</button>
+        <button class="opt" data-correct>No: picking the maximum of 200 noisy scores is optimistic</button>
+        <button class="opt">Yes, as long as the test set is large</button>
+      </div>
+      <div class="answer"><p>Each score is truth plus noise. The maximum of 200 is biased upward by the luckiest noise: you've fit the test set through <em>selection</em>, without training on it. A large test set shrinks the bias but doesn't remove it. Choose on validation, confirm on a test set you touch once, and treat a public leaderboard you submit to repeatedly as a validation set, not a test.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="time">
+    <div class="kicker">2 · Prediction time</div>
+    <h2>What did the model know, and when?</h2>
+    <p>Every prediction happens at a moment \(t\). Features may only use information recorded <em>before</em> \(t\). The label describes what happens <em>after</em> \(t\).</p>
+    <div class="fig">
+      <div class="chart" id="timeline"></div>
+    </div>
+    <div class="check" data-gate>
+      <div class="q">A nightly warehouse job computes "lifetime sessions per user" over all history, and you join it onto historical training rows. What's wrong?</div>
+      <div class="opts">
+        <button class="opt">Nothing: sessions are a legitimate feature</button>
+        <button class="opt" data-correct>Old rows get values that include sessions after their prediction time, so survival leaks into the feature</button>
+        <button class="opt">It should be averaged instead of summed</button>
+      </div>
+      <div class="answer"><p>For a row dated in March, "lifetime" computed tonight includes April through September. Users who stayed accumulated more sessions after March, so the feature partly encodes the label. The fix is a <strong>point-in-time</strong> (as-of) join: each training row gets the feature's value as it was at that row's timestamp. Feature stores exist largely to make this the default.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">3 · Play it</div>
+    <h2>Validate, then deploy</h2>
+    <p>Twelve months of subscription data. Pick features and a validation split, validate, then deploy to month 12, which is the future. Features come from the tables named. A colleague's first attempt is preselected. Goal: <b>production AUC ≥ 0.70 with validation within 0.03 of it</b>, a model that's good <em>and</em> honestly measured.</p>
+    <div class="fig wide">
+      <div class="small muted">Features</div>
+      <div class="chips" id="feats"></div>
+      <div class="btns" style="margin-top:0"><span class="small muted" style="align-self:center;margin-right:4px">Validation split</span><div class="seg" id="split"><button data-v="random" class="on">Random 25% of rows</button><button data-v="time">Months 10–11 (train on 1–9)</button></div></div>
+      <div class="btns"><button class="btn primary" id="validate">Train and validate</button><button class="btn" id="deploy">Deploy the last model to month 12</button></div>
+      <div class="small" id="lb-msg" style="min-height:1.3em;margin-top:6px;color:var(--bad)"></div>
+      <div class="scroll-x"><table class="plain lb" id="lb"></table></div>
+      <div class="debrief" id="lk-debrief" style="display:none"></div>
+      <p class="fig-note">A logistic regression is trained in your browser each time. The data is simulated: 1,500 users joining over 12 months, churn driven by a hidden engagement trait, with drift over time.</p>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="kinds">
+    <div class="kicker">4 · The usual leaks</div>
+    <h2>A short taxonomy</h2>
+    <div class="scroll-x"><table class="plain">
+      <tr><th>Leak</th><th>What happens</th><th>Tell-tale sign</th><th>Fix</th></tr>
+      <tr><td><b>Target leakage</b></td><td>A feature is a consequence of the label (closed-account flag, refund issued, diagnosis code)</td><td>One feature alone is nearly perfect</td><td>Check each feature's availability time; drop post-outcome fields</td></tr>
+      <tr><td><b>Temporal leakage</b></td><td>Random splits on time-ordered data, or features computed with future data</td><td>Random-split score ≫ time-split score</td><td>Split by time; point-in-time features</td></tr>
+      <tr><td><b>Group leakage</b></td><td>The same user, patient, session or near-duplicate item is in both train and test</td><td>Great on known users, poor on new ones</td><td>Split by group; dedupe</td></tr>
+      <tr><td><b>Preprocessing leakage</b></td><td>Scalers, PCA, target encoders or feature selection fit on all data before splitting</td><td>Small, persistent optimism</td><td>Fit every step inside each training fold (pipelines)</td></tr>
+      <tr><td><b>Selection leakage</b></td><td>Tuning or reporting on the test set, many leaderboard submissions</td><td>Test score drops on a fresh holdout</td><td>Touch the test set once; nested CV</td></tr>
+    </table></div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">5 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+    <div class="check">
+      <div class="q">A chest X-ray classifier scores 0.95 AUC. Many patients have several X-rays, and the split was by image. What's likely?</div>
+      <div class="opts">
+        <button class="opt">The model is excellent</button>
+        <button class="opt" data-correct>It partly recognizes patients (anatomy, devices) seen in training; split by patient</button>
+        <button class="opt">AUC is the wrong metric for imaging</button>
+      </div>
+      <div class="answer"><p>Group leakage. Images from the same patient share identifying features, so the test set contains near-copies of training data. Split by patient, and report performance on new patients (and new hospitals, if that's the deployment setting).</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You forecast daily demand. You use 5-fold cross-validation with random folds. What goes wrong?</div>
+      <div class="opts">
+        <button class="opt">Nothing: random folds are standard</button>
+        <button class="opt" data-correct>Each fold trains on days after the ones it predicts, so it interpolates instead of forecasting</button>
+        <button class="opt">5 folds is too few</button>
+      </div>
+      <div class="answer"><p>Use rolling-origin (forward-chaining) validation: train on days up to \(t\), validate on the next window, move forward. Add a gap equal to the feature and label horizon so overlapping windows don't leak.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You select the 20 most correlated features on the full dataset, then cross-validate a model using them. With pure-noise features and labels, what AUC does CV report?</div>
+      <div class="opts">
+        <button class="opt">About 0.5, since it's noise</button>
+        <button class="opt" data-correct>Well above 0.5</button>
+        <button class="opt">Exactly 0.5</button>
+      </div>
+      <div class="answer"><p>Selecting on all rows picks the features that correlate with the labels <em>by chance, including in the validation folds</em>, so CV rewards that chance. Selection has to happen inside each training fold. This is the classic case in Hastie, Tibshirani &amp; Friedman (§7.10.2).</p></div>
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">6 · Implement, unaided</div>
+    <h2>Write the honest versions</h2>
+    <p>Plain editor, numpy, hidden tests. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: AUC from ranks, with ties</h3>
+    <div id="ex-auc"></div>
+    <h3>Exercise 2: a point-in-time feature</h3>
+    <div id="ex-pit"></div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">7 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">How do you detect leakage before it reaches production?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Too-good-to-be-true checks: single-feature AUC near 1, one feature dominating importance, results far above published or prior baselines.</li>
+        <li>Audit every feature's source table and timestamp against the prediction time. Compare random-split vs time-split vs group-split scores.</li>
+        <li>Shadow deployment: score live traffic before launch and compare against the offline estimate. Adversarial validation can also reveal train/test distribution differences.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How would you design validation for a recommender that must serve both returning and new users?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>A temporal split (train up to T, evaluate after T) with features computed as of the prediction time.</li>
+        <li>Report separately for returning users and for users unseen in training (group split), and slice by item age for cold-start items.</li>
+        <li>Evaluate against the candidates the system would actually produce (lesson 9), and check that offline gains predict online ones over time.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Bias vs variance: how do you tell which one you have, and what do you do?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Plot learning curves: train and validation loss vs data size or training time.</li>
+        <li>High bias: both are high and close together. Add capacity or features, reduce regularization, train longer.</li>
+        <li>High variance: a large train-validation gap. Add data or augmentation, regularize (weight decay, dropout, early stopping), simplify.</li>
+        <li>If validation behaves oddly (better than train, unstable across seeds), suspect leakage or a split problem before tuning.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Your model degrades a month after launch. How do you tell leakage from drift?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Leakage: it was never as good as measured. Re-evaluate the offline setup with a proper time split and point-in-time features. If the offline score drops to match production, it was leakage.</li>
+        <li>Drift: it was good and the world changed. Monitor feature distributions (PSI/KS), prediction distribution, calibration, and label-delayed performance by cohort.</li>
+        <li>Responses: fix the pipeline for leakage; retrain cadence, recency weighting, or robustness for drift.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: Kaufman et al., <em>Leakage in Data Mining: Formulation, Detection, and Avoidance</em> (TKDD 2012); Hastie, Tibshirani &amp; Friedman, <em>The Elements of Statistical Learning</em>, §7.10; Roelofs et al., <em>A Meta-Analysis of Overfitting in Machine Learning</em> (NeurIPS 2019).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=4"></script>
+<script src="../assets/pyrunner.js?v=4"></script>
+<script src="exercises.js?v=4"></script>
+<script src="lesson.js?v=7"></script>
+</body>
+</html>
