@@ -1070,14 +1070,6 @@
     font-style: normal;
   }
 
-  /* live viz preview embed inside a card */
-  .atelier-preview {
-    border-radius: 10px;
-    overflow: hidden;
-    background: rgba(0,0,0,0.2);
-    border: 1px solid rgba(255,255,255,0.06);
-  }
-
   footer {
     text-align: center;
     padding: 60px 24px;
@@ -1585,25 +1577,16 @@
   <div class="atelier-grid">
     <a class="atelier-card anim" href="atelier/">
       <div class="ac-badge"><span class="ac-dot"></span>interactive</div>
-      <div class="ac-title">ML Visualizations</div>
+      <div class="ac-title">Machine learning, derived</div>
       <div class="ac-desc">
-        A visual ML study library built around intuition first &mdash; the kind of explanations that
-        should make Bayes, backprop, attention, ranking, and RL feel easier to see, not just easier
-        to memorize. The goal is to make the math move until the idea clicks.
+        Eleven interactive lessons on the ideas I keep coming back to: cross-entropy and KL, policy gradients and GRPO,
+        backprop, attention, Bayes, k-means, A/B tests, optimizers, retrieval vs ranking, PCA, and leakage. Each one starts
+        from a question, lets you play with the mechanism, and ends with code you write yourself.
       </div>
       <div class="ac-edge">explore &rarr;</div>
     </a>
   </div>
 
-  <!-- Live preview: one viz rendered inline -->
-  <div id="atelier-live-preview" class="anim" style="margin-top: 40px;">
-    <div style="font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 16px;">
-      live preview &mdash; try it
-    </div>
-    <div class="atelier-preview">
-      <div class="atelier-embed" data-viz="attention" id="atelier-preview-mount"></div>
-    </div>
-  </div>
 </section>
 
 <div class="divider"></div>
@@ -1736,30 +1719,6 @@
   I think everyone has something worth teaching.
 </footer>
 
-<!-- Atelier viz bundle (lazy-loaded only when section scrolls into view) -->
-<link rel="stylesheet" href="atelier/embed.css">
-<script>
-(function() {
-  var loaded = false;
-  var target = document.getElementById('atelier-live-preview');
-  if (!target) return;
-  var io = new IntersectionObserver(function(entries) {
-    if (entries[0].isIntersecting && !loaded) {
-      loaded = true;
-      var s1 = document.createElement('script');
-      s1.src = 'atelier/react-viz/dist/atelier-viz.iife.js';
-      s1.onload = function() {
-        var s2 = document.createElement('script');
-        s2.src = 'atelier/embed.js';
-        document.body.appendChild(s2);
-      };
-      document.body.appendChild(s1);
-      io.disconnect();
-    }
-  }, { rootMargin: '200px' });
-  io.observe(target);
-})();
-</script>
 
 <script type="module">
 // ═══════════════════════════════════════════════
