@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k-means</title>
+<meta name="description" content="k-means from its objective: why nearest-center assignment and mean updates, Lloyd's algorithm as coordinate descent, local minima, k-means++, scaling, and a tested implementation.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=4">
+<style>
+  .level-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .level-bar .btn { font-size: 0.85rem; padding: 6px 11px; }
+  .level-bar .btn.done::after { content: ' ✓'; color: var(--good); }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  .sub { font-weight: 600; font-size: 0.88rem; }
+  .hbar { display: grid; grid-template-columns: 9em 1fr 4em; gap: 6px 10px; align-items: center; font-size: 0.9rem; margin-top: 8px; }
+  .hbar .bar { height: 14px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
+  .hbar .bar b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; }
+  .hbar .num { font-family: var(--mono); font-size: 0.82rem; text-align: right; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 06 · Unsupervised learning · ~30 min + code</div>
+  <h1>k-means, against Lloyd's algorithm</h1>
+  <p class="lede">You have users described by two features and want \(k\) groups, so that every user is close to their group's center. What does "best" mean, how do you find it, and when does the standard algorithm fail?</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#objective"><span>1</span>The objective</a>
+    <a href="#lloyd"><span>2</span>Two moves</a>
+    <a href="#game"><span>3</span>Play: place the centers</a>
+    <a href="#init"><span>4</span>Initialization</a>
+    <a href="#scale"><span>5</span>Scale and shape</a>
+    <a href="#fresh"><span>6</span>New cases</a>
+    <a href="#implement"><span>7</span>Implement</a>
+    <a href="#followups"><span>8</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="objective">
+    <div class="kicker">1 · The objective</div>
+    <h2>What makes a clustering good?</h2>
+    <p>Pick \(k\) centers \(\mu_1,\dots,\mu_k\) and give each point \(x_i\) to one of them. k-means scores the result by the total squared distance from each point to its own center, the <strong>inertia</strong>:</p>
+    <div class="eq big">\[ J = \sum_{i=1}^{n} \big\lVert x_i - \mu_{c(i)} \big\rVert^2 \]</div>
+    <p>Two things can change: the assignments \(c(i)\) and the centers \(\mu_j\). Optimizing both at once is hard (NP-hard in general). Each one alone is easy.</p>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="lloyd">
+    <div class="kicker">2 · Two moves</div>
+    <h2>Fix one, solve the other</h2>
+    <div class="check" data-gate>
+      <div class="q">The centers are fixed. Which assignment of each point minimizes \(J\)?</div>
+      <div class="opts">
+        <button class="opt" data-correct>Each point to its nearest center</button>
+        <button class="opt">Balance the groups so each center gets the same number of points</button>
+        <button class="opt">Each point to the center of the largest group</button>
+      </div>
+      <div class="answer"><p>\(J\) is a sum of one term per point, and each point's term depends only on its own assignment. So each point independently picks the center that makes its term smallest: the nearest one. That carves the plane into regions, one per center (a Voronoi diagram).</p></div>
+    </div>
+    <div class="check" data-gate>
+      <div class="q">Now the assignments are fixed. Where should a center go to minimize the squared distances to its points?</div>
+      <div class="opts">
+        <button class="opt">To the median of its points</button>
+        <button class="opt" data-correct>To the mean of its points</button>
+        <button class="opt">To the point farthest from the others</button>
+      </div>
+      <div class="answer">
+        <div class="eq">\[ \begin{aligned} \frac{\partial}{\partial \mu}\sum_{i \in S}\lVert x_i - \mu\rVert^2 &= -2\sum_{i\in S}(x_i - \mu) = 0 \\ \Rightarrow\quad \mu &= \frac{1}{|S|}\sum_{i\in S} x_i \end{aligned} \]</div>
+        <p>The mean. (The median minimizes the sum of absolute distances: that's k-medians, more robust to outliers.)</p>
+      </div>
+    </div>
+    <p>Alternate the two moves and you have <strong>Lloyd's algorithm</strong>, the thing everyone calls k-means. Each move can only lower \(J\) or leave it unchanged, and there are finitely many assignments, so it always stops. But it stops at a point where neither move helps. That's a <em>local</em> minimum, not necessarily the best clustering. The game shows the difference.</p>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">3 · Play it</div>
+    <h2>Place the centers</h2>
+    <p>Drag the ✕ centers. Points take the color of their nearest center, and the shaded regions show who owns what. Your score is the inertia \(J\). Get within 3% of the best clustering, then compare yourself with Lloyd.</p>
+    <div class="fig wide">
+      <div class="level-bar" id="levels"></div>
+      <p class="small" id="level-brief"></p>
+      <div class="chart" id="plane"></div>
+      <div class="readouts" id="km-read"></div>
+      <div class="btns">
+        <button class="btn" id="km-step">One Lloyd step</button>
+        <button class="btn primary" id="km-run">Run Lloyd to convergence</button>
+        <button class="btn" id="km-reset">Reset level</button>
+      </div>
+      <div class="debrief" id="km-debrief" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="init">
+    <div class="kicker">4 · Initialization</div>
+    <h2>Where you start decides where you stop</h2>
+    <p>Level 2 showed Lloyd getting stuck. The usual fix is choosing the starting centers well and running several restarts.</p>
+    <div class="check" data-gate>
+      <div class="q">You've picked the first starting center. How should you pick the next one?</div>
+      <div class="opts">
+        <button class="opt">The point farthest from the chosen centers</button>
+        <button class="opt">Uniformly at random</button>
+        <button class="opt" data-correct>At random, with probability proportional to the squared distance to the nearest chosen center</button>
+      </div>
+      <div class="answer"><p>That's <strong>k-means++</strong> (Arthur &amp; Vassilvitskii, 2007). Far points are likely picks, so new centers tend to land in uncovered clusters. It's still random, so a single outlier doesn't reliably grab a center, which is the weakness of always taking the farthest point. Uniform sampling often puts two centers in one blob. k-means++ also comes with a guarantee: the expected result is within \(O(\log k)\) of optimal before Lloyd even runs.</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">300 runs of Lloyd on level 2's data, by starting rule</div>
+      <div class="hbar" id="init-bars"></div>
+      <p class="fig-note">"Found the best" means final inertia within 0.1% of the best any run reached. Runs are recomputed in your browser.</p>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="scale">
+    <div class="kicker">5 · Scale and shape</div>
+    <h2>k-means sees only distances</h2>
+    <p>Real features come in different units. Here users differ in sessions per week (three real groups) and average session length in seconds (noise, 0 to 3,600).</p>
+    <div class="check" data-gate>
+      <div class="q">You run k-means with k = 3 on the raw features. What do you get?</div>
+      <div class="opts">
+        <button class="opt">The three session groups, since that's the real structure</button>
+        <button class="opt" data-correct>Three bands of session length, ignoring sessions per week</button>
+        <button class="opt">It fails to converge</button>
+      </div>
+      <div class="answer"><p>Distances in seconds are about 200× larger than distances in sessions, so the seconds axis decides every assignment. Standardize the features (or choose a metric deliberately) and the real groups appear:</p></div>
+    </div>
+    <div class="fig wide">
+      <div class="two">
+        <div><div class="sub">Raw features</div><div class="chart" id="raw-plot"></div></div>
+        <div><div class="sub">Standardized features</div><div class="chart" id="std-plot"></div></div>
+      </div>
+      <p class="fig-note">Same data and same k. Colors are the clusters k-means found. Axes are drawn in each feature's own units.</p>
+    </div>
+    <p>The same objective also explains k-means's other blind spots. It prefers round clusters of similar size: squared distance to a single center can't describe a ring, a long thin cloud, or a small dense cluster next to a big diffuse one. It also has no notion of noise: every outlier is assigned somewhere and drags that center.</p>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">6 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+    <div class="check">
+      <div class="q">You plot inertia \(J\) against \(k\) and pick the \(k\) with the lowest \(J\). What goes wrong?</div>
+      <div class="opts">
+        <button class="opt">Nothing: lowest inertia is the best clustering</button>
+        <button class="opt" data-correct>J always decreases with k, down to 0 at k = n</button>
+        <button class="opt">J increases with k, so you'd always pick k = 1</button>
+      </div>
+      <div class="answer"><p>More centers can always fit at least as well, and every point its own center gives \(J = 0\). Look for an elbow, use silhouette or the gap statistic, or better, choose \(k\) by how the clusters are used downstream (segment sizes, retrieval recall, business constraints).</p></div>
+    </div>
+    <div class="check">
+      <div class="q">During Lloyd's algorithm one center ends up with no points assigned. What should a robust implementation do?</div>
+      <div class="opts">
+        <button class="opt">Divide by zero and crash; the data is bad</button>
+        <button class="opt">Leave the center where it is forever</button>
+        <button class="opt" data-correct>Re-seed it, for example at the point currently farthest from its center</button>
+      </div>
+      <div class="answer"><p>The mean of an empty set is undefined. Leaving the center in place wastes one of your \(k\) clusters. Re-seeding at a poorly served point (or splitting the largest cluster) keeps all \(k\) useful and still lowers \(J\).</p></div>
+    </div>
+    <div class="check">
+      <div class="q">Your data is two concentric rings. What does k-means with k = 2 produce?</div>
+      <div class="opts">
+        <button class="opt">The inner ring and the outer ring</button>
+        <button class="opt" data-correct>Two halves, each containing parts of both rings</button>
+        <button class="opt">One cluster and one empty cluster</button>
+      </div>
+      <div class="answer"><p>Clusters from nearest-center assignment are convex regions (Voronoi cells), and a ring isn't one. Use a method built on connectivity or density (spectral clustering, DBSCAN), or first transform the features, for example to radius.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">7 · Implement, unaided</div>
+    <h2>Write k-means from scratch</h2>
+    <p>This is the kind of exercise a coding screen can ask for, so treat it like one. State the complexity per iteration (\(O(nkd)\)), the stopping rule, and the empty-cluster policy before you type. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: k-means++ initialization</h3>
+    <div id="ex-init"></div>
+    <h3>Exercise 2: Lloyd's algorithm</h3>
+    <div id="ex-km"></div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">8 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">Why does Lloyd's algorithm converge, and to what?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>It's coordinate descent on \(J\): the assignment step is optimal given the centers, and the update step is optimal given the assignments. So \(J\) never increases.</li>
+        <li>There are finitely many partitions, so it terminates, but at a local minimum (a fixed point). Global k-means is NP-hard.</li>
+        <li>In practice: k-means++ initialization, several restarts, and keep the lowest \(J\).</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How does k-means relate to Gaussian mixture models?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>A GMM fit by EM uses soft assignments (responsibilities) and learns means, covariances and weights.</li>
+        <li>k-means is the limit of EM for a GMM with equal, spherical covariances \(\sigma^2 I\) as \(\sigma \to 0\): responsibilities become hard, nearest-center assignments.</li>
+        <li>Prefer a GMM when clusters are elliptical, overlap, or you need probabilities of membership.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How is k-means used in large-scale retrieval?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>IVF indexes cluster the corpus embeddings with k-means (the coarse quantizer). A query scans only the nprobe nearest clusters: nprobe trades recall for latency.</li>
+        <li>Product quantization runs k-means separately on sub-vectors and stores codebook indices, compressing vectors for memory and fast approximate distances.</li>
+        <li>Training uses a sample and mini-batch or GPU k-means (e.g. Faiss). As embeddings drift, re-train the centroids, or cluster sizes skew and recall drops.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How would you run k-means on a billion points?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Mini-batch k-means: update centers from small random batches with per-center learning rates. Much cheaper, with slightly worse \(J\).</li>
+        <li>Parallel initialization (k-means||) instead of the sequential k-means++. Fit on a sample, then assign everything.</li>
+        <li>The assignment step is a nearest-neighbor search: use GPUs or ANN for large \(k\). Distribute by sharding the points and aggregating per-center sums and counts.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How do you evaluate a clustering when there are no labels?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Internal: inertia (only for comparing at fixed \(k\)), silhouette, Davies–Bouldin, and stability across seeds and subsamples.</li>
+        <li>External, when some labels exist: adjusted Rand index, NMI.</li>
+        <li>Best: the downstream task. Does segmenting improve a model, a targeting decision, or retrieval recall at fixed latency?</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: S. Lloyd, <em>Least squares quantization in PCM</em> (1982); Arthur &amp; Vassilvitskii, <em>k-means++: The Advantages of Careful Seeding</em> (SODA 2007); D. Sculley, <em>Web-Scale K-Means Clustering</em> (WWW 2010); Jégou, Douze &amp; Schmid, <em>Product Quantization for Nearest Neighbor Search</em> (TPAMI 2011); Johnson, Douze &amp; Jégou, <a href="https://arxiv.org/abs/1702.08734">Billion-scale similarity search with GPUs</a> (2017).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=4"></script>
+<script src="../assets/pyrunner.js?v=4"></script>
+<script src="exercises.js?v=4"></script>
+<script src="lesson.js?v=6"></script>
+</body>
+</html>
