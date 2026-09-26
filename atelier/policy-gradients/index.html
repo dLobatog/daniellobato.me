@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Policy gradients to GRPO</title>
+<meta name="description" content="Turn a reward into a gradient: REINFORCE, baselines and advantages, PPO's ratio and clipping, and GRPO's group-relative advantages, KL term and length bias.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css">
+<style>
+  .pbars { display: grid; grid-template-columns: 4.2em 1fr 3.4em; gap: 6px 10px; align-items: center; font-size: 0.92rem; margin-top: 8px; }
+  .pbars .bar { height: 14px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
+  .pbars .bar b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; transition: width 0.35s ease; }
+  .pbars .bar b.best { background: var(--good); }
+  .pbars .num { font-family: var(--mono); font-size: 0.82rem; text-align: right; }
+  .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 720px) { .panels { grid-template-columns: 1fr; } }
+  .panel-title { font-weight: 600; font-size: 0.9rem; }
+  .panel-sub { font-size: 0.82rem; color: var(--ink-3); }
+  .push-table td { vertical-align: middle; }
+  .push-table .ans { font-family: var(--mono); font-weight: 500; }
+  .round-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .round-note { color: var(--ink-2); font-size: 0.95rem; margin: 4px 0 8px; }
+  .advbar { display: inline-block; width: 70px; height: 10px; position: relative; vertical-align: middle; }
+  .advbar::before { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px; border-left: 1px solid var(--ink-3); }
+  .advbar b { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 02 · Reinforcement learning for LLMs · ~40 min + code</div>
+  <h1>From a reward to a gradient: REINFORCE, PPO, GRPO</h1>
+  <p class="lede">A model answers <em>What is 17 × 24?</em> A checker says right or wrong. Nobody hands the model the correct answer to imitate; it has to find it by trying. How do you turn a score into a gradient?</p>
+  <p>This lesson builds that step by step. Each step fixes a concrete failure of the one before, and the result is the GRPO objective, term by term. Lesson 1's softmax gradient and KL are the only prerequisites.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#reinforce"><span>1</span>Reward → gradient</a>
+    <a href="#baseline"><span>2</span>Baselines</a>
+    <a href="#grpo"><span>3</span>Group advantages</a>
+    <a href="#clip"><span>4</span>Ratios and clipping</a>
+    <a href="#tokens"><span>5</span>Tokens, length, KL</a>
+    <a href="#fresh"><span>6</span>New cases</a>
+    <a href="#implement"><span>7</span>Implement</a>
+    <a href="#followups"><span>8</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="reinforce">
+    <div class="kicker">1 · Reward → gradient</div>
+    <h2>No label, only a score</h2>
+    <p>Keep it small. The model's policy \(\pi\) is a softmax over six candidate answers to the prompt, exactly like lesson 1's four words. A grader gives partial credit for being close to 408:</p>
+    <div class="scroll-x"><table class="plain" id="answers-table"></table></div>
+    <p>With supervised fine-tuning you would raise \(\log \pi(\text{408})\) because a human wrote 408. Here nobody did. You sample an answer \(y\) from your own policy, and the grader returns \(r(y)\).</p>
+
+    <div class="check" data-gate>
+      <div class="q">Which update increases the expected reward \(J = \sum_y \pi(y)\, r(y)\)?</div>
+      <div class="opts">
+        <button class="opt" data-correct>Raise \(\log \pi\) of the answer you sampled, scaled by its reward: \(\Delta z \propto r(y)\, \nabla \log \pi(y)\)</button>
+        <button class="opt">Raise \(\log \pi\) of the best answer you know of, as in SFT</button>
+        <button class="opt">None: the grader isn't differentiable, so there is no gradient</button>
+      </div>
+      <div class="answer">
+        <p>The grader is never differentiated. Only the policy is:</p>
+        <div class="eq">\[ \nabla J = \sum_y r(y)\, \nabla \pi(y) = \sum_y \pi(y)\, r(y)\, \nabla \log \pi(y) = \mathbb{E}_{y\sim\pi}\big[\, r(y)\, \nabla \log \pi(y) \,\big] \]</div>
+        <p>The middle step is the log-derivative trick, \(\nabla \pi = \pi\, \nabla\log\pi\). It turns a sum over all answers into an average over samples, so one sample gives an unbiased estimate: \(r(y)\nabla\log\pi(y)\). This is <strong>REINFORCE</strong> (Williams, 1992).</p>
+      </div>
+    </div>
+
+    <p>On the logits you already know \(\nabla_z \log\pi(y) = e_y - \pi\) from lesson 1 (it's minus the cross-entropy gradient). So one REINFORCE step is</p>
+    <div class="eq big">\[ z \leftarrow z + \eta\; r(y)\,\big(e_y - \pi\big) \]</div>
+    <p>It's SFT on your own sample, weighted by its reward. Try a few steps by hand:</p>
+    <div class="fig">
+      <div class="fig-title">One sample, one update (η = 1)</div>
+      <div class="pbars" id="step-bars"></div>
+      <div class="readouts" id="step-readouts"></div>
+      <div class="btns"><button class="btn primary" id="step-go">Sample and update</button><button class="btn" id="step-reset">Reset</button></div>
+      <p class="fig-note" id="step-note">Bars show π, the probability of each answer. Green is the best answer.</p>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="baseline">
+    <div class="kicker">2 · Baselines</div>
+    <h2>Why subtract anything?</h2>
+    <p>Every answer here scores between 0.4 and 1.0, so every reward is positive.</p>
+
+    <div class="check" data-gate>
+      <div class="q">The policy samples 380, the worst answer (r = 0.4). What does the REINFORCE step do to π(380)?</div>
+      <div class="opts">
+        <button class="opt" data-correct>Raises it</button>
+        <button class="opt">Lowers it, because it's the worst answer</button>
+        <button class="opt">Leaves it unchanged</button>
+      </div>
+      <div class="answer">
+        <p>It raises it. \(r = 0.4 &gt; 0\), so the step is \(+0.4\,(e_y - \pi)\), which pushes the sampled answer up. On average the updates still favor better answers, because they get bigger pushes. But each single step pushes up whatever it happened to draw, and early luck compounds: the more likely an answer becomes, the more often it's sampled and pushed again.</p>
+      </div>
+    </div>
+
+    <p>Subtract a <strong>baseline</strong> \(b\), for instance the average reward in the batch, and use the <strong>advantage</strong> \(A = r - b\) instead of \(r\). An answer that beats the batch average is pushed up, and one that falls below it is pushed down. Here are 30 training runs of each version, 4 samples per step:</p>
+
+    <div class="fig wide">
+      <div class="fig-title">Expected reward during training: 30 runs each, same learning rate</div>
+      <div class="panels" id="curves"></div>
+      <div class="btns"><button class="btn" id="curves-go">Run 30 new seeds</button></div>
+      <p class="fig-note">Each thin line is one run; the thick line is their mean. "Ended on 408" counts runs with π(408) &gt; 0.9 after 150 steps.</p>
+    </div>
+
+    <div class="check" data-gate>
+      <div class="q">Subtracting \(b\) changes every single update. Why is that allowed?</div>
+      <div class="opts">
+        <button class="opt">It biases the gradient, but in a helpful direction</button>
+        <button class="opt" data-correct>It doesn't change the expected gradient, only the noise</button>
+        <button class="opt">It's only valid if \(b\) equals the true expected reward</button>
+      </div>
+      <div class="answer">
+        <p>For any \(b\) that doesn't depend on which answer was sampled:</p>
+        <div class="eq">\[ \mathbb{E}_{y\sim\pi}\big[\, b\,\nabla\log\pi(y) \,\big] = b \sum_y \nabla \pi(y) = b\, \nabla \!\sum_y \pi(y) = b\,\nabla 1 = 0 \]</div>
+        <p>The expected gradient is unchanged, and its variance can drop a lot. The best constant baseline is close to the expected reward. PPO learns it with a value network \(V(s)\). GRPO, next, gets it for free from a group of samples.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="grpo">
+    <div class="kicker">3 · Group-relative advantages</div>
+    <h2>GRPO: let the group be the baseline</h2>
+    <p>PPO for LLMs trains a second network, a value model as large as the policy, just to predict expected reward. GRPO (Shao et al., DeepSeekMath, 2024) removes it. For each prompt it samples a group of \(G\) completions, scores them, and compares each one to its own group:</p>
+    <div class="eq big">\[ \hat A_i = \frac{r_i - \operatorname{mean}(r_1,\dots,r_G)}{\operatorname{std}(r_1,\dots,r_G)} \]</div>
+    <p>From here on the checker is binary: 1 if the answer is 408, 0 otherwise, the usual setup for math with a verifier. Before any formula work, build the instinct.</p>
+    <div class="fig wide">
+      <div class="fig-title">Game: predict the push</div>
+      <p class="small muted" style="margin:2px 0 8px">For each completion in the group, predict whether the update makes it more likely (↑), less likely (↓), or leaves it alone (0). Then check.</p>
+      <div id="game-grpo"></div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="clip">
+    <div class="kicker">4 · Ratios and clipping</div>
+    <h2>Reusing samples without trusting them too far</h2>
+    <p>Sampling completions from an LLM is the expensive part, so PPO and GRPO take several gradient steps on each batch. After the first step, the policy being trained, \(\pi_\theta\), is no longer the policy that produced the samples, \(\pi_{\text{old}}\). The <strong>importance ratio</strong> corrects for that:</p>
+    <div class="eq">\[ \rho = \frac{\pi_\theta(y)}{\pi_{\text{old}}(y)}, \qquad \mathbb{E}_{y\sim\pi_{\text{old}}}\big[\rho\, A\big] = \mathbb{E}_{y\sim\pi_\theta}\big[A\big] \]</div>
+    <p>But a batch drawn from \(\pi_{\text{old}}\) only says something reliable about policies near \(\pi_{\text{old}}\).</p>
+
+    <div class="check" data-gate>
+      <div class="q">A good completion (A &gt; 0) is already 30% more likely than when it was sampled: ρ = 1.3. With ε = 0.2, should the next step keep pushing it up?</div>
+      <div class="opts">
+        <button class="opt">Yes: A &gt; 0, so always push it up</button>
+        <button class="opt" data-correct>No: stop pushing; the batch only vouches for moves up to ρ = 1 + ε</button>
+        <button class="opt">Push it back down toward ρ = 1</button>
+      </div>
+      <div class="answer">
+        <p>Stop, but don't reverse. PPO's clipped objective takes the minimum of the plain term and a clipped one:</p>
+        <div class="eq">\[ L(\rho) = \min\!\big(\rho A,\; \operatorname{clip}(\rho,\, 1-\varepsilon,\, 1+\varepsilon)\, A\big) \]</div>
+        <p>Beyond \(1+\varepsilon\) the clipped term is constant, the min picks it, and its gradient is zero. The completion stays where it is, and nothing pulls it back.</p>
+      </div>
+    </div>
+
+    <div class="fig">
+      <div class="fig-title">The clipped objective for one completion (ε = 0.2)</div>
+      <div class="btns" style="margin-top:4px"><div class="seg" id="clip-sign"><button class="on" data-sign="1">Good completion, A &gt; 0</button><button data-sign="-1">Bad completion, A &lt; 0</button></div></div>
+      <div class="chart" id="clip-chart"></div>
+      <div class="ctl"><label for="rho">ratio ρ</label><input id="rho" type="range" min="0.3" max="1.8" step="0.01" value="1.3"><output id="rho-out"></output></div>
+      <div class="readouts" id="clip-readouts"></div>
+      <p class="fig-note">Drag ρ. The slope of the curve at the dot is the gradient the completion receives. Flat means clipped: no gradient.</p>
+    </div>
+    <p>Flip to the bad completion and look at where the flat part is. Clipping only removes the incentive to move <em>further in the direction the advantage wants</em>. If a bad completion became more likely (ρ &gt; 1), nothing is clipped, and the full gradient pushes it back down. Now play it with ratios:</p>
+    <div class="fig wide">
+      <div class="fig-title">Game: predict the push, second step on the same batch</div>
+      <div id="game-clip"></div>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="tokens">
+    <div class="kicker">5 · The full objective</div>
+    <h2>Tokens, length, and the KL leash</h2>
+    <p>A completion is a sequence of tokens, and the ratio is taken per token. Here is GRPO as written in DeepSeekMath:</p>
+    <div class="eq">\[ \begin{aligned} J(\theta) = \mathbb{E}\Bigg[ \frac{1}{G}\sum_{i=1}^{G} \frac{1}{|o_i|} \sum_{t=1}^{|o_i|} \Big\{ &\min\!\big(\rho_{i,t}\hat A_{i},\ \operatorname{clip}(\rho_{i,t}, 1\!-\!\varepsilon, 1\!+\!\varepsilon)\,\hat A_{i}\big) \\ &- \beta\, \mathrm{KL}\big[\pi_\theta \,\|\, \pi_{\text{ref}}\big] \Big\} \Bigg] \end{aligned} \]</div>
+    <p>You've built everything inside the braces. Three details are left, and each one is a common interview follow-up.</p>
+
+    <div class="check" data-gate>
+      <div class="q">A 5-token completion is wrong because of token 3. Which tokens does this update push down?</div>
+      <div class="opts">
+        <button class="opt">Only token 3</button>
+        <button class="opt">Tokens 3, 4 and 5, from the mistake onward</button>
+        <button class="opt" data-correct>All five, equally</button>
+      </div>
+      <div class="answer">
+        <p>All five get the same \(\hat A_i\), because the reward describes the whole sequence. GRPO has no per-token credit assignment. PPO with a learned value function can give each token its own advantage, but that needs the critic GRPO removed. Over many samples the correct tokens also show up in good completions, so their pushes roughly cancel. That cancellation is slow and noisy.</p>
+      </div>
+    </div>
+
+    <div class="check" data-gate>
+      <div class="q">Two wrong completions, both with \(\hat A = -1\): one is 10 tokens long, the other 100. With the \(1/|o_i|\) average, how hard is each token of the long one pushed down, compared with the short one?</div>
+      <div class="opts">
+        <button class="opt">The same</button>
+        <button class="opt" data-correct>10× less</button>
+        <button class="opt">10× more</button>
+      </div>
+      <div class="answer">
+        <p>10× less. Each token's weight is \(\hat A_i / |o_i|\). Long wrong answers are punished less per token, and long right answers are rewarded less per token. The net pressure favors making wrong answers longer. Liu et al. (2025, "Dr. GRPO") identify this length bias and remove the \(1/|o_i|\). DAPO (Yu et al., 2025) averages over all tokens in the batch instead. Try it:</p>
+      </div>
+    </div>
+    <div class="fig wide">
+      <div class="fig-title">Per-token push in one group of four</div>
+      <div class="scroll-x"><table class="qtable" id="len-table"></table></div>
+      <p class="fig-note">Click a reward to flip it. The last two columns are the weight each token of that completion gets in the loss, ×1000. GRPO averages within each sequence: \(\hat A_i / (G\,|o_i|)\). DAPO averages over all tokens in the group: \(\hat A_i / \sum_j |o_j|\).</p>
+    </div>
+
+    <p><strong>The KL term</strong> is lesson 1's reverse KL, \(\mathrm{KL}(\pi_\theta\|\pi_{\text{ref}})\), where \(\pi_{\text{ref}}\) is the model before RL. It's estimated per token on the sampled completions with \(\frac{\pi_{\text{ref}}}{\pi_\theta} - \ln\frac{\pi_{\text{ref}}}{\pi_\theta} - 1\) and subtracted with weight \(\beta\). That keeps the policy from wandering where the reference model puts little mass, a partial brake on reward hacking. Unlike InstructGPT-style PPO, where the KL penalty is added to the reward, GRPO keeps it as a separate loss term. DAPO removes it entirely. Name your variant.</p>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">6 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+
+    <div class="check">
+      <div class="q">You multiply every reward by 10. What changes in GRPO's update? In plain REINFORCE?</div>
+      <div class="opts">
+        <button class="opt">Both updates get 10× larger</button>
+        <button class="opt" data-correct>GRPO: nothing. REINFORCE: the update is 10× larger, like a 10× learning rate</button>
+        <button class="opt">GRPO: 10× larger. REINFORCE: nothing</button>
+      </div>
+      <div class="answer"><p>Standardizing by the group's mean and std makes \(\hat A\) invariant to shifting or scaling rewards. REINFORCE's step is proportional to \(r\). This is also why GRPO needs no reward normalization and why its effective step size changes from prompt to prompt: a group whose rewards barely differ still gets advantages of order 1.</p></div>
+    </div>
+
+    <div class="check">
+      <div class="q">Your model already solves a prompt in all 8 of 8 samples. What does GRPO learn from that prompt?</div>
+      <div class="opts">
+        <button class="opt">It reinforces all 8 answers strongly</button>
+        <button class="opt" data-correct>Nothing: every advantage is 0</button>
+        <button class="opt">It lowers their probability to encourage exploration</button>
+      </div>
+      <div class="answer"><p>Every \(r_i\) equals the mean, so every \(\hat A_i = 0\). All-wrong groups are the same. Those prompts cost a full generation and give no gradient. As training progresses, more prompts become all-correct and the effective batch shrinks. DAPO's "dynamic sampling" keeps sampling until the batch is full of groups with mixed outcomes. A curriculum of prompts at the edge of the model's ability does the same job.</p></div>
+    </div>
+
+    <div class="check">
+      <div class="q">A learned reward model gives a bonus to answers that sound confident. After a while, reward keeps climbing. What is the first thing to check?</div>
+      <div class="opts">
+        <button class="opt">Nothing; rising reward means the model is improving</button>
+        <button class="opt" data-correct>Accuracy on a held-out verifier or human-graded set, and actual samples</button>
+        <button class="opt">Increase ε so the policy can follow the reward faster</button>
+      </div>
+      <div class="answer"><p>Reward that keeps rising while held-out accuracy stalls is the signature of reward hacking. The policy found a way to please the grader that doesn't solve the task. Also watch the KL to the reference, the output length, and actual samples. Fixes: repair or ensemble the reward model, raise \(\beta\), cap training steps, or use a verifiable reward where possible.</p></div>
+    </div>
+
+    <div class="check">
+      <div class="q">A group of G = 2 with binary rewards. What advantages can occur (population std)?</div>
+      <div class="opts">
+        <button class="opt">Any value between −1 and 1</button>
+        <button class="opt" data-correct>Only (+1, −1) or (0, 0)</button>
+        <button class="opt">Only (+1, 0) or (0, −1)</button>
+      </div>
+      <div class="answer"><p>With one right and one wrong, the mean is 0.5 and the std 0.5, so \(\hat A = (+1, -1)\). With equal rewards, both are 0. Every informative group is a pure pairwise comparison: raise the winner, lower the loser. That's close in spirit to preference learning, except the pairs come from the current policy (online), not a fixed dataset as in DPO.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">7 · Implement, unaided</div>
+    <h2>Write the pieces of the GRPO loss</h2>
+    <p>Plain editor, no completion, hidden tests. State shapes and edge cases out loud first. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: group-relative advantages</h3>
+    <div id="ex-adv"></div>
+    <h3>Exercise 2: the clipped surrogate and its gradient</h3>
+    <div id="ex-clip"></div>
+    <h3>Exercise 3: the per-token KL estimator</h3>
+    <div id="ex-kl"></div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">8 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+    <p>About a minute each. Short answer first, then the reason.</p>
+
+    <div class="followup"><div class="q">What does GRPO remove from PPO, and what does that cost?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>It removes the value network: no critic to train, and no second policy-sized model in memory.</li>
+        <li>Costs: G samples per prompt, a baseline that's noisy when G is small, no per-token credit assignment, and zero signal from all-correct or all-wrong groups.</li>
+        <li>It fits verifiable, sequence-level rewards (math, code) where a good critic is hard to learn anyway.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why is a baseline allowed, and what is the best one?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>\(\mathbb{E}[b\,\nabla\log\pi] = b\,\nabla\sum\pi = 0\) for any \(b\) that doesn't depend on the sampled action, so the gradient stays unbiased.</li>
+        <li>Variance is roughly minimized by \(b \approx \mathbb{E}[r]\); the state value \(V(s)\) is the standard choice, which gives advantage \(A = Q - V\).</li>
+        <li>GRPO's group mean is a Monte Carlo estimate of \(V\) for that prompt. Including \(r_i\) in its own mean only rescales the expected gradient by \((G-1)/G\). Dividing by the group std, which also depends on \(r_i\), is what makes GRPO not exactly an unbiased policy gradient. RLOO uses a leave-one-out mean and no std.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Walk through PPO's clipped objective for A &gt; 0 and A &lt; 0.</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>A &gt; 0: gradient flows while ρ &lt; 1+ε, then the objective is flat, so there's no incentive to increase the probability further.</li>
+        <li>A &lt; 0: gradient flows while ρ &gt; 1−ε, and it's flat below that. A bad action that became more likely is never clipped.</li>
+        <li>It's a cheap, first-order stand-in for TRPO's KL trust region. It limits incentive, not the step itself, so monitor KL(π_old‖π) and clip fraction, and stop epochs early if they spike.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Where does GRPO's length bias come from, and how do you fix it?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>The per-sequence mean \(1/|o_i|\) gives each token weight \(\hat A_i/|o_i|\), so long wrong answers are penalized less per token. Response length drifts upward, especially for incorrect outputs.</li>
+        <li>Fixes: token-level averaging across the batch (DAPO), or dropping the length normalization (Dr. GRPO). Also check overlong truncation and any length terms in the reward.</li>
+        <li>Diagnose with length curves split by correct vs incorrect.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">DPO vs online RL with a reward (PPO/GRPO): what's actually different?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>DPO optimizes the same KL-regularized objective using its closed-form optimum \(\pi^* \propto \pi_{\text{ref}}\,e^{r/\beta}\). This turns preference pairs into a classification loss on log-ratios, with no sampling and no reward model.</li>
+        <li>It's offline: it learns only from pairs in the dataset. Online RL samples from the current policy, so it can explore and correct its own new mistakes. It also costs generation, and it can hack the reward.</li>
+        <li>Choose by data: fixed preference pairs favor DPO; a checkable reward and compute favor online RL.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How would you show that an RL run actually improved the model?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Held-out tasks not used for training, checked for contamination. Report pass@1 and pass@k with confidence intervals over seeds, not just reward.</li>
+        <li>Baselines: the SFT model, best-of-n sampling from it (does RL beat reranking?), and an ablation per change.</li>
+        <li>Watch for regressions: KL, length, format hacking, and general capabilities on other benchmarks. Read samples.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: R. J. Williams, <em>Simple statistical gradient-following algorithms</em> (1992); Schulman et al., <a href="https://arxiv.org/abs/1707.06347">Proximal Policy Optimization Algorithms</a> (2017); Shao et al., <a href="https://arxiv.org/abs/2402.03300">DeepSeekMath</a> (2024); Liu et al., <a href="https://arxiv.org/abs/2503.20783">Understanding R1-Zero-Like Training</a> (2025); Yu et al., <a href="https://arxiv.org/abs/2503.14476">DAPO</a> (2025); Rafailov et al., <a href="https://arxiv.org/abs/2305.18290">Direct Preference Optimization</a> (2023).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js"></script>
+<script src="../assets/pyrunner.js"></script>
+<script src="exercises.js"></script>
+<script src="lesson.js"></script>
+</body>
+</html>

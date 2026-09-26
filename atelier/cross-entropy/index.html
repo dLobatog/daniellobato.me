@@ -8,24 +8,15 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
 <link rel="stylesheet" href="../assets/atelier.css">
 <style>
-  @media (max-width: 560px) { .eq-live .katex { font-size: 0.92em; } }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.88rem; color: var(--ink-2); margin: 6px 0 4px; }
-  .legend i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
   .legend i.hatch { background: repeating-linear-gradient(135deg, var(--ink-3) 0 2px, transparent 2px 5px); border: 1px solid var(--ink-3); }
   .legend i.save { border: 1.5px dashed var(--ink-3); }
   .legend i.floor { height: 0; border-top: 2px dashed var(--ink); border-radius: 0; }
   .legend i.line { height: 0; border-top: 2px solid var(--ink); border-radius: 0; }
   .legend i.dots { height: 0; border-top: 2px dotted var(--ink); border-radius: 0; }
   .words { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 14px; }
-  .ctl { display: grid; grid-template-columns: 7.5em 1fr 3.5em; gap: 8px; align-items: center; font-size: 0.92rem; margin-top: 8px; }
-  .ctl output { font-family: var(--mono); font-size: 0.85rem; text-align: right; }
   .gradbar { display: inline-block; width: 60px; height: 10px; position: relative; vertical-align: middle; margin-left: 6px; }
   .gradbar::before { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; border-left: 1px solid var(--ink-3); }
   .gradbar b { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
-  table.plain { border-collapse: collapse; width: 100%; font-size: 0.92rem; margin: 10px 0 16px; }
-  table.plain th, table.plain td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-  table.plain th { font-weight: 600; font-size: 0.82rem; color: var(--ink-3); }
-  .scroll-x { overflow-x: auto; }
   .reveal-load { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .reveal-load button { font-size: 0.85rem; padding: 4px 10px; }
   .game-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
@@ -37,7 +28,6 @@
   .game-table td.pm { white-space: nowrap; text-align: right; }
   .game-table td.pm .btn { width: 32px; height: 30px; padding: 0; margin-left: 4px; font-size: 1.05rem; line-height: 1; }
   .game-table tr.hit td { background: var(--accent-soft); }
-  .debrief { border-top: 1px solid var(--rule); margin-top: 14px; padding-top: 14px; font-size: 0.97rem; }
 </style>
 </head>
 <body>
