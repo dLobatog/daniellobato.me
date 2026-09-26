@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retrieval vs ranking</title>
+<meta name="description" content="Why recommendation systems retrieve then rank: the recall ceiling, two-tower models and ANN, a latency-budget game, in-batch negatives and the logQ correction, and ranking metrics.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=4">
+<style>
+  .ctl { grid-template-columns: 9.5em 1fr 4.5em; }
+  .slots { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; margin: 8px 0; }
+  .slots button { font: 600 0.85rem var(--sans); padding: 10px 0; border-radius: 6px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink-3); cursor: pointer; }
+  .slots button.rel { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+  .slotlabels { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; font-size: 0.72rem; color: var(--ink-3); text-align: center; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 09 · Recommendation systems · ~35 min + code</div>
+  <h1>Retrieval vs ranking</h1>
+  <p class="lede">You ship a much better ranking model. Offline NDCG jumps. Online, for many users, the items they would have loved still never appear. Why?</p>
+  <p>Large recommenders don't score every item for every request. They <strong>retrieve</strong> a few hundred candidates cheaply from millions, then <strong>rank</strong> only those with an expensive model. Each stage has its own job, its own model, its own metric and its own failure modes. The ranker can only reorder what retrieval handed it.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#ceiling"><span>1</span>The recall ceiling</a>
+    <a href="#towers"><span>2</span>Two towers</a>
+    <a href="#game"><span>3</span>Play: budget the funnel</a>
+    <a href="#negatives"><span>4</span>Training retrieval</a>
+    <a href="#metrics"><span>5</span>Ranking metrics</a>
+    <a href="#fresh"><span>6</span>New cases</a>
+    <a href="#implement"><span>7</span>Implement</a>
+    <a href="#followups"><span>8</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="ceiling">
+    <div class="kicker">1 · The recall ceiling</div>
+    <h2>The ranker can't find what it never sees</h2>
+    <div class="check" data-gate>
+      <div class="q">A user has 10 items they'd love. Retrieval returns 500 candidates containing 6 of them. A <em>perfect</em> ranker then picks the top 10. At most how many loved items can the user see?</div>
+      <div class="opts">
+        <button class="opt">10: a perfect ranker finds them all</button>
+        <button class="opt" data-correct>6</button>
+        <button class="opt">It depends on the ranker's NDCG</button>
+      </div>
+      <div class="answer"><p>Six. Retrieval's <strong>recall@K</strong> (here 6/10 at K = 500) is a hard ceiling on everything downstream. A ranking improvement measured offline on logged candidates can look great while the missing four never had a chance. Evaluate retrieval by recall, on held-out interactions, against the whole corpus.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="towers">
+    <div class="kicker">2 · Two towers</div>
+    <h2>Why retrieval models look the way they do</h2>
+    <p>Retrieval must search millions of items in a few milliseconds. The standard answer: one network embeds the user (or query), another embeds each item, and the score is their dot product:</p>
+    <div class="eq big">\[ s(u, i) = f_\theta(u)^\top g_\phi(i) \]</div>
+    <p>Item embeddings are computed offline and loaded into an approximate nearest-neighbor index (IVF, HNSW, or product quantization, as in lesson 6's follow-ups). At request time you compute one user embedding and ask the index for the top K dot products.</p>
+    <div class="check" data-gate>
+      <div class="q">Why can't the retrieval model use a feature like "how often this user clicked this item's creator"?</div>
+      <div class="opts">
+        <button class="opt">It would overfit</button>
+        <button class="opt" data-correct>Item embeddings must be computed without knowing the user, so they can be indexed ahead of time</button>
+        <button class="opt">Two-tower models can't handle numeric features</button>
+      </div>
+      <div class="answer"><p>A user × item cross feature has to be computed per pair, and that's exactly what the index avoids. So retrieval gives up interaction features, and the ranker, which scores only a few hundred pairs, uses them freely (feature crosses, attention over the user's history for each candidate). That split is the reason for two stages. Late-interaction models (e.g. ColBERT-style multi-vector scoring) are a middle ground.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">3 · Play it</div>
+    <h2>Budget the funnel</h2>
+    <p>A corpus of 5,000 items. Each user has 10 relevant ones. You have <b>40 ms</b> per request. Choose a retriever (bigger embeddings find relevant items more reliably, but the index search costs more), how many candidates to pass on, and a ranker (the big one is more accurate but costs 5× more per candidate). Goal: <b>at least 6 relevant items in the top 10</b>, averaged over 120 simulated users.</p>
+    <div class="fig wide">
+      <div class="btns" style="margin-top:0"><span class="small muted" style="align-self:center;margin-right:4px">retriever</span><div class="seg" id="g-dim"><button data-v="16">16-d · 4 ms</button><button data-v="64" class="on">64-d · 10 ms</button><button data-v="256">256-d · 22 ms</button></div></div>
+      <div class="ctl"><label for="g-k">candidates K</label><input id="g-k" type="range" min="0" max="19" step="1" value="10"><output id="g-k-out"></output></div>
+      <div class="btns" style="margin-top:4px"><span class="small muted" style="align-self:center;margin-right:4px">ranker</span><div class="seg" id="g-rank"><button data-v="small" class="on">small · 0.008 ms each</button><button data-v="big">big · 0.04 ms each</button></div></div>
+      <div class="chart" id="funnel" style="margin-top:10px"></div>
+      <div class="readouts" id="g-out"></div>
+      <div class="debrief" id="g-debrief" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="negatives">
+    <div class="kicker">4 · Training retrieval</div>
+    <h2>Negatives you didn't choose</h2>
+    <p>The ideal retrieval loss is a softmax over the whole corpus: make the clicked item's score beat every other item's. That's millions of scores per example. The standard shortcut is <strong>in-batch negatives</strong>: in a batch of \(B\) (user, clicked item) pairs, each user's positive is scored against the other \(B-1\) users' items as negatives.</p>
+    <div class="eq">\[ L = -\frac1B\sum_{b=1}^{B} \log \frac{e^{s(u_b, i_b)}}{\sum_{c=1}^{B} e^{s(u_b, i_c)}} \]</div>
+    <div class="check" data-gate>
+      <div class="q">Items enter the batch in proportion to how often they're clicked. What does that do to a very popular item?</div>
+      <div class="opts">
+        <button class="opt">Nothing: every item is a negative equally often</button>
+        <button class="opt" data-correct>It shows up as a negative far more often, so the model learns to push it down too much</button>
+        <button class="opt">It gets pushed up, because it's also a frequent positive</button>
+      </div>
+      <div class="answer"><p>In-batch sampling draws negatives from the click distribution \(Q(i)\), not uniformly, so popular items are over-penalized relative to the full softmax. The <strong>logQ correction</strong> subtracts \(\log Q(i_c)\) from each logit before the softmax, which undoes that sampling bias (Yi et al., 2019). The other hazard is <strong>false negatives</strong>: another user's clicked item may be one this user would like too. It's labelled negative only because they were in the same batch.</p></div>
+    </div>
+    <div class="eq">\[ s^{\text{corrected}}(u_b, i_c) = s(u_b, i_c) - \log Q(i_c) \]</div>
+    <p>Two more habits are worth stating in an interview. Mix in random negatives from the whole corpus, since in-batch negatives are all popular items. And treat missing interactions as <em>unobserved</em>, not disliked: an item the user never saw carries no label.</p>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="metrics">
+    <div class="kicker">5 · Ranking metrics</div>
+    <h2>Where in the list matters</h2>
+    <p>Toggle which of the 10 shown positions hold a relevant item. This user has 3 relevant items in total.</p>
+    <div class="fig">
+      <div class="slots" id="slots"></div>
+      <div class="slotlabels" id="slotlabels"></div>
+      <div class="readouts" id="m-out"></div>
+      <p class="fig-note">\(\mathrm{DCG@10} = \sum_{i=1}^{10} \frac{\mathrm{rel}_i}{\log_2(i+1)}\); NDCG divides by the best possible DCG with 3 relevant items. MRR = 1 / (rank of the first relevant item).</p>
+    </div>
+    <div class="check" data-gate>
+      <div class="q">A single relevant item moves from rank 1 to rank 2. Then, separately, one moves from rank 9 to rank 10. Which move costs more NDCG?</div>
+      <div class="opts">
+        <button class="opt" data-correct>Rank 1 → 2, by a lot</button>
+        <button class="opt">Both cost the same: each is one position</button>
+        <button class="opt">Rank 9 → 10</button>
+      </div>
+      <div class="answer"><p>The discount \(1/\log_2(i+1)\) falls fast at the top: 1.00 → 0.63 for ranks 1 → 2, but 0.30 → 0.29 for ranks 9 → 10. NDCG and MRR are top-heavy, like user attention. Recall@10 ignores order entirely, which suits retrieval (did it make the list?) but not ranking.</p></div>
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">6 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+    <div class="check">
+      <div class="q">You train a ranker on logged clicks. Items at position 1 get far more clicks than at position 5, partly just because of position. What does a naive model learn?</div>
+      <div class="opts">
+        <button class="opt">Nothing wrong: clicks are the ground truth</button>
+        <button class="opt" data-correct>To favor whatever the old system put on top, because the position effect leaks into the relevance labels</button>
+        <button class="opt">To prefer lower positions</button>
+      </div>
+      <div class="answer"><p>Position bias. Fixes: include position as a training feature and set it to a constant at serving time, so the model explains position separately from relevance. Or weight examples by inverse examination propensity, estimated from randomized swaps. Or collect unbiased data with small randomization or interleaving.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">A new item was uploaded an hour ago with no interactions. How does it get retrieved at all?</div>
+      <div class="opts">
+        <button class="opt">It can't until it gets clicks</button>
+        <button class="opt" data-correct>Give the item tower content features (text, image, creator) so it gets an embedding on day zero, and reserve some exploration traffic</button>
+        <button class="opt">Put it at rank 1 for everyone</button>
+      </div>
+      <div class="answer"><p>ID-only embeddings can't represent an item with no history. Content features let the tower place it near similar items right away. Exploration (a small share of slots, bandit-style) gathers the interactions that refine it. Also make sure the index refresh cadence actually includes new items.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">The ranker's offline AUC improves, but it scores candidates that retrieval never produced in production (the eval set samples random negatives). What's the risk?</div>
+      <div class="opts">
+        <button class="opt">None: a better AUC is better</button>
+        <button class="opt" data-correct>The eval negatives are easy; the real job is separating good from nearly-as-good retrieved candidates</button>
+        <button class="opt">AUC can't be computed for rankers</button>
+      </div>
+      <div class="answer"><p>Evaluate each stage on the distribution it will actually see. The ranker should be evaluated on candidates the retriever produces, which are hard negatives. Retrieval should be evaluated by recall against the full corpus.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">7 · Implement, unaided</div>
+    <h2>Write the metric and the loss</h2>
+    <p>Plain editor, numpy, hidden tests. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: NDCG@k</h3>
+    <div id="ex-ndcg"></div>
+    <h3>Exercise 2: in-batch softmax loss with logQ correction</h3>
+    <div id="ex-inbatch"></div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">8 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">Design candidate generation for a feed with 100M items and a 50 ms budget.</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Several retrievers in parallel: a two-tower ANN over embeddings, co-engagement ("users who engaged with X also engaged with Y"), the social or follow graph, fresh and trending items. Union and dedupe, with per-source quotas.</li>
+        <li>Budgets per stage: ANN top-K per source, a lightweight pre-ranker to cut thousands to hundreds, then the heavy ranker.</li>
+        <li>Measure each source's recall and incremental recall on held-out engagements. Monitor index freshness and embedding drift, and keep a fallback when the index is stale.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Pointwise, pairwise and listwise ranking losses: when would you use each?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Pointwise (log loss per item): simple and calibrated, needed when probabilities feed auctions or blending, but it doesn't optimize order directly.</li>
+        <li>Pairwise (BPR, RankNet): learns that the clicked item outranks a non-clicked one. It targets order and is robust to label scale.</li>
+        <li>Listwise (softmax over the list, LambdaRank): LambdaRank weights each pair's gradient by the |ΔNDCG| of swapping them, so it focuses on errors near the top. Many production systems combine a calibrated pointwise head with a ranking objective.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why and how would you correct for sampling bias in two-tower training?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>In-batch negatives follow item popularity \(Q(i)\), so the sampled softmax is biased against popular items.</li>
+        <li>logQ correction: subtract \(\log Q(i)\) from each logit, estimating \(Q\) by streaming frequency counts.</li>
+        <li>Complement it with mixed negatives (uniform random from the corpus) and watch for false negatives: dedupe the same item within a batch and consider hard-negative mining with care.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How do feedback loops distort a recommender, and what do you do about them?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>The model only gets labels for what it showed, so its training data drifts toward its own preferences. Popular items get more exposure, then more clicks (rich-get-richer), and the catalog coverage narrows.</li>
+        <li>Mitigations: exploration traffic, propensity-aware training, diversity and freshness constraints in the final blend, and holdouts that measure long-term engagement rather than immediate clicks.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: Covington, Adams &amp; Sargin, <em>Deep Neural Networks for YouTube Recommendations</em> (RecSys 2016); Yi et al., <em>Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations</em> (RecSys 2019); Järvelin &amp; Kekäläinen, <em>Cumulated gain-based evaluation of IR techniques</em> (2002); Burges, <em>From RankNet to LambdaRank to LambdaMART</em> (2010); Joachims et al., <em>Unbiased Learning-to-Rank with Biased Feedback</em> (WSDM 2017).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=4"></script>
+<script src="../assets/pyrunner.js?v=4"></script>
+<script src="exercises.js?v=4"></script>
+<script src="lesson.js?v=4"></script>
+</body>
+</html>
