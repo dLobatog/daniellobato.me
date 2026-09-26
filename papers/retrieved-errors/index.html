@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Do Retrieved Errors Improve Decisions? — Daniel Lobato Garcia</title>
+<meta name="description" content="Can a world model use memories of its own past prediction errors to choose better plans? A prospective audit of memory-corrected visual planning. Preprint, September 2026.">
+<!-- Google Scholar (Highwire Press tags) -->
+<meta name="citation_title" content="Do Retrieved Errors Improve Decisions? A Prospective Audit of Memory-Corrected Visual Planning">
+<meta name="citation_author" content="Lobato Garcia, Daniel">
+<meta name="citation_publication_date" content="2026/09/26">
+<meta name="citation_pdf_url" content="https://daniellobato.me/papers/retrieved-errors/lobato-garcia-2026-retrieved-errors.pdf">
+<meta name="citation_abstract_html_url" content="https://daniellobato.me/papers/retrieved-errors/">
+<meta name="citation_keywords" content="world models; model-based planning; episodic memory; retrieval; cross-entropy method; prediction error">
+<meta name="citation_language" content="en">
+<!-- Link previews -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="Do Retrieved Errors Improve Decisions?">
+<meta property="og:description" content="A prospective audit of memory-corrected visual planning. Preprint by Daniel Lobato Garcia, September 2026.">
+<meta property="og:url" content="https://daniellobato.me/papers/retrieved-errors/">
+<meta property="og:image" content="https://daniellobato.me/papers/retrieved-errors/preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../../notes/notes.css">
+<style>
+.paper-sub { font-size: 1.3rem; color: var(--fg-dim); font-style: italic; margin-top: 10px; line-height: 1.4; }
+.paper-meta { font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; color: var(--fg-dim); margin-top: 22px; }
+.paper-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.note-article .paper-links a { font-family: var(--mono); font-size: .75rem; letter-spacing: .06em; color: var(--accent);
+  border: 1px solid rgba(201,169,110,.35); border-radius: 20px; padding: 6px 14px; }
+.note-article .paper-links a:hover { background: rgba(201,169,110,.1); }
+.paper-figure { width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,.08); margin-top: 8px; }
+.paper-caption { font-size: .95rem; color: var(--fg-dim); margin-top: 8px; line-height: 1.6; }
+.paper-disclosure { font-size: .95rem; color: var(--fg-dim); }
+</style>
+</head>
+<body>
+<nav class="note-nav">
+  <a href="../../index.html">&larr; Home</a>
+  <span class="note-tag" data-tag="Machine Learning">Preprint</span>
+</nav>
+<article class="note-article">
+  <header>
+    <h1>Do Retrieved Errors Improve Decisions?</h1>
+    <p class="paper-sub">A Prospective Audit of Memory-Corrected Visual Planning</p>
+    <p class="paper-meta">Daniel Lobato Garcia · Preprint · September 2026</p>
+    <div class="paper-links">
+      <a href="lobato-garcia-2026-retrieved-errors.pdf">PDF (14 pages)</a>
+      <a href="https://doi.org/10.5281/zenodo.22948935">Saved scores + code (Zenodo)</a>
+      <a href="#cite">BibTeX</a>
+    </div>
+  </header>
+
+  <h2>Abstract</h2>
+  <p>A world model predicts what will happen when an agent takes actions. Wrong predictions can make a bad plan look promising. Can remembering past prediction mistakes help the agent choose better plans?</p>
+  <p>We test this with an agent navigating through a doorway. Across 24 new navigation tasks and two fixed world models, we compare ways of using memory to score the same candidate plans. We find weak evidence of a small improvement from individual corrections over a shared correction to eligible plans. The improvement concerns visual similarity to the goal: actual goal-reaching changes little, and advantages over uncorrected or shuffled-memory scoring remain uncertain.</p>
+  <p>We also examine why planning fails: sometimes the candidate plans contain no successful route, sometimes useful plans are excluded from correction, and sometimes the scoring method chooses poorly.</p>
+
+  <img class="paper-figure" src="preview.png" alt="Bar chart of average regret over 192 choices on 24 fresh tasks: random plan 0.329, model's favorite 0.256, with memory 0.242, shuffled memory 0.245, random noise 0.247, model's second choice 0.234.">
+  <p class="paper-caption">Average regret over 192 choices on 24 fresh tasks (lower is better), from the explainer video. The noise and 2nd-choice bars are post-hoc checks added after the preprint, computed from the public saved scores.</p>
+
+  <h2>Reproduce</h2>
+  <p>The <a href="https://doi.org/10.5281/zenodo.22948935">Zenodo archive</a> contains every candidate plan's saved scores and outcomes, both frozen protocols, and a NumPy-only script (<code>python -B reproduce.py</code>) that recomputes both studies' selections and intervals.</p>
+
+  <h2 id="cite">Cite</h2>
+<pre><code>@misc{lobatogarcia2026retrieved,
+  title  = {Do Retrieved Errors Improve Decisions? A Prospective
+            Audit of Memory-Corrected Visual Planning},
+  author = {Lobato Garcia, Daniel},
+  year   = {2026},
+  month  = sep,
+  note   = {Preprint},
+  url    = {https://daniellobato.me/papers/retrieved-errors/}
+}</code></pre>
+
+  <p class="paper-disclosure">The author works at Meta on Instagram AI Search. This research is not affiliated with Meta and does not represent Meta's views. OpenAI Codex assisted with implementation, experimental checks, analysis, visualization, literature lookup and manuscript drafting. The explainer video was made with Claude Opus 5.5.</p>
+</article>
+<footer class="note-footer">
+  <a href="../../index.html">&larr; Home</a>
+</footer>
+</body>
+</html>
