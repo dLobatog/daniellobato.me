@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Atelier</title>
 <meta name="description" content="Short, exact lessons on the machine-learning ideas that matter most: build the mechanism on a small example, predict, then implement it.">
-<link rel="stylesheet" href="assets/atelier.css">
+<link rel="stylesheet" href="assets/atelier.css?v=3">
 </head>
 <body>
 <main class="page">
@@ -30,7 +30,11 @@
       <a href="backprop/">Backpropagation, by assigning blame</a>
       <p>Real numbers forward into a loss, then blame traced back through every weight and ReLU gate, an update, and a gradient check against nudging. Why sigmoid pairs with cross-entropy. Game: the blame game.</p>
     </li>
-    <li><span class="n">04</span><span class="soon">Attention: score, normalize, mix</span><p class="muted">In preparation.</p></li>
+    <li>
+      <span class="n">04</span>
+      <a href="attention/">Attention: score, normalize, mix</a>
+      <p>Dot products you can drag in 2-D, softmax as a temperature, outputs as convex mixes, why √d, causal masks, and the KV cache with a memory calculator. Game: be the query.</p>
+    </li>
     <li><span class="n">05</span><span class="soon">Bayes from counts</span><p class="muted">In preparation.</p></li>
     <li><span class="n">06</span><span class="soon">k-means, against Lloyd's algorithm</span><p class="muted">In preparation.</p></li>
     <li><span class="n">07</span><span class="soon">A/B tests and the cost of peeking</span><p class="muted">In preparation.</p></li>
@@ -40,6 +44,6 @@
     <li><span class="n">11</span><span class="soon">Leakage and the leaderboard that lies</span><p class="muted">In preparation.</p></li>
   </ul>
 </main>
-<script src="assets/core.js"></script>
+<script src="assets/core.js?v=3"></script>
 </body>
 </html>

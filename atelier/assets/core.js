@@ -41,6 +41,9 @@
       if (nw !== w) { w = nw; render(nw); }
     });
     ro.observe(container);
+    // Render now if the container is already laid out; the observer handles later size changes.
+    const now = Math.round(container.clientWidth);
+    if (now > 0) { w = now; render(now); }
     return () => render(Math.round(container.clientWidth));
   };
 

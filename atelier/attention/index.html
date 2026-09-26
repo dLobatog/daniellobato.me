@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attention</title>
+<meta name="description" content="Attention as score, normalize, mix: dot products in a plane you can drag, softmax and the square-root-of-d scaling, convex mixing of values, causal masks and the KV cache.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=3">
+<style>
+  .planes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 640px) { .planes { grid-template-columns: 1fr; } }
+  .plane-title { font-weight: 600; font-size: 0.88rem; margin-bottom: 2px; }
+  .wbars { display: grid; grid-template-columns: 6.5em 1fr 3.2em 3.2em; gap: 5px 10px; align-items: center; font-size: 0.9rem; margin-top: 10px; }
+  .wbars .bar { height: 12px; background: var(--surface-2); border-radius: 4px; position: relative; overflow: hidden; }
+  .wbars .bar b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+  .wbars .num { font-family: var(--mono); font-size: 0.8rem; text-align: right; }
+  .wbars .hd { font-size: 0.75rem; color: var(--ink-3); }
+  .level-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .level-bar .btn { font-size: 0.85rem; padding: 6px 11px; }
+  .level-bar .btn.done::after { content: ' ✓'; color: var(--good); }
+  .mask-grid { display: grid; gap: 3px; margin-top: 8px; font-size: 0.78rem; }
+  .mask-grid div { text-align: center; padding: 6px 0; border-radius: 4px; font-family: var(--mono); }
+  .mask-grid .lab { background: none; color: var(--ink-3); font-family: var(--sans); }
+  .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .calc label { font-size: 0.82rem; color: var(--ink-3); display: block; }
+  .calc input { width: 100%; font: 400 0.95rem var(--mono); padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 04 · Transformers · ~35 min + code</div>
+  <h1>Attention: score, normalize, mix</h1>
+  <p class="lede"><em>The trophy didn't fit in the suitcase because it was too big.</em> To process <em>it</em>, a transformer has to decide which earlier tokens to read from. It decides using nothing but dot products. How?</p>
+  <p>Attention is three steps: score every key against a query, turn the scores into weights, and mix the values with those weights. Here everything lives in two dimensions, so you can see every vector and drag the query yourself.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#score"><span>1</span>Score</a>
+    <a href="#normalize"><span>2</span>Normalize</a>
+    <a href="#mix"><span>3</span>Mix</a>
+    <a href="#game"><span>4</span>Play: be the query</a>
+    <a href="#scale"><span>5</span>Why √d</a>
+    <a href="#causal"><span>6</span>Masks and the KV cache</a>
+    <a href="#fresh"><span>7</span>New cases</a>
+    <a href="#implement"><span>8</span>Implement</a>
+    <a href="#followups"><span>9</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="score">
+    <div class="kicker">1 · Score</div>
+    <h2>Which earlier token matches the question?</h2>
+    <p>Each earlier token carries a <strong>key</strong>, a vector advertising what it contains. The current token, <em>it</em>, emits a <strong>query</strong>, a vector describing what it's looking for. The match score is a dot product:</p>
+    <div class="eq big">\[ s_j = q \cdot k_j = |q|\,|k_j| \cos\theta_j \]</div>
+    <p>Four earlier tokens with 2-D keys, and the query as the dark arrow. Drag anywhere in the left plane to move the query's tip.</p>
+    <div class="fig wide" id="attn-fig">
+      <div class="planes">
+        <div><div class="plane-title">Query and keys</div><div class="chart" id="qk-plane"></div></div>
+        <div><div class="plane-title">Values and the output</div><div class="chart" id="v-plane"></div></div>
+      </div>
+      <div class="wbars" id="wbars"></div>
+      <p class="fig-note">Scores are divided by √d = √2 before the softmax (section 5 explains why). The output (★) is the weighted mix of the value points.</p>
+    </div>
+
+    <div class="check" data-gate>
+      <div class="q">Two keys make the same angle with the query, but one is twice as long. Which scores higher?</div>
+      <div class="opts">
+        <button class="opt">Neither: attention only cares about direction</button>
+        <button class="opt" data-correct>The longer key, with twice the score</button>
+        <button class="opt">The shorter key, because long keys are penalized</button>
+      </div>
+      <div class="answer"><p>A dot product scales with both lengths. A model can make a token "louder" by giving it a longer key, and a query can make itself more decisive by being longer (section 2). Cosine similarity would throw that information away. Some architectures normalize q and k (QK-norm) precisely to control this.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="normalize">
+    <div class="kicker">2 · Normalize</div>
+    <h2>From scores to weights</h2>
+    <p>Scores can be any real numbers. Softmax turns them into positive weights that sum to 1, as in lesson 1:</p>
+    <div class="eq big">\[ w_j = \frac{e^{s_j/\sqrt d}}{\sum_i e^{s_i/\sqrt d}} \]</div>
+
+    <div class="check" data-gate>
+      <div class="q">You make the query twice as long without changing its direction. What happens to the weights?</div>
+      <div class="opts">
+        <button class="opt">Nothing: softmax only depends on differences between scores</button>
+        <button class="opt" data-correct>They get sharper: the top key takes more of the weight</button>
+        <button class="opt">They get flatter</button>
+      </div>
+      <div class="answer"><p>Every score doubles, so every <em>difference</em> between scores doubles too, and softmax depends on differences. Query length works like an inverse temperature: long queries approach an argmax, and short ones approach a uniform average. Try it in the figure above: drag the tip outward along the same direction.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="mix">
+    <div class="kicker">3 · Mix</div>
+    <h2>The output is a weighted average of values</h2>
+    <p>Each token also carries a <strong>value</strong>, what it hands over if attended to. That's the right-hand plane. The output is</p>
+    <div class="eq big">\[ o = \sum_j w_j\, v_j \]</div>
+
+    <div class="check" data-gate>
+      <div class="q">Can the output ever land outside the shape formed by the value points, their convex hull?</div>
+      <div class="opts">
+        <button class="opt">Yes, with a long enough query</button>
+        <button class="opt" data-correct>No: it's always inside</button>
+        <button class="opt">Only if some scores are negative</button>
+      </div>
+      <div class="answer"><p>The weights are non-negative and sum to 1, so \(o\) is a convex combination, always inside the hull. A single head can only select and blend what's already there. New directions come from the output projection, from combining several heads, and from the MLP that follows. Drag the query and watch the ★ stay inside the dashed hull.</p></div>
+    </div>
+    <p>Put the three steps together and batch over all queries at once. That's the formula in every transformer paper:</p>
+    <div class="eq big">\[ \operatorname{Attention}(Q, K, V) = \operatorname{softmax}\!\Big(\frac{QK^\top}{\sqrt{d}}\Big)\, V \]</div>
+    <p>\(Q\), \(K\), \(V\) are the token representations multiplied by three learned matrices \(W_Q, W_K, W_V\). Training shapes those matrices so that the right queries find the right keys.</p>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">4 · Play it</div>
+    <h2>Be the query</h2>
+    <p>Each level gives you a target in value space (the ◎). Drag the query until the output ★ lands inside the ring. You control only direction and length, like a real query.</p>
+    <div class="fig wide">
+      <div class="level-bar" id="levels"></div>
+      <p class="small" id="level-brief"></p>
+      <div class="planes">
+        <div><div class="plane-title">Query and keys</div><div class="chart" id="g-qk"></div></div>
+        <div><div class="plane-title">Values, output ★ and target ◎</div><div class="chart" id="g-v"></div></div>
+      </div>
+      <div class="wbars" id="g-wbars"></div>
+      <div class="debrief" id="g-debrief" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="scale">
+    <div class="kicker">5 · Why √d</div>
+    <h2>Keeping softmax out of saturation</h2>
+    <p>Real heads use \(d = 64\) or \(128\) dimensions, not 2.</p>
+    <div class="check" data-gate>
+      <div class="q">Query and key have \(d\) independent entries, each with mean 0 and variance 1. What is the variance of \(q \cdot k\)?</div>
+      <div class="opts">
+        <button class="opt">1</button>
+        <button class="opt">\(\sqrt d\)</button>
+        <button class="opt" data-correct>\(d\)</button>
+        <button class="opt">\(d^2\)</button>
+      </div>
+      <div class="answer"><p>\(q\cdot k = \sum_{i=1}^d q_i k_i\) is a sum of \(d\) independent terms, each with variance 1, so the variance is \(d\) and the typical size is \(\sqrt d\). Unscaled, scores grow with dimension, softmax saturates toward one-hot, and its gradient vanishes, just like the saturated sigmoid in lesson 3. Dividing by \(\sqrt d\) brings the variance back to 1 at any width.</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Average largest softmax weight over 8 random keys (500 trials per point)</div>
+      <div class="chart" id="scale-chart"></div>
+      <p class="fig-note">Random unit-variance queries and keys. Without scaling, one key takes almost all the weight at high d, before any learning has happened.</p>
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="causal">
+    <div class="kicker">6 · Masks and the KV cache</div>
+    <h2>Not reading the future, and not recomputing the past</h2>
+    <p>A language model predicts each next token from the ones before it, so position \(i\) must not attend to positions after \(i\).</p>
+    <div class="check" data-gate>
+      <div class="q">Where does the causal mask go?</div>
+      <div class="opts">
+        <button class="opt">After the softmax: zero out the future weights</button>
+        <button class="opt" data-correct>Before the softmax: set future scores to −∞</button>
+        <button class="opt">On the values: zero out future value vectors</button>
+      </div>
+      <div class="answer"><p>Before. A score of \(-\infty\) becomes \(e^{-\infty} = 0\) inside the softmax, and the remaining weights still sum to 1. Zeroing after the softmax leaves rows that no longer sum to 1, because the future tokens took their share of the normalization. Zeroing values keeps the future in the denominator. Toggle the mask:</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Attention weights for "the cat sat on the"</div>
+      <div class="btns" style="margin-top:4px"><div class="seg" id="mask-toggle"><button class="on" data-m="1">Causal mask on</button><button data-m="0">Mask off</button></div></div>
+      <div class="mask-grid" id="mask-grid"></div>
+      <p class="fig-note">Row = the query position, column = the key it reads from. Each row sums to 1.</p>
+    </div>
+
+    <p>During generation the model produces one token at a time. The new token's query needs every earlier key and value, and those never change, since earlier tokens can't see later ones. So they're computed once and kept: the <strong>KV cache</strong>. Decoding then costs one new query per step instead of recomputing the whole sequence. The price is memory.</p>
+    <div class="check" data-gate>
+      <div class="q">32 layers, model width 4096 (32 heads × 128), no grouped KV, a context of 8,192 tokens, batch size 1, fp16. How big is the KV cache?</div>
+      <div class="opts">
+        <button class="opt">About 270 MB</button>
+        <button class="opt" data-correct>About 4.3 GB</button>
+        <button class="opt">About 34 GB</button>
+      </div>
+      <div class="answer"><p>\(2\,(\text{K and V}) \times 32\,(\text{layers}) \times 4096 \times 8192\,(\text{tokens}) \times 2\,\text{bytes} = 4.3\) GB, for one sequence. Multiply by the batch size and it often exceeds the weights. That's why decoding is limited by memory bandwidth, and why grouped-query attention shares each K/V head across several query heads. Try it:</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">KV cache calculator</div>
+      <div class="calc" id="kv-calc"></div>
+      <div class="readouts" id="kv-out"></div>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">7 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+    <div class="check">
+      <div class="q">You shuffle the order of the input tokens and feed them to an attention layer with no positional information. What happens to the outputs?</div>
+      <div class="opts">
+        <button class="opt">They change unpredictably</button>
+        <button class="opt" data-correct>They're shuffled the same way, otherwise identical</button>
+        <button class="opt">They're unchanged</button>
+      </div>
+      <div class="answer"><p>Attention is permutation-equivariant: scores depend only on which vectors meet, not where they sit. Without positional information, "dog bites man" and "man bites dog" contain the same set of pairs. Positional encodings break the symmetry. RoPE rotates \(q\) and \(k\) by position-dependent angles, so \(q_m\cdot k_n\) depends on \(m - n\).</p></div>
+    </div>
+    <div class="check">
+      <div class="q">Every key is identical. What does the head output?</div>
+      <div class="opts">
+        <button class="opt">The value of the first token</button>
+        <button class="opt" data-correct>The plain average of all values</button>
+        <button class="opt">Zero</button>
+      </div>
+      <div class="answer"><p>Equal scores give equal weights, \(1/n\) each, so the output is the mean of the values whatever the query. In practice this appears as heads that "attend to nothing": they dump weight on a constant position, such as the first token (an attention sink).</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You double the context length from 4k to 8k tokens. The attention score computation grows by…</div>
+      <div class="opts">
+        <button class="opt">2×</button>
+        <button class="opt" data-correct>4×</button>
+        <button class="opt">It stays the same with a KV cache</button>
+      </div>
+      <div class="answer"><p>Every query meets every key: \(n^2\) scores per head per layer. FlashAttention doesn't change that count. It avoids <em>writing</em> the \(n \times n\) matrix to GPU memory by tiling and using an online softmax, which makes it much faster and memory-linear. During decoding with a KV cache, each new token costs \(O(n)\), so a whole generation still costs \(O(n^2)\).</p></div>
+    </div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">8 · Implement, unaided</div>
+    <h2>Write attention from scratch</h2>
+    <p>Plain editor, hidden tests. Shapes first. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: scaled dot-product attention with an optional causal mask</h3>
+    <div id="ex-attn"></div>
+    <h3>Exercise 2: one decoding step with a KV cache</h3>
+    <div id="ex-decode"></div>
+  </section>
+
+  <!-- 9 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">9 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">Why divide by √d, and what breaks without it?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>With unit-variance entries, \(\operatorname{Var}(q\cdot k) = d\). Scores grow like \(\sqrt d\), softmax saturates, and gradients through it shrink.</li>
+        <li>Dividing by \(\sqrt d\) restores unit variance at initialization. It's not a learned temperature, and training can still sharpen weights by growing \(|q|\) and \(|k|\).</li>
+        <li>Related fixes: QK-norm, and attention logit soft-capping in some large models.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why multiple heads instead of one big head?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>One head produces one set of weights per query: one convex mix. Several heads can attend to different things at once (syntax, coreference, position) and are concatenated and projected.</li>
+        <li>Same parameter count and FLOPs as one wide head, split into subspaces.</li>
+        <li>Many heads turn out to be redundant and can be pruned. MQA and GQA share K/V heads to cut KV-cache memory with little quality loss.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">What does the MLP block do that attention can't?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Attention moves information <em>between</em> positions, with weights that are convex mixes. The MLP transforms each position independently and nonlinearly.</li>
+        <li>It holds most of the parameters (typically about 2/3 of a block). One useful view treats it as key-value memory for learned associations, but that is an interpretation, not a mechanism guarantee.</li>
+        <li>Both write into the residual stream: \(x \leftarrow x + \text{Attn}(\text{LN}(x))\), then \(x \leftarrow x + \text{MLP}(\text{LN}(x))\).</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How does RoPE encode position?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>It rotates each pair of \(q\) and \(k\) dimensions by an angle proportional to position, with a different frequency per pair. The dot product \(q_m \cdot k_n\) then depends only on \(m - n\).</li>
+        <li>It's relative, adds no parameters, and is applied to q and k (not v) in every layer.</li>
+        <li>Extending context beyond training lengths needs frequency scaling (position interpolation, NTK-aware, YaRN), because the low-frequency pairs never saw long wavelengths.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Prefill vs decode: where does the time go when serving an LLM?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Prefill processes the prompt in parallel: large matrix multiplies, compute-bound, which sets time-to-first-token.</li>
+        <li>Decode produces one token per step: it reads all weights plus the KV cache for little compute, so it's memory-bandwidth-bound and sets inter-token latency.</li>
+        <li>Levers: batching (continuous batching), paged KV memory (vLLM), GQA, KV quantization, speculative decoding, and separating prefill from decode onto different hardware.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">What does FlashAttention change, and what doesn't it change?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>It computes exact attention in tiles held in on-chip SRAM, with an online (running max and sum) softmax, and never writes the \(n\times n\) matrix to HBM. Memory goes from \(O(n^2)\) to \(O(n)\), and it's faster because it moves less data.</li>
+        <li>It doesn't change the math or the \(O(n^2)\) FLOPs. It's not an approximation.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: Vaswani et al., <a href="https://arxiv.org/abs/1706.03762">Attention Is All You Need</a> (2017); Su et al., <a href="https://arxiv.org/abs/2104.09864">RoFormer</a> (2021); Dao et al., <a href="https://arxiv.org/abs/2205.14135">FlashAttention</a> (2022); Ainslie et al., <a href="https://arxiv.org/abs/2305.13245">GQA</a> (2023); Kwon et al., <a href="https://arxiv.org/abs/2309.06180">PagedAttention</a> (2023).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=3"></script>
+<script src="../assets/pyrunner.js?v=3"></script>
+<script src="exercises.js?v=3"></script>
+<script src="lesson.js?v=3"></script>
+</body>
+</html>
