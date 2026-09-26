@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backpropagation</title>
+<meta name="description" content="Backpropagation as assigning blame: follow real numbers forward into a loss, trace the gradient back through each weight and ReLU gate, update, and check against finite differences.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css">
+<style>
+  .legend i.act { background: var(--accent); }
+  .legend i.par { background: none; border-top: 2px solid var(--ink-3); height: 0; border-radius: 0; }
+  .legend i.grad { background: var(--w1); }
+  .info { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 0.93rem; margin-top: 10px; min-height: 3.2em; }
+  .info .katex { font-size: 1em; }
+  .quiz { border-top: 1px solid var(--rule); margin-top: 12px; padding-top: 12px; }
+  .quiz .q { font-weight: 600; margin-bottom: 8px; }
+  .quiz .opts { display: grid; gap: 6px; }
+  .quiz .opt { text-align: left; font: 400 0.95rem/1.35 var(--sans); padding: 8px 11px; border-radius: 8px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .quiz .opt.right { border-color: var(--good); background: var(--good-soft); }
+  .quiz .opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+  .quiz .expl { margin-top: 10px; font-size: 0.95rem; }
+  .params { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .params button { font: 500 0.9rem var(--sans); padding: 4px 10px; }
+  .params button.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 03 · Neural networks · ~30 min + code</div>
+  <h1>Backpropagation, by assigning blame</h1>
+  <p class="lede">A click model predicted 0.90 for an impression that wasn't clicked. The loss is high, and the network has 9 parameters. How much is each one to blame, and can you find out without trying each one?</p>
+  <p>This lesson follows real numbers forward into the loss, then traces the blame back through every weight and every ReLU, one step at a time. Three kinds of quantity stay visually distinct: <strong>activations</strong> (values computed going forward), <strong>parameters</strong> (the weights being learned), and <strong>gradients</strong> (blame flowing backward).</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#why"><span>1</span>Why not just nudge?</a>
+    <a href="#forward"><span>2</span>Forward</a>
+    <a href="#backward"><span>3</span>Backward: the blame game</a>
+    <a href="#check"><span>4</span>Check it</a>
+    <a href="#saturation"><span>5</span>Why sigmoid + cross-entropy</a>
+    <a href="#fresh"><span>6</span>New cases</a>
+    <a href="#implement"><span>7</span>Implement</a>
+    <a href="#followups"><span>8</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="why">
+    <div class="kicker">1 · The question</div>
+    <h2>Why not just nudge each weight?</h2>
+    <p>A gradient answers a concrete question: if I move this one parameter a tiny bit, how much does the loss move?</p>
+
+    <div class="check" data-gate>
+      <div class="q">You raise one weight by 0.01 and the loss goes up by 0.003. What is \(\partial L / \partial w\), approximately?</div>
+      <div class="opts">
+        <button class="opt">0.003</button>
+        <button class="opt" data-correct>0.3</button>
+        <button class="opt">−0.3</button>
+        <button class="opt">3.3</button>
+      </div>
+      <div class="answer"><p>Change in loss over change in weight: \(0.003 / 0.01 = 0.3\). It's positive, so gradient descent lowers this weight. That's a finite-difference estimate, and it's how we'll check backprop later.</p></div>
+    </div>
+
+    <div class="check" data-gate>
+      <div class="q">Nudging works. With a model of 1 billion parameters, how many forward passes would it take to get every gradient that way?</div>
+      <div class="opts">
+        <button class="opt">One</button>
+        <button class="opt">About 2 to 3</button>
+        <button class="opt" data-correct>About a billion, one per parameter</button>
+      </div>
+      <div class="answer"><p>One nudge per parameter, so a billion passes per update. Backpropagation gets all of them from one forward pass plus one backward pass, costing roughly 2 to 3 forward passes in total. It does this by reusing work: the blame arriving at a node is computed once and shared by every weight behind it. The rest of this lesson is that reuse, made visible.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="forward">
+    <div class="kicker">2 · Forward</div>
+    <h2>Follow the numbers into the loss</h2>
+    <p>Two features describe the impression: \(x_1 = 1.0\), the user has clicked this creator before, and \(x_2 = 0.6\), the item's normalized popularity. Two ReLU hidden units feed a sigmoid output. The impression was <em>not</em> clicked, \(y = 0\).</p>
+    <div class="eq">\[ z_j = w_{1j}x_1 + w_{2j}x_2 + b_j,\quad h_j = \max(0, z_j),\quad p = \sigma(v_1h_1 + v_2h_2 + c),\quad L = -\ln(1-p) \]</div>
+    <p>Click any node to see its computation. Click any weight to see what it is.</p>
+    <div class="fig wide">
+      <div class="fig-title">The network on one example</div>
+      <div class="legend"><span><i class="act"></i>activation (forward value)</span><span><i class="par"></i>parameter (on each edge)</span><span><i class="grad"></i>gradient (appears in section 3)</span></div>
+      <div class="chart" id="net-fwd"></div>
+      <div class="info" id="info-fwd">Click a node or a weight.</div>
+    </div>
+
+    <div class="check" data-gate>
+      <div class="q">Hidden unit 2 computes \(z_2 = -0.5(1.0) - 1.0(0.6) + 0.2 = -0.9\). What does it pass on?</div>
+      <div class="opts">
+        <button class="opt">−0.9</button>
+        <button class="opt" data-correct>0</button>
+        <button class="opt">0.9</button>
+      </div>
+      <div class="answer"><p>ReLU outputs \(\max(0, -0.9) = 0\). For this example, unit 2 is <em>off</em>. Keep that in mind: it decides what happens to its blame in the backward pass.</p></div>
+    </div>
+    <p>The output is \(p = \sigma(1.5 \cdot 1.40 + 0.8 \cdot 0 + 0.1) = \sigma(2.2) = 0.90\), and the loss is \(-\ln(1 - 0.90) = 2.305\). The model was confident and wrong.</p>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="backward">
+    <div class="kicker">3 · Backward</div>
+    <h2>The blame game</h2>
+    <p>Work backward from the loss. At each step, predict how much blame arrives, then watch it appear on the diagram. One rule does all the work, the chain rule: blame arriving at a quantity equals the blame at whatever it feeds, times how strongly it feeds it.</p>
+    <div class="eq">\[ \frac{\partial L}{\partial a} = \frac{\partial L}{\partial b}\cdot\frac{\partial b}{\partial a} \]</div>
+    <div class="fig wide">
+      <div class="fig-title">Blame flowing back</div>
+      <div class="legend"><span><i class="act"></i>activation</span><span><i class="par"></i>parameter</span><span><i class="grad"></i>gradient</span></div>
+      <div class="chart" id="net-bwd"></div>
+      <div id="blame-game"></div>
+      <div class="info" id="info-bwd">Answer the questions below the diagram. You can also click nodes and weights.</div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="check">
+    <div class="kicker">4 · Trust, but verify</div>
+    <h2>Check backprop against nudging</h2>
+    <p>Backprop and nudging must agree. Pick any parameter: the page nudges it by ±0.0001, reruns the forward pass, and compares the finite-difference slope with the backprop gradient.</p>
+    <div class="fig">
+      <div class="fig-title">Gradient check on all 9 parameters</div>
+      <div class="params" id="gc-params"></div>
+      <div class="info" id="gc-out"></div>
+    </div>
+    <p>This is how you debug a hand-written backward pass. A mismatch in one parameter points to the exact line that's wrong. In practice you compare relative error, \(|g_{\text{bp}} - g_{\text{fd}}| / \max(|g_{\text{bp}}|, |g_{\text{fd}}|)\), in float64. Around \(10^{-7}\) is fine, and \(10^{-2}\) is a bug. Avoid the kink of ReLU at exactly 0, where the slope isn't defined.</p>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="saturation">
+    <div class="kicker">5 · A design decision</div>
+    <h2>Why a sigmoid output pairs with cross-entropy</h2>
+    <p>In section 3 the output blame was exactly \(p - y\). The sigmoid's own slope \(p(1-p)\) cancelled against the derivative of the log. That cancellation depends on the loss.</p>
+
+    <div class="check" data-gate>
+      <div class="q">Swap the loss for squared error, \(L = (p - y)^2\). The model says \(p = 0.999\) and \(y = 0\). How big is the blame at the output logit?</div>
+      <div class="opts">
+        <button class="opt">About 1, as large as with cross-entropy</button>
+        <button class="opt" data-correct>About 0.002: almost nothing</button>
+        <button class="opt">Larger than with cross-entropy, since the error is squared</button>
+      </div>
+      <div class="answer"><p>\(\frac{\partial L}{\partial z} = 2(p-y)\cdot p(1-p) = 2(0.999)(0.001) \approx 0.002\). The sigmoid is saturated, and its tiny slope multiplies the blame away. The model is as wrong as it can be, and it barely learns. With cross-entropy the blame is \(p - y = 0.999\).</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Blame at the output logit for a negative example (y = 0)</div>
+      <div class="chart" id="sat-chart"></div>
+      <div class="ctl"><label for="sat-z">output logit z</label><input id="sat-z" type="range" min="-6" max="8" step="0.05" value="2.2"><output id="sat-out"></output></div>
+      <div class="readouts" id="sat-readouts"></div>
+    </div>
+    <p>The same thing happens <em>inside</em> a network. Every saturated sigmoid or tanh on the path multiplies the blame by a slope near 0. Stack enough of them and the early layers stop learning: that's the vanishing gradient. ReLU's slope is exactly 1 when it's on, which is a big part of why it replaced sigmoid in hidden layers. Its slope is exactly 0 when it's off, which is the "dead ReLU" risk you saw with unit 2.</p>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">6 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+
+    <div class="check">
+      <div class="q">An embedding matrix is used twice: to embed input tokens and, tied, as the output projection. How does backprop compute its gradient?</div>
+      <div class="opts">
+        <button class="opt">Only the output use counts, since it's closest to the loss</button>
+        <button class="opt">Average the two gradients</button>
+        <button class="opt" data-correct>Add the two gradients</button>
+      </div>
+      <div class="answer"><p>When a quantity feeds the loss along several paths, the total derivative is the sum over paths (multivariable chain rule). Frameworks do this automatically by accumulating into <code>.grad</code>. That's also why forgetting <code>zero_grad()</code> silently sums gradients across steps.</p></div>
+    </div>
+
+    <div class="check">
+      <div class="q">You initialize both hidden units with identical weights. After many training steps, what are they?</div>
+      <div class="opts">
+        <button class="opt">They diverge, because the data is random</button>
+        <button class="opt" data-correct>Still identical</button>
+        <button class="opt">One dies and the other takes over</button>
+      </div>
+      <div class="answer"><p>Identical units compute identical activations, so they receive identical blame and identical updates, forever. The layer behaves like a single unit. Random initialization breaks the symmetry. Its scale (Xavier or He) keeps activations and gradients from shrinking or blowing up with depth.</p></div>
+    </div>
+
+    <div class="check">
+      <div class="q">A feature is encoded as 0 for every example in the batch, because it's missing. What gradient do the weights leaving that input get?</div>
+      <div class="opts">
+        <button class="opt" data-correct>Exactly 0</button>
+        <button class="opt">The same as the other inputs' weights</button>
+        <button class="opt">It depends on the loss</button>
+      </div>
+      <div class="answer"><p>A weight's gradient is (blame at its output) × (its input), and the input is 0. Encoding "missing" as 0 makes it indistinguishable from a real zero, and the weights never learn anything about the missing case. Add an explicit missing indicator, or use a learned default embedding.</p></div>
+    </div>
+
+    <div class="check">
+      <div class="q">A 50-layer plain network (no residual connections) trains its last layers but its first layers barely move. The likeliest cause?</div>
+      <div class="opts">
+        <button class="opt">The learning rate is too high</button>
+        <button class="opt" data-correct>Blame shrinks as it's multiplied back through 50 layers of local slopes</button>
+        <button class="opt">The first layers have already converged</button>
+      </div>
+      <div class="answer"><p>The gradient at layer 1 is a product of about 50 Jacobians. If their typical scale is below 1, it vanishes geometrically, and above 1 it explodes. Residual connections add an identity path: \(\partial(x + f(x))/\partial x = I + f'(x)\), so blame can flow back unattenuated. Normalization and careful initialization help too.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">7 · Implement, unaided</div>
+    <h2>Write the backward pass</h2>
+    <p>Plain editor, no completion, hidden tests. Batch version of this lesson's network. State the shapes out loud first. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: forward and backward for a 2-layer MLP</h3>
+    <div id="ex-mlp"></div>
+    <h3>Exercise 2: a numerical gradient checker</h3>
+    <div id="ex-num"></div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">8 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">Why does training use reverse-mode differentiation (backprop) rather than forward mode?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Reverse mode computes the gradient of one scalar output with respect to all inputs in a single backward pass. Forward mode needs one pass per input direction.</li>
+        <li>Training has one scalar loss and billions of parameters, so reverse mode is the right trade: cost is about 2 to 3× a forward pass.</li>
+        <li>Forward mode wins when outputs outnumber inputs, for example Jacobian-vector products with few inputs.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">What must be kept in memory for the backward pass, and how do you reduce it?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>The activations each layer's weight gradient needs (its inputs), plus masks such as ReLU gates. This scales with batch size × sequence length × depth × width, and often dominates parameter memory.</li>
+        <li>Activation checkpointing stores only some layers' activations and recomputes the rest during the backward pass (about 30% more compute for large memory savings). Other levers: mixed precision, smaller micro-batches with gradient accumulation, and fused kernels.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How would you detect and fix dead ReLUs?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Detect: for each unit, the fraction of training examples where it's active. A unit active on 0% gets zero gradient forever.</li>
+        <li>Causes: a large update pushes the bias or weights so that the pre-activation is negative for all inputs. High learning rates are the usual trigger.</li>
+        <li>Fixes: lower learning rate or warmup, better initialization, LeakyReLU or GELU (nonzero slope for negatives), normalization before the activation.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why do frameworks offer <code>BCEWithLogits</code> instead of sigmoid followed by BCE?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Numerical stability: \(\log(1 - \sigma(z))\) underflows to \(\log 0\) for large \(z\). The fused form computes \(\operatorname{softplus}(z) - yz\) stably.</li>
+        <li>The fused gradient is exactly \(\sigma(z) - y\), with no saturated slope to multiply through.</li>
+        <li>Same reason cross-entropy takes logits and uses log-softmax internally (lesson 1).</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Explain vanishing and exploding gradients and three fixes.</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Backprop multiplies local Jacobians layer by layer (or step by step in an RNN). A product of many factors with norms below or above 1 shrinks or grows geometrically.</li>
+        <li>Fixes: residual connections (identity path), normalization layers (LayerNorm or BatchNorm), variance-preserving initialization, gated recurrences (LSTM/GRU), and gradient clipping for explosions.</li>
+        <li>Diagnose by logging per-layer gradient norms, not just the loss.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: Rumelhart, Hinton &amp; Williams, <em>Learning representations by back-propagating errors</em> (1986); Glorot &amp; Bengio (2010) and He et al. (2015) on initialization; He et al., <a href="https://arxiv.org/abs/1512.03385">Deep Residual Learning</a> (2015); Chen et al., <a href="https://arxiv.org/abs/1604.06174">Training Deep Nets with Sublinear Memory Cost</a> (2016).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js"></script>
+<script src="../assets/pyrunner.js"></script>
+<script src="exercises.js"></script>
+<script src="lesson.js"></script>
+</body>
+</html>
