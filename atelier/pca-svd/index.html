@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCA and SVD</title>
+<meta name="description" content="PCA as finding the axis that keeps the most variance: projections, the Pythagorean trade between kept variance and reconstruction error, eigenvectors of the covariance, SVD, low-rank approximation and LoRA.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=4">
+<style>
+  .level-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .level-bar .btn { font-size: 0.85rem; padding: 6px 11px; }
+  .level-bar .btn.done::after { content: ' ✓'; color: var(--good); }
+  .legend i.proj { background: var(--accent); border-radius: 50%; width: 10px; height: 10px; }
+  .legend i.res { height: 0; border-top: 2px dashed var(--bad); border-radius: 0; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 10 · Linear algebra · ~30 min + code</div>
+  <h1>PCA and SVD: what a projection keeps</h1>
+  <p class="lede">You have 50-dimensional user embeddings and want to plot them, compress them, or denoise them. If you may keep only a few numbers per user, which numbers keep the most?</p>
+  <p>Start in two dimensions, where you can see everything, and keep just one number per point.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#project"><span>1</span>Projection</a>
+    <a href="#game"><span>2</span>Play: find the axis</a>
+    <a href="#eigen"><span>3</span>The answer: eigenvectors</a>
+    <a href="#svd"><span>4</span>SVD and low rank</a>
+    <a href="#scree"><span>5</span>How many to keep</a>
+    <a href="#fresh"><span>6</span>New cases</a>
+    <a href="#implement"><span>7</span>Implement</a>
+    <a href="#followups"><span>8</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="project">
+    <div class="kicker">1 · Projection</div>
+    <h2>Keeping one number per point</h2>
+    <p>Center the data (subtract the mean). Choose a unit direction \(u\). Each point \(x\) keeps one number, its coordinate along \(u\): \(z = x \cdot u\). Its reconstruction is \(z\,u\), and what's lost is the residual \(x - z\,u\), which is perpendicular to \(u\).</p>
+    <div class="check" data-gate>
+      <div class="q">Two goals: make the kept coordinates \(z\) as spread out as possible, or make the residuals as small as possible. Do they pick the same direction?</div>
+      <div class="opts">
+        <button class="opt" data-correct>Yes, always</button>
+        <button class="opt">No: spread favors long directions, small residuals favor short ones</button>
+        <button class="opt">Only if the data is Gaussian</button>
+      </div>
+      <div class="answer"><p>The residual is perpendicular to \(u\), so each point splits by Pythagoras:</p>
+        <div class="eq">\[ \lVert x\rVert^2 = \underbrace{(x\cdot u)^2}_{\text{kept}} + \underbrace{\lVert x - (x\cdot u)u\rVert^2}_{\text{lost}} \]</div>
+        <p>The left side doesn't depend on \(u\). Every bit of variance you keep is a bit of error you don't make, so maximizing one minimizes the other, for any data.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">2 · Play it</div>
+    <h2>Find the axis</h2>
+    <p>Drag anywhere on the plot to rotate the line. Blue dots are the kept coordinates; dashed red segments are what's lost. Keep as much variance as possible: within 0.5% of the best.</p>
+    <div class="fig wide">
+      <div class="level-bar" id="levels"></div>
+      <p class="small" id="level-brief"></p>
+      <div class="legend"><span><i class="proj"></i>kept: projection onto the line</span><span><i class="res"></i>lost: residual</span></div>
+      <div class="chart" id="pca-plane"></div>
+      <div class="chart" id="pca-strip"></div>
+      <div class="readouts" id="pca-out"></div>
+      <div class="debrief" id="pca-debrief" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="eigen">
+    <div class="kicker">3 · The answer</div>
+    <h2>The best axis is an eigenvector</h2>
+    <p>With centered data \(X\) (one row per point), the variance along a unit direction \(u\) is</p>
+    <div class="eq big">\[ \operatorname{Var}(Xu) = \frac1n \lVert Xu\rVert^2 = u^\top \Sigma\, u, \qquad \Sigma = \frac1n X^\top X \]</div>
+    <p>Maximizing \(u^\top\Sigma u\) over unit vectors (a Rayleigh quotient) gives the top eigenvector of the covariance \(\Sigma\), and the variance it keeps is the top eigenvalue \(\lambda_1\). The next best direction, perpendicular to the first, is the second eigenvector, and so on. Those directions are the <strong>principal components</strong>.</p>
+    <div class="check" data-gate>
+      <div class="q">A 2-D covariance has eigenvalues 4 and 1. What fraction of the total variance does the first principal component keep?</div>
+      <div class="opts">
+        <button class="opt">4/1 = 400%</button>
+        <button class="opt" data-correct>4/5 = 80%</button>
+        <button class="opt">It depends on the angle</button>
+      </div>
+      <div class="answer"><p>Total variance is the trace, \(\lambda_1 + \lambda_2 = 5\). PC1 keeps \(\lambda_1/(\lambda_1+\lambda_2) = 80\%\), and the residual error is exactly the discarded eigenvalue, 1. In \(d\) dimensions, keeping \(k\) components keeps \(\sum_{i\le k}\lambda_i / \sum_i \lambda_i\).</p></div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="svd">
+    <div class="kicker">4 · SVD and low rank</div>
+    <h2>The same thing, computed directly from the data</h2>
+    <p>Any matrix factors as \(X = U S V^\top\): orthonormal columns in \(U\) and \(V\), and non-negative singular values on the diagonal of \(S\). Substitute it into the covariance:</p>
+    <div class="eq">\[ \Sigma = \frac1n X^\top X = V\,\frac{S^2}{n}\,V^\top \]</div>
+    <p>The columns of \(V\) are the principal directions, the eigenvalues are \(s_i^2/n\), and \(US\) holds each point's coordinates. In practice PCA is computed with the SVD of \(X\) rather than an eigendecomposition of \(X^\top X\). Forming \(X^\top X\) squares the condition number and throws away precision.</p>
+    <p>Keeping only the top \(k\) singular values gives the <strong>best rank-\(k\) approximation</strong> of \(X\) in squared error (Eckart–Young), and the error is exactly what you dropped:</p>
+    <div class="eq big">\[ \min_{\operatorname{rank}(A)\le k} \lVert X - A\rVert_F^2 = \sum_{i>k} s_i^2 \]</div>
+    <div class="check" data-gate>
+      <div class="q">A 4096 × 4096 weight matrix is fine-tuned with LoRA at rank 16: \(\Delta W = BA\) with \(B\): 4096 × 16 and \(A\): 16 × 4096. What fraction of the parameters of a full update does it train?</div>
+      <div class="opts">
+        <button class="opt">About 50%</button>
+        <button class="opt">About 16%</button>
+        <button class="opt" data-correct>About 0.8%</button>
+      </div>
+      <div class="answer"><p>\(2 \times 4096 \times 16 = 131{,}072\) against \(4096^2 = 16{,}777{,}216\): 0.78%. LoRA bets that the <em>change</em> a fine-tune needs has low rank. Matrix factorization for recommendations makes the same bet about the user–item matrix: a few latent factors explain most preferences. Low rank is a recurring structural prior.</p></div>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="scree">
+    <div class="kicker">5 · How many to keep</div>
+    <h2>Signal, then noise</h2>
+    <p>Here are 20-dimensional data generated from 3 hidden factors plus noise in every dimension. The eigenvalues of its covariance, largest first:</p>
+    <div class="fig">
+      <div class="fig-title">Eigenvalues (bars) and cumulative variance kept (line)</div>
+      <div class="chart" id="scree-chart"></div>
+      <div class="ctl"><label for="noise">noise level</label><input id="noise" type="range" min="0.1" max="2" step="0.05" value="0.5"><output id="noise-out"></output></div>
+      <p class="fig-note">Computed in your browser: 500 samples, sample covariance, Jacobi eigendecomposition.</p>
+    </div>
+    <p>Three eigenvalues stand out, then a flat floor of noise. Turn the noise up and the floor rises until the third factor sinks into it. Rules like "keep 95% of the variance" are heuristics. The better question is what the components are <em>for</em>: plotting (2–3), compression (bytes vs error), or denoising (stop where the signal meets the noise floor).</p>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">6 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+    <div class="check">
+      <div class="q">Your features are revenue in dollars (spread in the thousands) and click rate (spread about 0.01). You run PCA on the raw features. What is PC1?</div>
+      <div class="opts">
+        <button class="opt">A balanced mix of both</button>
+        <button class="opt" data-correct>Essentially the revenue axis</button>
+        <button class="opt">Essentially the click-rate axis</button>
+      </div>
+      <div class="answer"><p>PCA maximizes variance, and variance depends on units: revenue's variance is millions of times larger. Standardize (PCA on the correlation matrix) unless the units are genuinely comparable. It's the same issue as k-means in lesson 6.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You fit PCA on the full dataset, then split into train and test to evaluate a model built on the components. What's wrong?</div>
+      <div class="opts">
+        <button class="opt">Nothing: PCA is unsupervised, so it can't leak</button>
+        <button class="opt" data-correct>The components were fit using test data, so the evaluation isn't clean</button>
+        <button class="opt">PCA must be applied after the model</button>
+      </div>
+      <div class="answer"><p>Unsupervised fitting still leaks the test distribution (its mean, its directions) into training. It's usually small, but it's real and can be large with few samples. Fit every preprocessing step on training data only, inside the cross-validation loop. Lesson 11 is about exactly this kind of mistake.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You factorize a user × item click matrix with SVD, filling every missing entry with 0. What's the conceptual problem?</div>
+      <div class="opts">
+        <button class="opt">SVD can't handle sparse matrices</button>
+        <button class="opt" data-correct>Unobserved is treated as "disliked", and the factorization spends capacity reconstructing zeros</button>
+        <button class="opt">Nothing: zeros are correct for no clicks</button>
+      </div>
+      <div class="answer"><p>Most zeros mean "never shown", not "not wanted" (lesson 9). Use weighted matrix factorization (low confidence on unobserved entries, as in implicit-feedback ALS), or fit only the observed entries with regularization. Evaluate by ranking held-out interactions, not by reconstruction error.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">7 · Implement, unaided</div>
+    <h2>PCA from the SVD</h2>
+    <p>numpy's <code>np.linalg.svd</code> is allowed; <code>sklearn</code> isn't. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: PCA</h3>
+    <div id="ex-pca"></div>
+    <h3>Exercise 2: best rank-k approximation</h3>
+    <div id="ex-lr"></div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">8 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">What does PCA preserve, and what does it discard?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>It keeps the directions of largest variance, which gives the best linear reconstruction in squared error, and the Euclidean geometry within that subspace.</li>
+        <li>It discards everything in the low-variance directions, even if that's where the label signal lives (unsupervised). It can't capture nonlinear structure.</li>
+        <li>It's sensitive to scale and outliers. Variance isn't importance.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">PCA vs an autoencoder vs t-SNE/UMAP: when would you use each?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>PCA: linear, fast, deterministic, invertible, and reusable on new data. A good first baseline for compression and denoising.</li>
+        <li>A linear autoencoder with squared loss learns the same subspace as PCA. Nonlinear autoencoders can capture curved structure but need training and tuning.</li>
+        <li>t-SNE/UMAP: for 2-D visualization of local neighborhoods. Distances between far clusters and cluster sizes aren't meaningful, so don't use them as features without care.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why compute PCA with SVD instead of eigendecomposing XᵀX, and how do you scale it?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Forming \(X^\top X\) squares the condition number, so small singular values lose precision. SVD works on \(X\) directly.</li>
+        <li>At scale: randomized SVD (random projections, then a small exact SVD), incremental or streaming PCA, or distributed Gram matrices when \(d\) is small.</li>
+        <li>For only the top few components, power or Lanczos iterations cost roughly one matrix-vector product per iteration.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why does LoRA work, and what rank would you pick?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>The empirical finding: fine-tuning updates have low intrinsic rank. \(\Delta W = BA\) with small \(r\) trains about \(r(d+k)\) parameters instead of \(dk\), and can be merged into \(W\) for inference at no extra cost.</li>
+        <li>Rank is task-dependent. Small ranks (4–16) often suffice for style or format adaptation; knowledge-heavy or very different domains may need more, or full fine-tuning.</li>
+        <li>Pick it by sweeping rank against held-out quality and memory. Also decide which matrices to adapt: attention only, or the MLP too.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: Eckart &amp; Young, <em>The approximation of one matrix by another of lower rank</em> (1936); Halko, Martinsson &amp; Tropp, <a href="https://arxiv.org/abs/0909.4061">Finding structure with randomness</a> (2009); Hu et al., <a href="https://arxiv.org/abs/2106.09685">LoRA</a> (2021); Hu, Koren &amp; Volinsky, <em>Collaborative Filtering for Implicit Feedback Datasets</em> (ICDM 2008).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=4"></script>
+<script src="../assets/pyrunner.js?v=4"></script>
+<script src="exercises.js?v=4"></script>
+<script src="lesson.js?v=5"></script>
+</body>
+</html>
