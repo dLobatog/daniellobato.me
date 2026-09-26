@@ -116,6 +116,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .word { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; }
 .word i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
 @media (max-width: 560px) { .qtable .hide-sm { display: none; } .qtable td.slider { width: 42%; } }
+.show-sm { display: none; }
+@media (max-width: 560px) { .show-sm { display: block; } }
 
 /* Checks: commit before reveal */
 .check { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 12px 12px 0; padding: 14px 16px; margin: 22px 0; }
@@ -166,3 +168,9 @@ pre.solution { font: 400 13px/1.5 var(--mono); background: var(--surface-2); bor
 .lesson-list a:hover { color: var(--accent); }
 .lesson-list .soon { font: 500 1.15rem var(--serif); color: var(--ink-3); }
 .lesson-list p { grid-column: 2; margin: 0; color: var(--ink-2); font-size: 0.95rem; }
+
+/* Question gates */
+.locked { display: none !important; }
+.gate-hint { margin-top: 10px; font-size: 0.85rem; color: var(--ink-3); }
+button.linkish { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.check .opt .katex { font-size: 1em; }

@@ -16,6 +16,7 @@
   const tex = (el, s) => katex.render(s, el, { displayMode: true, throwOnError: false });
 
   const PRESETS = {
+    start: [0.5, 0.25, 0.125, 0.125],
     uniform: [0.25, 0.25, 0.25, 0.25],
     A: [0.97, 0.01, 0.01, 0.01],
     B: P.slice(),
@@ -24,10 +25,22 @@
   };
 
   /* ── Shared model q ─────────────────────────── */
-  let q = PRESETS.uniform.slice();
+  let q = PRESETS.start.slice();
   const subs = [];
   const onQ = (f) => { subs.push(f); f(); };
   const setQ = (nq) => { q = nq.slice(); subs.forEach((f) => f()); };
+  /* Move the model smoothly so you can watch which columns change. */
+  let tweenId = 0;
+  function tweenQ(target, ms = 650) {
+    const from = q.slice(), id = ++tweenId, t0 = performance.now();
+    (function frame(now) {
+      if (id !== tweenId) return;
+      const u = Math.min(1, (now - t0) / ms);
+      const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      setQ(from.map((v, i) => v + (target[i] - v) * e));
+      if (u < 1) requestAnimationFrame(frame);
+    })(t0);
+  }
   const surprise = (v) => -Math.log2(v);
   const crossEntropy = () => P.reduce((s, p, i) => s + p * surprise(q[i]), 0);
 
@@ -215,7 +228,7 @@
         <td class="num" data-v></td>
       </tr>`).join('');
     const rows = [...table.querySelectorAll('tr')].slice(1);
-    rows.forEach((r, i) => r.querySelector('input').addEventListener('input', (e) => setWord(i, +e.target.value)));
+    rows.forEach((r, i) => r.querySelector('input').addEventListener('input', (e) => { tweenId++; setWord(i, +e.target.value); }));
     onQ(() => rows.forEach((r, i) => {
       const inp = r.querySelector('input');
       if (document.activeElement !== inp) inp.value = q[i];
@@ -445,8 +458,11 @@
   gradientWidget();
   directionWidget();
 
+  document.querySelectorAll('.check[data-load]').forEach((c) => c.addEventListener('answered', (e) => {
+    if (!e.detail.restoring) tweenQ(PRESETS[c.dataset.load]);
+  }));
   document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
-    setQ(PRESETS[b.dataset.preset]);
+    tweenQ(PRESETS[b.dataset.preset]);
     if (b.closest('.reveal-load')) document.getElementById('ce-chart').closest('.fig').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }));
 

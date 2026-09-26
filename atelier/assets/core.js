@@ -46,19 +46,41 @@
 
   A.fmt = (x, d = 2) => (Number.isFinite(x) ? x.toFixed(d) : '∞');
 
+  /* Checks: commit to an answer, then see the reasoning. A check with data-gate also hides the rest of its
+     section until it is answered (or skipped), so the question comes before the explanation. */
   function initChecks() {
-    document.querySelectorAll('.check').forEach((box) => {
+    const page = location.pathname;
+    document.querySelectorAll('.check').forEach((box, idx) => {
+      const key = `atelier:check:${page}:${idx}`;
       const opts = box.querySelectorAll('.opt');
-      opts.forEach((b) => b.addEventListener('click', () => {
+      const locked = [];
+      if (box.hasAttribute('data-gate')) {
+        let el = box.nextElementSibling;
+        while (el && !el.matches('.check[data-gate]')) { locked.push(el); el = el.nextElementSibling; }
+      }
+      const hint = document.createElement('div');
+      hint.className = 'gate-hint';
+      hint.innerHTML = (locked.length ? 'Answer to continue. ' : '') + '<button type="button" class="linkish">Skip: show me the answer</button>';
+      box.appendChild(hint);
+      locked.forEach((e) => e.classList.add('locked'));
+
+      function finish(chosen, restoring) {
         if (box.classList.contains('done')) return;
         opts.forEach((o) => {
           o.disabled = true;
           if (o.hasAttribute('data-correct')) o.classList.add('right');
         });
-        if (!b.hasAttribute('data-correct')) b.classList.add('wrong');
+        if (chosen && !chosen.hasAttribute('data-correct')) chosen.classList.add('wrong');
         box.classList.add('done');
-        box.dispatchEvent(new CustomEvent('answered', { detail: { correct: b.hasAttribute('data-correct') } }));
-      }));
+        hint.remove();
+        locked.forEach((e) => e.classList.remove('locked'));
+        if (!restoring) store(key, chosen ? (chosen.hasAttribute('data-correct') ? 'right' : 'wrong') : 'skipped');
+        box.dispatchEvent(new CustomEvent('answered', { detail: { correct: !!chosen && chosen.hasAttribute('data-correct'), restoring: !!restoring } }));
+        window.dispatchEvent(new Event('resize'));
+      }
+      opts.forEach((b) => b.addEventListener('click', () => finish(b)));
+      hint.querySelector('button').addEventListener('click', () => finish(null));
+      if (store(key)) finish(null, true);
     });
     document.querySelectorAll('.followup').forEach((f) => {
       const b = f.querySelector('button');
@@ -66,6 +88,11 @@
         f.classList.toggle('open');
         b.textContent = f.classList.contains('open') ? 'Hide key points' : 'Reveal key points';
       });
+    });
+    const reset = document.querySelector('[data-reset-checks]');
+    if (reset) reset.addEventListener('click', () => {
+      document.querySelectorAll('.check').forEach((_, idx) => { try { localStorage.removeItem(`atelier:check:${page}:${idx}`); } catch (e) { /* ignore */ } });
+      location.reload();
     });
   }
 

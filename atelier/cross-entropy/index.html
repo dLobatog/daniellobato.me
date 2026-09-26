@@ -28,13 +28,23 @@
   .scroll-x { overflow-x: auto; }
   .reveal-load { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .reveal-load button { font-size: 0.85rem; padding: 4px 10px; }
+  .game-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .game-tabs .btn { font-size: 0.85rem; padding: 6px 11px; }
+  .game-brief { font-size: 0.95rem; color: var(--ink-2); margin: 4px 0 6px; }
+  .game-table .chips { display: flex; flex-wrap: wrap; gap: 3px; min-width: 110px; }
+  @media (max-width: 560px) { .game-table .chips { min-width: 70px; } .game-table .chips i { width: 9px !important; height: 9px !important; } .game-table td.pm .btn { width: 30px; margin-left: 2px; } }
+  .game-table .chips i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .game-table td.pm { white-space: nowrap; text-align: right; }
+  .game-table td.pm .btn { width: 32px; height: 30px; padding: 0; margin-left: 4px; font-size: 1.05rem; line-height: 1; }
+  .game-table tr.hit td { background: var(--accent-soft); }
+  .debrief { border-top: 1px solid var(--rule); margin-top: 14px; padding-top: 14px; font-size: 0.97rem; }
 </style>
 </head>
 <body>
 <main class="page">
   <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
 
-  <div class="kicker">Lesson 01 · Probability and losses · ~25 min + code</div>
+  <div class="kicker">Lesson 01 · Probability and losses · ~35 min + code</div>
   <h1>Cross-entropy and KL, from surprise</h1>
   <p class="lede">A language model reads <em>the cat sat on the</em> and gives the word that actually came next a probability of 0.02. How bad is that? We want an answer that adds up over a dataset, has a known best-possible value, and can be differentiated.</p>
   <p>That one requirement gets you all of this lesson: surprise, cross-entropy, entropy, KL, the softmax gradient, and why SFT and RL use KL in opposite directions.</p>
@@ -44,26 +54,42 @@
     <a href="#cross-entropy"><span>2</span>Cross-entropy</a>
     <a href="#entropy"><span>3</span>The best model</a>
     <a href="#kl"><span>4</span>KL: the gap</a>
-    <a href="#gradient"><span>5</span>The gradient</a>
-    <a href="#direction"><span>6</span>KL direction</a>
-    <a href="#fresh"><span>7</span>New cases</a>
-    <a href="#implement"><span>8</span>Implement</a>
-    <a href="#followups"><span>9</span>Interview follow-ups</a>
+    <a href="#game"><span>5</span>Play: bet on it</a>
+    <a href="#gradient"><span>6</span>The gradient</a>
+    <a href="#direction"><span>7</span>KL direction</a>
+    <a href="#fresh"><span>8</span>New cases</a>
+    <a href="#implement"><span>9</span>Implement</a>
+    <a href="#followups"><span>10</span>Interview follow-ups</a>
   </nav>
 
   <!-- 1 ─────────────────────────────────────────── -->
   <section class="step" id="surprise">
     <div class="kicker">1 · One prediction</div>
     <h2>How surprised should the model be?</h2>
-    <p>Score a single prediction. The model gave probability \(q\) to the word that actually occurred. We want a penalty \(s(q)\) that</p>
-    <ul>
-      <li>is 0 when \(q = 1\): certain and right costs nothing;</li>
-      <li>grows as \(q\) shrinks;</li>
-      <li><strong>adds across independent events.</strong> Two tokens in a row have probability \(q_1 q_2\), so we need \(s(q_1 q_2) = s(q_1) + s(q_2)\).</li>
-    </ul>
-    <p>The functions that turn products into sums are logarithms. Flip the sign so the penalty is positive:</p>
+    <p>Score a single prediction. The model gave probability \(q\) to the word that actually occurred, and we want a penalty \(s(q)\). Two requirements are obvious: \(s(1) = 0\), because certain and right costs nothing, and \(s\) grows as \(q\) shrinks.</p>
+    <p>The third requirement decides everything. Two independent tokens in a row have probability \(q_1 q_2\). Scoring the pair should give the same total as scoring each token and adding the two scores.</p>
+
+    <div class="check" data-gate>
+      <div class="q">Which penalty satisfies \(s(q_1 q_2) = s(q_1) + s(q_2)\)?</div>
+      <div class="opts">
+        <button class="opt">\(s(q) = 1 - q\)</button>
+        <button class="opt">\(s(q) = 1/q\)</button>
+        <button class="opt" data-correct>\(s(q) = -\log q\)</button>
+        <button class="opt">\(s(q) = (1-q)^2\)</button>
+      </div>
+      <div class="answer">
+        <p>Test it with two tokens at \(q = \tfrac13\) each, so the pair has probability \(\tfrac19\).</p>
+        <ul>
+          <li>\(1-q\): the tokens cost \(\tfrac23 + \tfrac23 = \tfrac43\), but the pair costs \(\tfrac89\).</li>
+          <li>\(1/q\): the tokens cost \(3 + 3 = 6\), but the pair costs 9.</li>
+          <li>\((1-q)^2\): fails the same way.</li>
+        </ul>
+        <p>Only a logarithm turns products into sums, \(\log(q_1q_2) = \log q_1 + \log q_2\), and the minus sign makes the penalty positive.</p>
+      </div>
+    </div>
+
     <div class="eq big">\[ s(q) = -\log_2 q = \log_2 \tfrac{1}{q} \]</div>
-    <p>With base 2 the unit is <strong>bits</strong>, and a bit has a literal meaning. Probability \(1/8\) is exactly as surprising as three fair coins all landing heads, so it scores 3 bits. Drag the point, or use the slider.</p>
+    <p>With base 2 the unit is <strong>bits</strong>, and a bit has a literal meaning. Probability \(1/8\) is exactly as unlikely as three fair coins all landing heads, so it scores 3 bits. Drag the point, or use the slider. The hook's 0.02 is where it starts.</p>
 
     <div class="fig">
       <div class="fig-title">Surprise of the observed word</div>
@@ -72,9 +98,7 @@
       <div class="readouts" id="surprise-readouts"></div>
     </div>
 
-    <p>The additivity is exact. Two independent tokens with \(q = 1/2\) and \(q = 1/8\) have joint probability \(1/16\), and the surprise is \(1 + 3 = 4\) bits \(= \log_2 16\).</p>
-
-    <div class="check">
+    <div class="check" data-gate>
       <div class="q">Model A lowers its probability for the correct token from 0.90 to 0.45. Model B lowers it from 0.02 to 0.01. Which change adds more surprise?</div>
       <div class="opts">
         <button class="opt">A: it lost 0.45 of probability, B lost only 0.01</button>
@@ -82,7 +106,7 @@
         <button class="opt" data-correct>Neither: both add the same amount</button>
       </div>
       <div class="answer">
-        <p>Exactly 1 bit each: \(\log_2(0.90/0.45) = \log_2(0.02/0.01) = 1\). Surprise depends on the <em>ratio</em> of probabilities, not the difference, so every halving costs one bit wherever it happens.</p>
+        <p>Exactly 1 bit each: \(\log_2(0.90/0.45) = \log_2(0.02/0.01) = 1\). Surprise depends on the <em>ratio</em> of probabilities, not the difference, so every halving costs one bit wherever it happens. Check it on the slider: each step of 1 on the log scale is one halving.</p>
         <p>That is why log loss punishes confident mistakes. Going from 0.01 to 0.001 costs 3.3 bits, the same as going from 1.0 to 0.1.</p>
       </div>
     </div>
@@ -91,33 +115,46 @@
   <!-- 2 ─────────────────────────────────────────── -->
   <section class="step" id="cross-entropy">
     <div class="kicker">2 · A whole dataset</div>
-    <h2>Average surprise over the data is cross-entropy</h2>
+    <h2>From one prediction to a dataset</h2>
     <p>Now score a model on data. The context <em>the cat sat on the</em> appears 20 times in a corpus. What came next:</p>
     <div class="words" id="word-counts"></div>
-    <p>The model outputs one distribution \(q\) for this context. Each of the 20 occurrences gets its own surprise \(-\log_2 q(\text{word})\), and the model's score is the average. Each column below is one occurrence, and its height is that occurrence's surprise.</p>
+    <p>The model gives the same distribution \(q\) every time it sees this context: mat \(\tfrac12\), floor \(\tfrac14\), sofa \(\tfrac18\), moon \(\tfrac18\). So each mat occurrence costs 1 bit, each floor 2 bits, and each sofa or moon 3 bits.</p>
 
+    <div class="check" data-gate>
+      <div class="q">What is this model's average surprise over the 20 occurrences?</div>
+      <div class="opts">
+        <button class="opt">2.25 bits</button>
+        <button class="opt" data-correct>1.75 bits</button>
+        <button class="opt">1 bit</button>
+        <button class="opt">9 bits</button>
+      </div>
+      <div class="answer">
+        <p>\((10\cdot 1 + 5\cdot 2 + 4\cdot 3 + 1\cdot 3)/20 = 35/20 = 1.75\) bits. The average runs over <em>occurrences</em>, not over words, so each word's surprise counts as many times as the word occurs. Averaging the four surprises (2.25) would treat moon as if it were as common as mat.</p>
+      </div>
+    </div>
+
+    <p>Here is that computation drawn out. Each column is one occurrence, and its height is that occurrence's surprise. Now change the model and watch which columns move.</p>
     <div class="fig wide">
       <div class="fig-title">20 occurrences, each scored by the model</div>
       <div class="chart" id="ce-chart"></div>
       <table class="qtable" id="ce-table"></table>
-      <div class="btns"><button class="btn" data-preset="uniform">Reset to uniform</button></div>
+      <div class="btns"><button class="btn" data-preset="start">Back to ½, ¼, ⅛, ⅛</button></div>
     </div>
-
-    <p>Group identical words and the counts turn into frequencies, \(10/20 = 0.50\) and so on:</p>
+    <p>Grouping identical words turns counts into frequencies, \(10/20 = 0.50\) and so on:</p>
     <div class="eq eq-live" id="ce-eq"></div>
-    <p>Write \(p(x)\) for how often word \(x\) actually occurs. The average surprise is</p>
+    <p>Name the frequencies \(p(x)\) and you have written down <strong>cross-entropy</strong>, the model's surprise averaged over how often each outcome really happens:</p>
     <div class="eq big">\[ H(p, q) = -\sum_x p(x)\, \log_2 q(x) \]</div>
-    <p>That is <strong>cross-entropy</strong>: the model's surprise, averaged over how often each outcome really happens. In training code it is the mean of \(-\log q(y_n)\) over a batch, the same number computed one example at a time.</p>
-    <p class="muted small">Try it: drag <em>moon</em> down to 0.01. Only one column moves, but it moves a lot, and it occurs once in 20, so the average moves by a twentieth of that.</p>
+    <p>In training code it is the mean of \(-\log q(y_n)\) over a batch: the same number, computed one example at a time.</p>
   </section>
 
   <!-- 3 ─────────────────────────────────────────── -->
   <section class="step" id="entropy">
     <div class="kicker">3 · The floor</div>
     <h2>What is the best possible model?</h2>
+    <p>You can move the model freely. How low can the average go?</p>
 
-    <div class="check" id="best-check">
-      <div class="q">Which model has the lowest average surprise on these 20 occurrences? Commit before looking.</div>
+    <div class="check" id="best-check" data-gate>
+      <div class="q">Which model has the lowest average surprise on these 20 occurrences?</div>
       <div class="opts">
         <button class="opt">A. Bet on the most common word: q = (0.97, 0.01, 0.01, 0.01)</button>
         <button class="opt" data-correct>B. Copy the frequencies: q = (0.50, 0.25, 0.20, 0.05)</button>
@@ -133,16 +170,16 @@
           <tr><td>D</td><td>2.00</td><td>2.00</td><td>2.00</td><td>2.00</td><td><b>2.00</b></td></tr>
         </table></div>
         <p class="small muted">Surprise per occurrence, in bits.</p>
-        <p>B. Betting on the most frequent word maximizes accuracy but is the worst model here: the 10 non-mat occurrences each cost 6.6 bits. Sharpening (C) makes the 10 mat columns cheaper and every other column more expensive, and the other columns lose more than mat gains.</p>
-        <div class="reveal-load">Load into the chart above:
+        <p>B. Betting on the most frequent word maximizes accuracy but gives the worst model here: the 10 non-mat occurrences each cost 6.6 bits. Sharpening (C) makes the mat columns cheaper and every other column more expensive, and the other columns lose more than mat gains.</p>
+        <div class="reveal-load">Watch each one in the chart above:
           <button class="btn" data-preset="A">A</button><button class="btn" data-preset="B">B</button><button class="btn" data-preset="C">C</button><button class="btn" data-preset="D">D</button>
         </div>
       </div>
     </div>
 
-    <p>No \(q\) beats \(q = p\); try it in the chart and you won't get below 1.68 bits. So cross-entropy is minimized by the true frequencies, and the minimum value has its own name:</p>
+    <p>No \(q\) beats \(q = p\). Try it in the chart: you won't get below 1.68 bits. Cross-entropy is minimized by the true frequencies, and the minimum has its own name:</p>
     <div class="eq big">\[ H(p) = H(p, p) = -\sum_x p(x) \log_2 p(x) = 1.68 \text{ bits} \]</div>
-    <p><strong>Entropy</strong> is the average surprise of a model that knows the true frequencies exactly. It isn't zero because the data itself is uncertain. Even a perfect model can't know whether this particular occurrence will be <em>mat</em> or <em>floor</em>. Entropy is the floor under the training loss.</p>
+    <p><strong>Entropy</strong> is the average surprise of a model that knows the true frequencies exactly. It isn't zero, because the data itself is uncertain: even a perfect model can't know whether this particular occurrence will be <em>mat</em> or <em>floor</em>. Entropy is the floor under the training loss.</p>
 
     <details class="more">
       <summary>Why q = p is the minimum (two short derivations)</summary>
@@ -156,41 +193,104 @@
   <!-- 4 ─────────────────────────────────────────── -->
   <section class="step" id="kl">
     <div class="kicker">4 · The gap</div>
-    <h2>KL divergence is the extra surprise you pay for using q</h2>
-    <p>Subtract the floor from the model's score:</p>
-    <div class="eq big">\[ \mathrm{KL}(p \,\|\, q) = H(p, q) - H(p) = \sum_x p(x) \log_2 \frac{p(x)}{q(x)} \]</div>
-    <p>It's the same chart as before, plus a dashed tick on each group at \(-\log_2 p(x)\): the surprise a perfect model would have had on that word. Where a column rises above its tick, the model pays extra (hatched). Where it stops short, the model is cheaper than the perfect one on that word (dashed outline).</p>
+    <h2>Where does a worse model pay?</h2>
+    <p>The uniform model averages 2.00 bits and the perfect model 1.68. The uniform model is worse on average. Is it worse on every word?</p>
 
+    <div class="check" data-gate data-load="uniform">
+      <div class="q">On an occurrence of <em>moon</em>, which model is less surprised: uniform (q = 0.25) or perfect (q = 0.05)?</div>
+      <div class="opts">
+        <button class="opt">The perfect model, since it knows the true frequency</button>
+        <button class="opt" data-correct>The uniform model</button>
+        <button class="opt">They're equally surprised</button>
+      </div>
+      <div class="answer">
+        <p>The uniform model: \(-\log_2 0.25 = 2\) bits against \(-\log_2 0.05 = 4.32\). On moon, and on sofa too, the uniform model beats the perfect one, because it gives them more probability than they deserve. That probability had to come from somewhere: it pays on mat, 2 bits instead of 1, ten times over.</p>
+      </div>
+    </div>
+
+    <p>The charts now show the uniform model. Each word has a dashed tick at \(-\log_2 p(x)\), the perfect model's surprise on that word. Hatched means the model pays more than the perfect model; a dashed outline means it pays less.</p>
     <div class="fig wide">
       <div class="fig-title">Model score = floor + gap</div>
       <div class="legend"><span><i class="hatch"></i>extra vs. perfect model</span><span><i class="save"></i>cheaper than perfect model</span><span><i class="floor"></i>perfect model's surprise, per word</span><span><i class="line"></i>average H(p,q)</span><span><i class="dots"></i>floor H(p)</span></div>
       <div class="chart" id="kl-chart"></div>
       <table class="qtable" id="kl-table"></table>
-      <div class="btns"><button class="btn" data-preset="uniform">Reset to uniform</button></div>
+      <div class="btns"><button class="btn" data-preset="uniform">Back to uniform</button></div>
     </div>
+    <p>Average the difference between the model's surprise and the perfect model's over all occurrences. That average has a name:</p>
+    <div class="eq big">\[ \mathrm{KL}(p \,\|\, q) = H(p, q) - H(p) = \sum_x p(x) \log_2 \frac{p(x)}{q(x)} \]</div>
     <div class="eq eq-live" id="kl-eq"></div>
-
-    <p>Under the uniform model, <em>sofa</em> and <em>moon</em> are cheaper than under the perfect model: 0.25 is more than their true frequency. But <em>mat</em> costs a full bit extra and occurs 10 times. Individual terms can be negative. Their \(p\)-weighted sum never is: \(\mathrm{KL}(p\|q) \ge 0\), and it is 0 only when \(q = p\). Probability is conserved, so any word you over-predict forces you to under-predict another.</p>
+    <p>Individual terms can be negative, like moon's. Their \(p\)-weighted sum never is: \(\mathrm{KL}(p\|q) \ge 0\), and it is 0 only when \(q = p\). Probability is conserved, so every word you over-predict forces you to under-predict another, and the words you under-predict are the ones that occur more.</p>
     <p>Two consequences you'll use constantly:</p>
     <ul>
-      <li><strong>Minimizing cross-entropy over \(q\) is minimizing \(\mathrm{KL}(p\|q)\).</strong> \(H(p)\) doesn't depend on the model, so the two objectives have the same gradients.</li>
+      <li><strong>Minimizing cross-entropy over \(q\) is minimizing \(\mathrm{KL}(p\|q)\).</strong> \(H(p)\) doesn't depend on the model, so the two have the same gradients.</li>
       <li><strong>A loss value alone doesn't tell you how good a model is.</strong> Loss is \(H(p) + \mathrm{KL}\), and for real data you don't know \(H(p)\).</li>
     </ul>
     <p class="muted small">Perplexity is the same quantity on another scale: \(2^{H(p,q)}\) in bits (or \(e^{\text{loss}}\) in nats), the number of equally likely options that would be as surprising. Uniform over 4 words gives 4. The perfect model here gives \(2^{1.68} = 3.2\).</p>
   </section>
 
   <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">5 · Play it</div>
+    <h2>Bet on the next word</h2>
+    <p>Same question, with money on it. Each round you split 20 chips across the four words, a word is drawn, and you are paid 4 × the share you put on it. Ten chips on the winner doubles your bankroll. Two chips cut it to 40%. Zero chips mean you lose everything.</p>
+
+    <div class="check" data-gate>
+      <div class="q">You know mat comes up 50% of the time, floor 25%, sofa 20%, moon 5%. Which split grows your bankroll fastest over many rounds?</div>
+      <div class="opts">
+        <button class="opt">All 20 on mat: it's the favorite</button>
+        <button class="opt">14 / 3 / 2 / 1: lean into the favorite, hedge the rest</button>
+        <button class="opt" data-correct>10 / 5 / 4 / 1: exactly the frequencies</button>
+        <button class="opt">5 / 5 / 5 / 5: spread the risk evenly</button>
+      </div>
+      <div class="answer">
+        <p>10 / 5 / 4 / 1. Money multiplies, so take logs: each round adds \(\log_2(4q)\) bits to your log-bankroll.</p>
+        <div class="eq">\[ \log_2\frac{\text{bankroll}_n}{\text{bankroll}_0} = \sum_{t=1}^{n}\log_2\big(4\,q(x_t)\big) = 2n - \sum_{t=1}^{n} \underbrace{\big(-\log_2 q(x_t)\big)}_{\text{surprise}} \]</div>
+        <p>Your growth per round is 2 bits minus your surprise, on average \(2 - H(p,q)\). You already know which \(q\) minimizes that: \(q = p\). Anyone betting differently falls behind by exactly \(\mathrm{KL}(p\|q)\) bits per round. All-on-mat goes bankrupt the first time another word comes up. This is Kelly betting (Cover &amp; Thomas, ch. 6), and <strong>its score is the loss from section 2</strong>.</p>
+      </div>
+    </div>
+
+    <p>Now play it. Level 1 checks the answer you just gave. Levels 2 and 3 take away what you know.</p>
+    <div class="fig wide" id="game-fig"></div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
   <section class="step" id="gradient">
-    <div class="kicker">5 · Training</div>
-    <h2>The gradient pushes q toward p</h2>
+    <div class="kicker">6 · Training</div>
+    <h2>How does training find q = p?</h2>
     <p>Real models don't set \(q\) directly. They output logits \(z\), and \(q = \mathrm{softmax}(z)\). From here on we use the natural log (<strong>nats</strong>), like PyTorch's <code>cross_entropy</code>: 1 bit = 0.693 nats, and the floor here is \(H(p) = 1.165\) nats.</p>
     <div class="eq">\[ q_k = \frac{e^{z_k}}{\sum_j e^{z_j}}, \qquad L_n = -\ln q_{y_n} = -z_{y_n} + \ln \sum_j e^{z_j} \]</div>
-    <p>Differentiate the second form. The first term only touches the observed word, and the log-sum-exp gives back softmax:</p>
-    <div class="eq big">\[ \frac{\partial L_n}{\partial z_k} = q_k - \mathbb{1}[k = y_n] \]</div>
-    <p>One occurrence of <em>mat</em> has gradient \(q_{\text{mat}} - 1 < 0\) on the mat logit, so gradient descent raises it. Every other logit has gradient \(+q_k\), so each of them goes down. Average over the 20 occurrences: the one-hot vectors average to the frequencies,</p>
-    <div class="eq big">\[ \frac{\partial L}{\partial z} = \frac{1}{20}\sum_{n=1}^{20} \big(q - e_{y_n}\big) = q - p \]</div>
-    <p>The gradient is zero exactly when \(q = p\). That's the minimum from section 3, now reached from the training side. Step it:</p>
 
+    <div class="check" data-gate>
+      <div class="q">The model sees one occurrence of <em>mat</em> and takes a gradient step on \(-\ln q_{\text{mat}}\). What happens to the four logits?</div>
+      <div class="opts">
+        <button class="opt">Only the mat logit changes</button>
+        <button class="opt" data-correct>The mat logit goes up, and the other three go down</button>
+        <button class="opt">All four go up, mat the most</button>
+        <button class="opt">The mat logit goes up, and the others stay put</button>
+      </div>
+      <div class="answer">
+        <p>Differentiate the second form of \(L_n\). The first term touches only the observed word, and the log-sum-exp gives back softmax:</p>
+        <div class="eq">\[ \frac{\partial L_n}{\partial z_k} = q_k - \mathbb{1}[k = y_n] \]</div>
+        <p>For mat the gradient is \(q_{\text{mat}} - 1 < 0\), so descent raises it. Every other logit has gradient \(+q_k\), so each goes down, in proportion to how much probability it currently holds. The words compete for a fixed budget.</p>
+      </div>
+    </div>
+
+    <div class="check" data-gate>
+      <div class="q">Average that over all 20 occurrences: 10 mat, 5 floor, 4 sofa, 1 moon. What is the gradient \(\partial L / \partial z\)?</div>
+      <div class="opts">
+        <button class="opt">\(q - e_{\text{mat}}\), because mat dominates</button>
+        <button class="opt" data-correct>\(q - p\)</button>
+        <button class="opt">\(p - q\)</button>
+        <button class="opt">0, because the pushes cancel</button>
+      </div>
+      <div class="answer">
+        <p>The one-hot vectors \(e_{y_n}\) average to the frequencies \(p\):</p>
+        <div class="eq">\[ \frac{\partial L}{\partial z} = \frac{1}{20}\sum_{n=1}^{20} \big(q - e_{y_n}\big) = q - p \]</div>
+        <p>The gradient is zero exactly when \(q = p\): the minimum from section 3, now reached from the training side.</p>
+      </div>
+    </div>
+
+    <p>Step it, starting from a model that knows nothing (all logits 0, so \(q\) is uniform):</p>
     <div class="fig">
       <div class="fig-title">Gradient descent on the 20 occurrences, learning rate η = 1</div>
       <div class="scroll-x"><table class="qtable" id="gd-table"></table></div>
@@ -201,18 +301,30 @@
         <button class="btn" id="gd-reset">Reset</button>
       </div>
     </div>
-    <p>Watch <em>moon</em>. It starts over-predicted by 5× (0.25 against 0.05) and converges last. Its gradient \(q - p\) is small because both numbers are small, even though their ratio is badly off. And it weighs only 1/20 of the loss. The long tail is learned last, and the average loss hides it, which is why you look at loss per slice.</p>
+
+    <div class="check">
+      <div class="q">Which word's probability will take the longest to get close to its true frequency?</div>
+      <div class="opts">
+        <button class="opt">mat: it's furthest from uniform in absolute terms (0.25 → 0.50)</button>
+        <button class="opt" data-correct>moon: the rarest word</button>
+        <button class="opt">They all converge together, since the step is the same for each</button>
+      </div>
+      <div class="answer">
+        <p>Moon. It starts 5× over-predicted (0.25 against 0.05), yet its gradient \(q - p\) is small because both numbers are small, and it carries only 1/20 of the loss. Press "10 steps" twice and compare: mat is within 1% while moon is still about 30% off. The long tail is learned last, and the average loss hides it. That's why you look at loss per slice.</p>
+      </div>
+    </div>
   </section>
 
-  <!-- 6 ─────────────────────────────────────────── -->
+
+  <!-- 7 ─────────────────────────────────────────── -->
   <section class="step" id="direction">
-    <div class="kicker">6 · Direction</div>
+    <div class="kicker">7 · Direction</div>
     <h2>Forward vs reverse KL: which mistakes are expensive</h2>
     <p>KL isn't symmetric. The difference matters when the model <em>can't</em> represent \(p\) exactly, which in practice is always.</p>
     <p>Target \(p\): the lengths of responses a reference model gives to one prompt. It answers in two styles, short (about 20 tokens) and long (about 80). Model \(q\): a single bell curve, which can't have two peaks. Which bump is "closest" to \(p\) depends on which way round you measure.</p>
     <div class="eq">\[ \underbrace{\mathrm{KL}(p\|q) = \mathbb{E}_{x\sim p}\Big[\ln\frac{p(x)}{q(x)}\Big]}_{\text{forward: averaged where } p \text{ has mass}} \qquad \underbrace{\mathrm{KL}(q\|p) = \mathbb{E}_{x\sim q}\Big[\ln\frac{q(x)}{p(x)}\Big]}_{\text{reverse: averaged where } q \text{ has mass}} \]</div>
 
-    <div class="check">
+    <div class="check" data-gate>
       <div class="q">Minimize <em>forward</em> KL(p‖q) over the bell curve's center and width. What do you get?</div>
       <div class="opts">
         <button class="opt">A narrow bump sitting on one of the two styles</button>
@@ -248,9 +360,9 @@
     <p class="muted small">The 1-D picture only isolates the asymmetry. An LLM's distribution over sequences is far richer than one bell curve, but the pull is the same. SFT on data containing two answer styles pushes the model to keep both. An RL policy on a reverse-KL leash can settle on one style the reference model used and pay little for dropping the other.</p>
   </section>
 
-  <!-- 7 ─────────────────────────────────────────── -->
+  <!-- 8 ─────────────────────────────────────────── -->
   <section class="step" id="fresh">
-    <div class="kicker">7 · New cases, no hints</div>
+    <div class="kicker">8 · New cases, no hints</div>
     <h2>Apply it somewhere else</h2>
 
     <div class="check">
@@ -302,9 +414,9 @@
     </div>
   </section>
 
-  <!-- 8 ─────────────────────────────────────────── -->
+  <!-- 9 ─────────────────────────────────────────── -->
   <section class="step" id="implement">
-    <div class="kicker">8 · Implement, unaided</div>
+    <div class="kicker">9 · Implement, unaided</div>
     <h2>Write it without a framework</h2>
     <p>Plain editor, no completion, real Python with numpy, hidden tests. Treat it like a screen: state shapes and edge cases out loud before running. Tab indents, Shift+Tab dedents, ⌘/Ctrl+Enter runs. Your code is saved in this browser.</p>
     <h3>Exercise 1: stable cross-entropy and its gradient</h3>
@@ -313,9 +425,9 @@
     <div id="ex-kl"></div>
   </section>
 
-  <!-- 9 ─────────────────────────────────────────── -->
+  <!-- 10 ─────────────────────────────────────────── -->
   <section class="step" id="followups">
-    <div class="kicker">9 · Staff-level follow-ups</div>
+    <div class="kicker">10 · Staff-level follow-ups</div>
     <h2>Answer out loud, then check</h2>
     <p>Give yourself about a minute per question. Short answer first, then the reason. Reveal only after you've answered.</p>
 
@@ -370,6 +482,7 @@
 
   <section class="step">
     <p class="small muted">Sources: C. E. Shannon, <em>A Mathematical Theory of Communication</em> (1948); Cover &amp; Thomas, <em>Elements of Information Theory</em>, ch. 2; Shao et al., <a href="https://arxiv.org/abs/2402.03300">DeepSeekMath</a> (2024), for GRPO; J. Schulman, <a href="http://joschu.net/blog/kl-approx.html">Approximating KL divergence</a> (2020); Hinton, Vinyals &amp; Dean, <a href="https://arxiv.org/abs/1503.02531">Distilling the Knowledge in a Neural Network</a> (2015).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
   </section>
 </main>
 
@@ -379,5 +492,6 @@
 <script src="../assets/pyrunner.js"></script>
 <script src="exercises.js"></script>
 <script src="lesson.js"></script>
+<script src="game.js"></script>
 </body>
 </html>
