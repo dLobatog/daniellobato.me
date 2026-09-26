@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A/B tests and peeking</title>
+<meta name="description" content="What a p-value means, built from A/A tests; the standard error of a click-rate difference; power and sample size; why peeking inflates false positives; and the other ways online experiments mislead.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css?v=4">
+<style>
+  .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .calc label { font-size: 0.82rem; color: var(--ink-3); display: block; }
+  .calc input { width: 100%; font: 400 0.95rem var(--mono); padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink); }
+  .score { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.9rem; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 07 · Experiments · ~30 min + code</div>
+  <h1>A/B tests and the cost of peeking</h1>
+  <p class="lede">Your new ranking model shows +1.2% click-through after three days of an A/B test, with p = 0.03. Do you ship it?</p>
+
+  <div class="check" data-gate>
+    <div class="q">Your call:</div>
+    <div class="opts">
+      <button class="opt">Ship: p is below 0.05</button>
+      <button class="opt" data-correct>It depends on how the test was run and how often it was checked</button>
+      <button class="opt">Never ship before two weeks</button>
+    </div>
+    <div class="answer"><p>A p-value means what it says only under the plan it was computed for: a sample size fixed in advance, one look, one metric, and a correct randomization. Check a running test every day and stop the first time p dips below 0.05, and "p &lt; 0.05" happens far more often than 5% of the time when nothing changed. This lesson builds the p-value from scratch, then shows exactly how that breaks.</p></div>
+  </div>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#aa"><span>1</span>What p means</a>
+    <a href="#se"><span>2</span>The standard error</a>
+    <a href="#power"><span>3</span>Power and sample size</a>
+    <a href="#game"><span>4</span>Play: ship or not</a>
+    <a href="#lies"><span>5</span>Other ways tests lie</a>
+    <a href="#implement"><span>6</span>Implement</a>
+    <a href="#followups"><span>7</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="aa">
+    <div class="kicker">1 · What p means</div>
+    <h2>Run tests where nothing changed</h2>
+    <p>An <strong>A/A test</strong> shows both groups the same system. Any difference you see is noise. Before reading p-values, look at the noise.</p>
+    <div class="check" data-gate>
+      <div class="q">You run 1,000 A/A tests, each with 10,000 users per arm and a 5% click rate. In how many does the two-sided test say p &lt; 0.05?</div>
+      <div class="opts">
+        <button class="opt">None: there's no difference to find</button>
+        <button class="opt" data-correct>About 50</button>
+        <button class="opt">About 500</button>
+      </div>
+      <div class="answer"><p>About 5%. That's what the 0.05 threshold <em>is</em>: the fraction of no-difference experiments that look at least this extreme by chance. The p-value is the probability, <em>if nothing changed</em>, of a difference as large as the one observed. Run them:</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">z-scores of simulated A/A tests</div>
+      <div class="chart" id="aa-chart"></div>
+      <div class="btns"><button class="btn primary" id="aa-run">Run 1,000 A/A tests</button></div>
+      <div class="readouts" id="aa-out"></div>
+      <p class="fig-note">z = observed difference ÷ its standard error. The shaded tails beyond ±1.96 hold 5% of a standard normal: those tests would be called "significant".</p>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="se">
+    <div class="kicker">2 · The standard error</div>
+    <h2>How much does a click rate wobble?</h2>
+    <p>Each user either clicks or doesn't: a Bernoulli variable with variance \(p(1-p)\). The average of \(n\) independent ones has variance \(p(1-p)/n\). The difference of two independent averages adds their variances:</p>
+    <div class="eq big">\[ \begin{aligned} \mathrm{SE}(\hat p_B - \hat p_A) &= \sqrt{\frac{p(1-p)}{n_A} + \frac{p(1-p)}{n_B}} \\ z &= \frac{\hat p_B - \hat p_A}{\mathrm{SE}} \end{aligned} \]</div>
+    <div class="check" data-gate>
+      <div class="q">To halve the standard error, how many more users do you need?</div>
+      <div class="opts">
+        <button class="opt">2× as many</button>
+        <button class="opt" data-correct>4× as many</button>
+        <button class="opt">√2× as many</button>
+      </div>
+      <div class="answer"><p>SE falls like \(1/\sqrt n\). Halving it takes 4× the data, and detecting an effect half as large takes 4× the traffic. That square law is the whole economics of experimentation.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="power">
+    <div class="kicker">3 · Power and sample size</div>
+    <h2>Can this test even see the effect?</h2>
+    <p><strong>Power</strong> is the probability of detecting a real effect of a given size. To reach it, the effect must stand about \(z_{1-\alpha/2} + z_{\text{power}}\) standard errors clear of zero, which is 1.96 + 0.84 = 2.8 for α = 0.05 and 80% power:</p>
+    <div class="eq">\[ n \approx \frac{(z_{1-\alpha/2} + z_{\text{power}})^2\,\big(p_A(1-p_A) + p_B(1-p_B)\big)}{(p_B - p_A)^2} \]</div>
+    <div class="check" data-gate>
+      <div class="q">Base click rate 5%. You care about a +2% <em>relative</em> lift (5.0% → 5.1%). Roughly how many users per arm for 80% power?</div>
+      <div class="opts">
+        <button class="opt">About 10,000</button>
+        <button class="opt">About 100,000</button>
+        <button class="opt" data-correct>About 750,000</button>
+      </div>
+      <div class="answer"><p>\(7.85 \times (0.0475 + 0.0484) / 0.001^2 \approx 753{,}000\). Small relative lifts on small rates need enormous samples. An underpowered test mostly returns "not significant", and when it does come back significant it overstates the effect (the winner's curse). Try your own numbers:</p></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Sample size calculator (two-sided α, two arms of equal size)</div>
+      <div class="calc" id="ss-calc"></div>
+      <div class="readouts" id="ss-out"></div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="game">
+    <div class="kicker">4 · Play it</div>
+    <h2>Ship or not</h2>
+    <p>Eight experiments, 2,000 users per arm per day, a 5% base click rate. Some variants are genuinely +10% better; others are identical to control. Watch the results day by day and decide whenever you like: <b>ship B</b>, or <b>keep A</b>. The planned length is 14 days, and the test was sized for that.</p>
+    <div class="fig wide" id="peek-game"></div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="lies">
+    <div class="kicker">5 · Other ways tests lie</div>
+    <h2>New cases, no hints</h2>
+    <div class="check">
+      <div class="q">You split traffic 50/50 and get 50,900 users in A and 49,100 in B. The metric difference is significant. What first?</div>
+      <div class="opts">
+        <button class="opt">Ship: the difference is significant</button>
+        <button class="opt" data-correct>Stop and investigate: the split itself is broken</button>
+        <button class="opt">Reweight B's users by 50,900/49,100 and re-test</button>
+      </div>
+      <div class="answer"><p>A chi-square test of the split gives \(\chi^2 = 32.4\), p ≈ \(10^{-8}\). That's a <strong>sample ratio mismatch</strong>. Something (a crash, a redirect, bot filtering, logging) removes users from one arm, and probably not at random, so every metric comparison is suspect. Check SRM before reading any metric.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You randomize by user, but compute click-through per impression and use the standard error formula from section 2 with n = impressions. What goes wrong?</div>
+      <div class="opts">
+        <button class="opt">Nothing: more observations give a more precise estimate</button>
+        <button class="opt" data-correct>The standard error is too small: impressions from the same user aren't independent</button>
+        <button class="opt">The estimate is biased toward heavy users</button>
+      </div>
+      <div class="answer"><p>The independent unit is the user, not the impression. Heavy users contribute many correlated impressions, so the naive SE is too small and p-values come out too small. Use the delta method for a ratio metric, or a bootstrap that resamples users. (The third option is also true of a ratio metric, but it's a question of which quantity you want, not an error in the test.)</p></div>
+    </div>
+    <div class="check">
+      <div class="q">You track 20 independent metrics in an A/A test. What's the chance at least one shows p &lt; 0.05?</div>
+      <div class="opts">
+        <button class="opt">5%</button>
+        <button class="opt" data-correct>About 64%</button>
+        <button class="opt">100%</button>
+      </div>
+      <div class="answer"><p>\(1 - 0.95^{20} \approx 0.64\). Pick one primary decision metric in advance, treat the rest as guardrails or exploration, and correct for multiplicity (Bonferroni, or Benjamini–Hochberg for false discovery rate) when you must test many.</p></div>
+    </div>
+    <div class="check">
+      <div class="q">A new recommendation surface lifts engagement 8% in week one, 3% in week two, and 1% in week three. Most likely?</div>
+      <div class="opts">
+        <button class="opt">The test is underpowered</button>
+        <button class="opt" data-correct>A novelty effect: users explore anything new, then settle</button>
+        <button class="opt">Seasonality</button>
+      </div>
+      <div class="answer"><p>Short tests overstate novelty (and understate learning effects, the opposite pattern). Plot the effect by exposure day or by user cohort, run long enough to see it flatten, and keep a long-term holdback to measure the durable effect.</p></div>
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">6 · Implement, unaided</div>
+    <h2>Write the test yourself</h2>
+    <p>Standard library only: <code>math.erfc</code> gives normal tail probabilities, and <code>statistics.NormalDist().inv_cdf</code> gives quantiles. ⌘/Ctrl+Enter runs.</p>
+    <h3>Exercise 1: two-proportion z-test</h3>
+    <div id="ex-z"></div>
+    <h3>Exercise 2: sample size and a sample-ratio check</h3>
+    <div id="ex-ss"></div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">7 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+
+    <div class="followup"><div class="q">How do you let teams monitor experiments continuously without inflating false positives?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Sequential designs: group-sequential tests with alpha spending (e.g. O'Brien–Fleming boundaries that are strict early), or always-valid p-values and confidence sequences (mSPRT).</li>
+        <li>Or pre-commit a fixed horizon from a power calculation and decide only at the end. Dashboards can show data without showing "significance".</li>
+        <li>Bonferroni across planned looks is valid but conservative.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How would you reduce the variance of an experiment without more traffic?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>CUPED: regress out a pre-experiment covariate (the same metric in the prior period), \(Y' = Y - \theta(X - \bar X)\) with \(\theta = \mathrm{cov}(X,Y)/\mathrm{var}(X)\). The variance falls by the factor \(1-\rho^2\), with no bias because X is pre-treatment.</li>
+        <li>Also: more sensitive metrics (proxies), trimming or capping heavy-tailed metrics, stratification, and triggering analysis only on users actually exposed to the change.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">The new ranker wins offline (NDCG +3%) but is flat online. Why might that happen?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Offline labels come from logs produced by the old ranker: position and exposure bias, and items it never showed have no labels.</li>
+        <li>The metric mismatch: NDCG on logged clicks vs the business outcome (dwell, retention). Candidate generation limits what any ranker can surface.</li>
+        <li>Train/serve skew in features, latency changes, a novelty baseline, or an underpowered test. Diagnose with counterfactual or interleaving evaluation, slice analysis, and a check that serving features match training.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">When is user-level randomization invalid, and what do you do instead?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>When treated and control users interact: marketplaces sharing inventory or budget, social feeds, ride-hailing supply. Treatment leaks into control (interference, a SUTVA violation).</li>
+        <li>Use cluster randomization (by region or social graph cluster), switchback designs (alternate by time block), or budget-split or two-sided designs in marketplaces.</li>
+        <li>The price is fewer independent units, so larger variance. Plan power accordingly.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How do you make a ship decision when the primary metric wins but a guardrail regresses?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Agree in advance on an overall evaluation criterion and guardrail thresholds: latency, crashes, revenue, and long-term proxies such as retention.</li>
+        <li>Quantify the trade-off with confidence intervals, not point estimates, and check that the regression is real (SRM, novelty, segment concentration).</li>
+        <li>Options: ship to a subset, iterate on the regression, or keep a holdback to measure the long-term effect. Write down the reasoning.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: Kohavi, Tang &amp; Xu, <em>Trustworthy Online Controlled Experiments</em> (2020); Deng et al., <em>Improving the Sensitivity of Online Controlled Experiments by Utilizing Pre-Experiment Data</em> (WSDM 2013); Johari et al., <a href="https://arxiv.org/abs/1512.04922">Always Valid Inference</a> (2015).</p>
+    <p class="small"><button type="button" class="linkish" data-reset-checks>Reset my answers on this page</button></p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js?v=4"></script>
+<script src="../assets/pyrunner.js?v=4"></script>
+<script src="exercises.js?v=4"></script>
+<script src="lesson.js?v=4"></script>
+</body>
+</html>
