@@ -1,227 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Machine Learning Atelier / Daniel Lobato</title>
-  <meta name="description" content="Interactive explanations of machine learning. Explore probability, neural networks, transformers, and the systems that put them to work.">
-  <link rel="stylesheet" href="./vendor/katex/katex.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="./studio.css?v=44">
-  <link rel="stylesheet" href="../typography.css?v=1">
-  <link rel="stylesheet" href="./editorial.css?v=1">
-  <script src="./reading-theme.js?v=1"></script>
-  <link rel="stylesheet" href="./reading-theme.css?v=2">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier</title>
+<meta name="description" content="Short, exact lessons on the machine-learning ideas that matter most: build the mechanism on a small example, predict, then implement it.">
+<link rel="stylesheet" href="assets/atelier.css">
 </head>
-<body class="studio-home">
-  <div class="ambient ambient-left" aria-hidden="true"></div>
-  <div class="ambient ambient-right" aria-hidden="true"></div>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← daniellobato.me</a><button class="theme-btn" type="button">Dark</button></div>
+  <div class="kicker">Atelier</div>
+  <h1>Machine learning, derived</h1>
+  <p class="lede">Each lesson starts from one concrete question, builds the answer on a small example you can change, asks you to predict before it tells you, and ends with code you write yourself.</p>
 
-  <header class="site-nav">
-    <a class="nav-link" href="../index.html">Daniel Lobato</a>
-    <a class="nav-link" href="#chapter-library">Explore the library</a>
-  </header>
-
-  <main>
-    <section class="hero shell atelier-intro">
-      <div>
-        <p class="eyebrow">The Machine Learning Atelier</p>
-        <h1>See it.<br>Change it.<br><em>Understand it.</em></h1>
-        <p class="lede">Machine learning, one idea at a time. Interactive explanations for the first time it clicks, and the next time you need it.</p>
-        <div class="hero-actions"><a class="primary-link" href="./foundations.html">Explore foundations <span aria-hidden="true">↗</span></a></div>
-      </div>
-      <aside class="opening-experiment" aria-label="A quick Bayes experiment">
-        <p class="eyebrow">Start with a surprise</p>
-        <h2>Flagged as spam.<br>How sure are you?</h2>
-        <p>Only <strong>1 in 100 emails is spam.</strong> An example filter catches 90% of spam, but also flags 2% of legitimate emails.</p>
-        <p>When it flags an email, how likely is that email to be spam?</p>
-        <div class="lesson-choices" role="group" aria-label="Predict the chance"><button class="lesson-choice" type="button" data-guess="90">About 90%</button><button class="lesson-choice" type="button" data-guess="31">About 1 in 3</button></div>
-        <div class="opening-answer" hidden aria-live="polite">
-          <div class="opening-counts"><span><strong>90</strong>real detections</span><span class="plus">+</span><span><strong>198</strong>false alarms</span></div>
-          <p data-guess-feedback></p>
-          <a class="text-link" href="./foundations.html#bayes">Follow the emails, step by step <span aria-hidden="true">↗</span></a>
-        </div>
-        <noscript><p>About 31%: among 10,000 emails, 90 spam messages and 198 legitimate messages are flagged. <a href="./foundations.html#bayes">Explore Bayes</a>.</p></noscript>
-      </aside>
-    </section>
-
-    <div class="divider"></div>
-
-    <section id="chapter-library" class="shell route-section">
-      <p class="section-label">Chapter Library</p>
-      <div class="library-heading"><h2 class="section-title">Find the idea you need.</h2><div class="library-search"><label for="chapter-search">Search chapters</label><input id="chapter-search" type="search" placeholder="Bayes, attention, trees..." autocomplete="off"></div></div>
-      <p class="search-status" aria-live="polite" hidden></p>
-
-      <div class="route-grid">
-        <article class="route-card route-card-featured">
-          <a class="route-link" href="./foundations.html">
-            <div>
-              <p class="route-kicker">Chapter 01</p>
-              <h3>Foundations: uncertainty and loss</h3>
-              <p>What can happen? What should you expect? How do evidence and surprise change a prediction?</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./linear-algebra.html">
-            <div>
-              <p class="route-kicker">Chapter 02</p>
-              <h3>Linear algebra for ML</h3>
-              <p>Vectors, dot products, eigen directions, and SVD as the geometry underneath modern ML.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./classical-ml-stats.html">
-            <div>
-              <p class="route-kicker">Chapter 03</p>
-              <h3>Classical ML and stats</h3>
-              <p>Likelihood, priors, bias-variance, and regularization as one connected mental model.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./neural-network-basics.html">
-            <div>
-              <p class="route-kicker">Chapter 04</p>
-              <h3>Neural network basics</h3>
-              <p>Neurons, activations, backpropagation, and optimization as one connected story.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./deep-learning.html">
-            <div>
-              <p class="route-kicker">Chapter 05</p>
-              <h3>Training deep networks</h3>
-              <p>Learning rate intuition and why repeated derivatives make training stable, brittle, or explosive.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./transformers-rag.html">
-            <div>
-              <p class="route-kicker">Chapter 06</p>
-              <h3>Transformers and RAG</h3>
-              <p>Tokenization, attention, and retrieval as three different pieces of the same modern LLM stack.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./adaptation-serving.html">
-            <div>
-              <p class="route-kicker">Chapter 07</p>
-              <h3>Adaptation, compression, and serving</h3>
-              <p>Fine-tuning, LoRA, quantization, distillation, and the deployment tradeoffs that decide what is practical.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./metrics-eval.html">
-            <div>
-              <p class="route-kicker">Chapter 08</p>
-              <h3>Metrics and calibration</h3>
-              <p>When is a score a trustworthy probability? Thresholds, calibration, and ranking metrics.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./recommendation-depth.html">
-            <div>
-              <p class="route-kicker">Chapter 09</p>
-              <h3>Recommender systems</h3>
-              <p>Latent factors, two-tower retrieval, and ranking objectives that actually match recommendation surfaces.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./systems-retrieval.html">
-            <div>
-              <p class="route-kicker">Chapter 10</p>
-              <h3>Retrieval and systems</h3>
-              <p>Retrieval versus ranking, plus the offline-versus-online tradeoffs that make systems honest.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./production-systems.html">
-            <div>
-              <p class="route-kicker">Chapter 11</p>
-              <h3>Production ML systems</h3>
-              <p>Why does a good offline model fail in production? Training-serving skew, live evaluation, and drift.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./gbdt-tabular.html">
-            <div>
-              <p class="route-kicker">Chapter 12</p>
-              <h3>GBDTs and tabular ML</h3>
-              <p>Useful tree splits, stagewise boosting, and why tabular ensembles still dominate so much applied ML.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./data-features.html">
-            <div>
-              <p class="route-kicker">Chapter 13</p>
-              <h3>Data and features</h3>
-              <p>Leakage, missingness, and distribution shift as the hidden reasons many models fail.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./generative-and-rl.html">
-            <div>
-              <p class="route-kicker">Chapter 14</p>
-              <h3>Generation and decision-making</h3>
-              <p>Denoising a signal with diffusion, and choosing between uncertain options with bandits.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./reinforcement-learning.html">
-            <div>
-              <p class="route-kicker">Chapter 15</p>
-              <h3>Reinforcement learning</h3>
-              <p>MDPs, value functions, TD learning, Q-learning, and DQN in one clean ladder from loop to deep control.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-        <article class="route-card">
-          <a class="route-link" href="./alignment-depth.html">
-            <div>
-              <p class="route-kicker">Chapter 16</p>
-              <h3>Objectives and alignment</h3>
-              <p>Guidance, DPO, GRPO, and the difference between earning reward and solving the intended problem.</p>
-            </div>
-            <span class="card-cta">Open chapter</span>
-          </a>
-        </article>
-      </div>
-    </section>
-  </main>
-
-  <footer class="shell site-footer">
-    <p>A project by <a href="../index.html">Daniel Lobato</a>.</p><a class="text-link" href="https://www.buymeacoffee.com/dlobatog" target="_blank" rel="noopener">Support the project</a>
-  </footer>
-
-  <script defer src="./library.js?v=2"></script>
+  <ul class="lesson-list">
+    <li>
+      <span class="n">01</span>
+      <a href="cross-entropy/">Cross-entropy and KL, from surprise</a>
+      <p>Why −log p, why the best model copies the frequencies, entropy as the floor under training loss, KL as the gap, the softmax gradient q − p, and forward vs reverse KL in SFT and RL.</p>
+    </li>
+    <li><span class="n">02</span><span class="soon">Backpropagation through a tiny network</span><p class="muted">In preparation.</p></li>
+    <li><span class="n">03</span><span class="soon">Conditioning and Bayes, from counts</span><p class="muted">In preparation.</p></li>
+    <li><span class="n">04</span><span class="soon">Policy gradients to PPO to GRPO</span><p class="muted">In preparation.</p></li>
+  </ul>
+</main>
+<script src="assets/core.js"></script>
 </body>
 </html>

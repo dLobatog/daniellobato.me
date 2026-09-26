@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cross-entropy and KL</title>
+<meta name="description" content="Derive cross-entropy from surprise, find its minimum, split it into entropy plus KL, see which KL direction SFT and RL use, and implement it.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<link rel="stylesheet" href="../assets/atelier.css">
+<style>
+  @media (max-width: 560px) { .eq-live .katex { font-size: 0.92em; } }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.88rem; color: var(--ink-2); margin: 6px 0 4px; }
+  .legend i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .legend i.hatch { background: repeating-linear-gradient(135deg, var(--ink-3) 0 2px, transparent 2px 5px); border: 1px solid var(--ink-3); }
+  .legend i.save { border: 1.5px dashed var(--ink-3); }
+  .legend i.floor { height: 0; border-top: 2px dashed var(--ink); border-radius: 0; }
+  .legend i.line { height: 0; border-top: 2px solid var(--ink); border-radius: 0; }
+  .legend i.dots { height: 0; border-top: 2px dotted var(--ink); border-radius: 0; }
+  .words { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 14px; }
+  .ctl { display: grid; grid-template-columns: 7.5em 1fr 3.5em; gap: 8px; align-items: center; font-size: 0.92rem; margin-top: 8px; }
+  .ctl output { font-family: var(--mono); font-size: 0.85rem; text-align: right; }
+  .gradbar { display: inline-block; width: 60px; height: 10px; position: relative; vertical-align: middle; margin-left: 6px; }
+  .gradbar::before { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; border-left: 1px solid var(--ink-3); }
+  .gradbar b { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; }
+  table.plain { border-collapse: collapse; width: 100%; font-size: 0.92rem; margin: 10px 0 16px; }
+  table.plain th, table.plain td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  table.plain th { font-weight: 600; font-size: 0.82rem; color: var(--ink-3); }
+  .scroll-x { overflow-x: auto; }
+  .reveal-load { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .reveal-load button { font-size: 0.85rem; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="topbar"><a href="../">← Atelier</a><button class="theme-btn" type="button">Dark</button></div>
+
+  <div class="kicker">Lesson 01 · Probability and losses · ~25 min + code</div>
+  <h1>Cross-entropy and KL, from surprise</h1>
+  <p class="lede">A language model reads <em>the cat sat on the</em> and gives the word that actually came next a probability of 0.02. How bad is that? We want an answer that adds up over a dataset, has a known best-possible value, and can be differentiated.</p>
+  <p>That one requirement gets you all of this lesson: surprise, cross-entropy, entropy, KL, the softmax gradient, and why SFT and RL use KL in opposite directions.</p>
+
+  <nav class="toc" aria-label="Sections">
+    <a href="#surprise"><span>1</span>Surprise</a>
+    <a href="#cross-entropy"><span>2</span>Cross-entropy</a>
+    <a href="#entropy"><span>3</span>The best model</a>
+    <a href="#kl"><span>4</span>KL: the gap</a>
+    <a href="#gradient"><span>5</span>The gradient</a>
+    <a href="#direction"><span>6</span>KL direction</a>
+    <a href="#fresh"><span>7</span>New cases</a>
+    <a href="#implement"><span>8</span>Implement</a>
+    <a href="#followups"><span>9</span>Interview follow-ups</a>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────── -->
+  <section class="step" id="surprise">
+    <div class="kicker">1 · One prediction</div>
+    <h2>How surprised should the model be?</h2>
+    <p>Score a single prediction. The model gave probability \(q\) to the word that actually occurred. We want a penalty \(s(q)\) that</p>
+    <ul>
+      <li>is 0 when \(q = 1\): certain and right costs nothing;</li>
+      <li>grows as \(q\) shrinks;</li>
+      <li><strong>adds across independent events.</strong> Two tokens in a row have probability \(q_1 q_2\), so we need \(s(q_1 q_2) = s(q_1) + s(q_2)\).</li>
+    </ul>
+    <p>The functions that turn products into sums are logarithms. Flip the sign so the penalty is positive:</p>
+    <div class="eq big">\[ s(q) = -\log_2 q = \log_2 \tfrac{1}{q} \]</div>
+    <p>With base 2 the unit is <strong>bits</strong>, and a bit has a literal meaning. Probability \(1/8\) is exactly as surprising as three fair coins all landing heads, so it scores 3 bits. Drag the point, or use the slider.</p>
+
+    <div class="fig">
+      <div class="fig-title">Surprise of the observed word</div>
+      <div class="chart" id="surprise-chart"></div>
+      <div class="ctl"><label for="surprise-slider">q (log scale)</label><input id="surprise-slider" type="range" min="-10" max="0" step="0.01" value="-5.64"><output id="surprise-q"></output></div>
+      <div class="readouts" id="surprise-readouts"></div>
+    </div>
+
+    <p>The additivity is exact. Two independent tokens with \(q = 1/2\) and \(q = 1/8\) have joint probability \(1/16\), and the surprise is \(1 + 3 = 4\) bits \(= \log_2 16\).</p>
+
+    <div class="check">
+      <div class="q">Model A lowers its probability for the correct token from 0.90 to 0.45. Model B lowers it from 0.02 to 0.01. Which change adds more surprise?</div>
+      <div class="opts">
+        <button class="opt">A: it lost 0.45 of probability, B lost only 0.01</button>
+        <button class="opt">B: small probabilities are where the log is steep</button>
+        <button class="opt" data-correct>Neither: both add the same amount</button>
+      </div>
+      <div class="answer">
+        <p>Exactly 1 bit each: \(\log_2(0.90/0.45) = \log_2(0.02/0.01) = 1\). Surprise depends on the <em>ratio</em> of probabilities, not the difference, so every halving costs one bit wherever it happens.</p>
+        <p>That is why log loss punishes confident mistakes. Going from 0.01 to 0.001 costs 3.3 bits, the same as going from 1.0 to 0.1.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────── -->
+  <section class="step" id="cross-entropy">
+    <div class="kicker">2 · A whole dataset</div>
+    <h2>Average surprise over the data is cross-entropy</h2>
+    <p>Now score a model on data. The context <em>the cat sat on the</em> appears 20 times in a corpus. What came next:</p>
+    <div class="words" id="word-counts"></div>
+    <p>The model outputs one distribution \(q\) for this context. Each of the 20 occurrences gets its own surprise \(-\log_2 q(\text{word})\), and the model's score is the average. Each column below is one occurrence, and its height is that occurrence's surprise.</p>
+
+    <div class="fig wide">
+      <div class="fig-title">20 occurrences, each scored by the model</div>
+      <div class="chart" id="ce-chart"></div>
+      <table class="qtable" id="ce-table"></table>
+      <div class="btns"><button class="btn" data-preset="uniform">Reset to uniform</button></div>
+    </div>
+
+    <p>Group identical words and the counts turn into frequencies, \(10/20 = 0.50\) and so on:</p>
+    <div class="eq eq-live" id="ce-eq"></div>
+    <p>Write \(p(x)\) for how often word \(x\) actually occurs. The average surprise is</p>
+    <div class="eq big">\[ H(p, q) = -\sum_x p(x)\, \log_2 q(x) \]</div>
+    <p>That is <strong>cross-entropy</strong>: the model's surprise, averaged over how often each outcome really happens. In training code it is the mean of \(-\log q(y_n)\) over a batch, the same number computed one example at a time.</p>
+    <p class="muted small">Try it: drag <em>moon</em> down to 0.01. Only one column moves, but it moves a lot, and it occurs once in 20, so the average moves by a twentieth of that.</p>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────── -->
+  <section class="step" id="entropy">
+    <div class="kicker">3 · The floor</div>
+    <h2>What is the best possible model?</h2>
+
+    <div class="check" id="best-check">
+      <div class="q">Which model has the lowest average surprise on these 20 occurrences? Commit before looking.</div>
+      <div class="opts">
+        <button class="opt">A. Bet on the most common word: q = (0.97, 0.01, 0.01, 0.01)</button>
+        <button class="opt" data-correct>B. Copy the frequencies: q = (0.50, 0.25, 0.20, 0.05)</button>
+        <button class="opt">C. Copy them, sharpened toward mat: q = (0.70, 0.18, 0.11, 0.01)</button>
+        <button class="opt">D. Uniform: q = (0.25, 0.25, 0.25, 0.25)</button>
+      </div>
+      <div class="answer">
+        <div class="scroll-x"><table class="plain">
+          <tr><th>Model</th><th>mat ×10</th><th>floor ×5</th><th>sofa ×4</th><th>moon ×1</th><th>Average</th></tr>
+          <tr><td>A</td><td>0.04</td><td>6.64</td><td>6.64</td><td>6.64</td><td><b>3.34</b></td></tr>
+          <tr><td>B</td><td>1.00</td><td>2.00</td><td>2.32</td><td>4.32</td><td><b>1.68</b></td></tr>
+          <tr><td>C</td><td>0.51</td><td>2.47</td><td>3.18</td><td>6.64</td><td><b>1.84</b></td></tr>
+          <tr><td>D</td><td>2.00</td><td>2.00</td><td>2.00</td><td>2.00</td><td><b>2.00</b></td></tr>
+        </table></div>
+        <p class="small muted">Surprise per occurrence, in bits.</p>
+        <p>B. Betting on the most frequent word maximizes accuracy but is the worst model here: the 10 non-mat occurrences each cost 6.6 bits. Sharpening (C) makes the 10 mat columns cheaper and every other column more expensive, and the other columns lose more than mat gains.</p>
+        <div class="reveal-load">Load into the chart above:
+          <button class="btn" data-preset="A">A</button><button class="btn" data-preset="B">B</button><button class="btn" data-preset="C">C</button><button class="btn" data-preset="D">D</button>
+        </div>
+      </div>
+    </div>
+
+    <p>No \(q\) beats \(q = p\); try it in the chart and you won't get below 1.68 bits. So cross-entropy is minimized by the true frequencies, and the minimum value has its own name:</p>
+    <div class="eq big">\[ H(p) = H(p, p) = -\sum_x p(x) \log_2 p(x) = 1.68 \text{ bits} \]</div>
+    <p><strong>Entropy</strong> is the average surprise of a model that knows the true frequencies exactly. It isn't zero because the data itself is uncertain. Even a perfect model can't know whether this particular occurrence will be <em>mat</em> or <em>floor</em>. Entropy is the floor under the training loss.</p>
+
+    <details class="more">
+      <summary>Why q = p is the minimum (two short derivations)</summary>
+      <p><strong>Lagrange.</strong> Minimize \(-\sum_x p(x)\log q(x)\) subject to \(\sum_x q(x) = 1\). Setting the derivative of the Lagrangian to zero gives \(-p(x)/q(x) + \lambda = 0\), so \(q(x) = p(x)/\lambda\). Summing over \(x\) gives \(\lambda = 1\), so \(q = p\).</p>
+      <p><strong>Jensen</strong> (this also proves the gap in section 4 is never negative). Log is concave, so</p>
+      <div class="eq">\[ \sum_x p(x)\log\frac{q(x)}{p(x)} \;\le\; \log \sum_x p(x)\frac{q(x)}{p(x)} = \log \sum_x q(x) = \log 1 = 0 \]</div>
+      <p>Equality needs \(q(x)/p(x)\) to be constant, which means \(q = p\).</p>
+    </details>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────── -->
+  <section class="step" id="kl">
+    <div class="kicker">4 · The gap</div>
+    <h2>KL divergence is the extra surprise you pay for using q</h2>
+    <p>Subtract the floor from the model's score:</p>
+    <div class="eq big">\[ \mathrm{KL}(p \,\|\, q) = H(p, q) - H(p) = \sum_x p(x) \log_2 \frac{p(x)}{q(x)} \]</div>
+    <p>It's the same chart as before, plus a dashed tick on each group at \(-\log_2 p(x)\): the surprise a perfect model would have had on that word. Where a column rises above its tick, the model pays extra (hatched). Where it stops short, the model is cheaper than the perfect one on that word (dashed outline).</p>
+
+    <div class="fig wide">
+      <div class="fig-title">Model score = floor + gap</div>
+      <div class="legend"><span><i class="hatch"></i>extra vs. perfect model</span><span><i class="save"></i>cheaper than perfect model</span><span><i class="floor"></i>perfect model's surprise, per word</span><span><i class="line"></i>average H(p,q)</span><span><i class="dots"></i>floor H(p)</span></div>
+      <div class="chart" id="kl-chart"></div>
+      <table class="qtable" id="kl-table"></table>
+      <div class="btns"><button class="btn" data-preset="uniform">Reset to uniform</button></div>
+    </div>
+    <div class="eq eq-live" id="kl-eq"></div>
+
+    <p>Under the uniform model, <em>sofa</em> and <em>moon</em> are cheaper than under the perfect model: 0.25 is more than their true frequency. But <em>mat</em> costs a full bit extra and occurs 10 times. Individual terms can be negative. Their \(p\)-weighted sum never is: \(\mathrm{KL}(p\|q) \ge 0\), and it is 0 only when \(q = p\). Probability is conserved, so any word you over-predict forces you to under-predict another.</p>
+    <p>Two consequences you'll use constantly:</p>
+    <ul>
+      <li><strong>Minimizing cross-entropy over \(q\) is minimizing \(\mathrm{KL}(p\|q)\).</strong> \(H(p)\) doesn't depend on the model, so the two objectives have the same gradients.</li>
+      <li><strong>A loss value alone doesn't tell you how good a model is.</strong> Loss is \(H(p) + \mathrm{KL}\), and for real data you don't know \(H(p)\).</li>
+    </ul>
+    <p class="muted small">Perplexity is the same quantity on another scale: \(2^{H(p,q)}\) in bits (or \(e^{\text{loss}}\) in nats), the number of equally likely options that would be as surprising. Uniform over 4 words gives 4. The perfect model here gives \(2^{1.68} = 3.2\).</p>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────── -->
+  <section class="step" id="gradient">
+    <div class="kicker">5 · Training</div>
+    <h2>The gradient pushes q toward p</h2>
+    <p>Real models don't set \(q\) directly. They output logits \(z\), and \(q = \mathrm{softmax}(z)\). From here on we use the natural log (<strong>nats</strong>), like PyTorch's <code>cross_entropy</code>: 1 bit = 0.693 nats, and the floor here is \(H(p) = 1.165\) nats.</p>
+    <div class="eq">\[ q_k = \frac{e^{z_k}}{\sum_j e^{z_j}}, \qquad L_n = -\ln q_{y_n} = -z_{y_n} + \ln \sum_j e^{z_j} \]</div>
+    <p>Differentiate the second form. The first term only touches the observed word, and the log-sum-exp gives back softmax:</p>
+    <div class="eq big">\[ \frac{\partial L_n}{\partial z_k} = q_k - \mathbb{1}[k = y_n] \]</div>
+    <p>One occurrence of <em>mat</em> has gradient \(q_{\text{mat}} - 1 < 0\) on the mat logit, so gradient descent raises it. Every other logit has gradient \(+q_k\), so each of them goes down. Average over the 20 occurrences: the one-hot vectors average to the frequencies,</p>
+    <div class="eq big">\[ \frac{\partial L}{\partial z} = \frac{1}{20}\sum_{n=1}^{20} \big(q - e_{y_n}\big) = q - p \]</div>
+    <p>The gradient is zero exactly when \(q = p\). That's the minimum from section 3, now reached from the training side. Step it:</p>
+
+    <div class="fig">
+      <div class="fig-title">Gradient descent on the 20 occurrences, learning rate η = 1</div>
+      <div class="scroll-x"><table class="qtable" id="gd-table"></table></div>
+      <div class="chart" id="gd-chart"></div>
+      <div class="btns">
+        <button class="btn primary" id="gd-step">Take one step</button>
+        <button class="btn" id="gd-step10">10 steps</button>
+        <button class="btn" id="gd-reset">Reset</button>
+      </div>
+    </div>
+    <p>Watch <em>moon</em>. It starts over-predicted by 5× (0.25 against 0.05) and converges last. Its gradient \(q - p\) is small because both numbers are small, even though their ratio is badly off. And it weighs only 1/20 of the loss. The long tail is learned last, and the average loss hides it, which is why you look at loss per slice.</p>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────── -->
+  <section class="step" id="direction">
+    <div class="kicker">6 · Direction</div>
+    <h2>Forward vs reverse KL: which mistakes are expensive</h2>
+    <p>KL isn't symmetric. The difference matters when the model <em>can't</em> represent \(p\) exactly, which in practice is always.</p>
+    <p>Target \(p\): the lengths of responses a reference model gives to one prompt. It answers in two styles, short (about 20 tokens) and long (about 80). Model \(q\): a single bell curve, which can't have two peaks. Which bump is "closest" to \(p\) depends on which way round you measure.</p>
+    <div class="eq">\[ \underbrace{\mathrm{KL}(p\|q) = \mathbb{E}_{x\sim p}\Big[\ln\frac{p(x)}{q(x)}\Big]}_{\text{forward: averaged where } p \text{ has mass}} \qquad \underbrace{\mathrm{KL}(q\|p) = \mathbb{E}_{x\sim q}\Big[\ln\frac{q(x)}{p(x)}\Big]}_{\text{reverse: averaged where } q \text{ has mass}} \]</div>
+
+    <div class="check">
+      <div class="q">Minimize <em>forward</em> KL(p‖q) over the bell curve's center and width. What do you get?</div>
+      <div class="opts">
+        <button class="opt">A narrow bump sitting on one of the two styles</button>
+        <button class="opt" data-correct>A wide bump centered between them, covering both, including the empty middle</button>
+        <button class="opt">Either; forward and reverse give the same answer</button>
+      </div>
+      <div class="answer">
+        <p>Forward KL averages \(\ln(p/q)\) over samples from \(p\). If \(q\) is tiny anywhere \(p\) has mass, that log ratio explodes, so \(q\) must cover both styles even if that means putting mass in the valley. For a Gaussian \(q\), the optimum matches \(p\)'s mean and variance: center 50, width 31. Check both directions with the buttons below.</p>
+      </div>
+    </div>
+
+    <div class="fig wide">
+      <div class="fig-title">One bell curve q fitted to a two-style target p</div>
+      <div class="legend"><span><i style="background:var(--ink-3);opacity:.35"></i>p, target</span><span><i style="background:var(--accent)"></i>q, model</span></div>
+      <div class="chart" id="kl-dir-chart"></div>
+      <div class="ctl"><label for="mu">center μ</label><input id="mu" type="range" min="0" max="100" step="0.5" value="30"><output id="mu-out"></output></div>
+      <div class="ctl"><label for="sigma">width σ</label><input id="sigma" type="range" min="3" max="45" step="0.25" value="12"><output id="sigma-out"></output></div>
+      <div class="btns">
+        <button class="btn" id="fit-forward">Minimize forward KL(p‖q)</button>
+        <button class="btn" id="fit-reverse">Minimize reverse KL(q‖p)</button>
+      </div>
+      <div class="chart" id="kl-dir-penalty"></div>
+      <p class="fig-note">The lower two panels show where each KL collects its cost: the integrand at each length. Minimize reverse KL once starting from μ = 30 and once from μ = 70.</p>
+    </div>
+
+    <p>What the buttons show:</p>
+    <div class="scroll-x"><table class="plain">
+      <tr><th></th><th>Averaged over</th><th>Expensive mistake</th><th>Behavior</th><th>Where you meet it</th></tr>
+      <tr><td><b>Forward</b> KL(p‖q)</td><td>data \(p\)</td><td>\(q \approx 0\) where data exists</td><td>covers every mode, hedges</td><td>MLE, pretraining, SFT, distillation on the teacher's distribution</td></tr>
+      <tr><td><b>Reverse</b> KL(q‖p)</td><td>the model's own samples</td><td>\(q &gt; 0\) where \(p \approx 0\)</td><td>locks onto one mode, can drop others cheaply</td><td>variational inference; the KL(π<sub>θ</sub>‖π<sub>ref</sub>) penalty in RLHF-PPO and GRPO</td></tr>
+    </table></div>
+    <p>Reverse KL on one mode costs about \(\ln 2 \approx 0.69\) here: \(q\) matches one component of \(p\), which holds half of \(p\)'s mass, so \(\ln(q/p) \approx \ln 2\) everywhere \(q\) lives. Forward KL for the same fit is 8 to 24 nats, because the other style's samples are nearly impossible under \(q\).</p>
+    <p class="muted small">The 1-D picture only isolates the asymmetry. An LLM's distribution over sequences is far richer than one bell curve, but the pull is the same. SFT on data containing two answer styles pushes the model to keep both. An RL policy on a reverse-KL leash can settle on one style the reference model used and pay little for dropping the other.</p>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────── -->
+  <section class="step" id="fresh">
+    <div class="kicker">7 · New cases, no hints</div>
+    <h2>Apply it somewhere else</h2>
+
+    <div class="check">
+      <div class="q">A click model scores a segment whose true click rate is 2%. Model A predicts 4% for every impression; model B predicts 1%. Both are off by 2×. Which has lower log loss?</div>
+      <div class="opts">
+        <button class="opt">A</button>
+        <button class="opt" data-correct>B</button>
+        <button class="opt">Equal: surprise depends only on the ratio, and both ratios are 2</button>
+      </div>
+      <div class="answer">
+        <p>B (0.1020 nats vs 0.1044; the floor \(H(p)\) is 0.0980). The ratio rule holds for one outcome, but cross-entropy averages over <em>both</em> outcomes. On clicks, A and B are off by the same factor in opposite directions: \(\pm 0.02 \ln 2\). The non-clicks decide it. A gives them 0.96 instead of 0.98, which costs \(0.98\ln(0.98/0.96) = +0.020\). B gives them 0.99, which is <em>cheaper</em> than the truth: \(-0.010\). KL: A 0.0064, B 0.0039.</p>
+      </div>
+    </div>
+
+    <div class="check">
+      <div class="q">A 4-class classifier is trained with label smoothing ε = 0.1: the target is 0.925 on the true class and 0.025 on each other class. What is the lowest loss a model can reach on one training example?</div>
+      <div class="opts">
+        <button class="opt">0, by predicting the true class with probability 1</button>
+        <button class="opt" data-correct>About 0.35 nats, by predicting exactly the smoothed target</button>
+        <button class="opt">ln 4 ≈ 1.39 nats</button>
+      </div>
+      <div class="answer">
+        <p>Cross-entropy is minimized at \(q = \) target, and the minimum is the target's entropy: \(-(0.925\ln 0.925 + 3\cdot 0.025\ln 0.025) \approx 0.35\). Predicting 1.0 now costs \(0.025 \cdot \ln(1/0) \cdot 3 = \infty\). The smoothed target is the floor, so the model is actively pushed to stay at 92.5% confidence. That's the whole regularization effect.</p>
+      </div>
+    </div>
+
+    <div class="check">
+      <div class="q">Your LM assigns exactly 0 probability to a token that appears once in 10,000 validation tokens. What is the validation loss?</div>
+      <div class="opts">
+        <button class="opt">Barely changed; it's one token in 10,000</button>
+        <button class="opt" data-correct>Infinite</button>
+        <button class="opt">Undefined, so the token is skipped</button>
+      </div>
+      <div class="answer">
+        <p>\(-\log 0 = \infty\), and one infinite term makes the average infinite. This is forward KL's "cover everything" pressure in its purest form. Softmax never outputs an exact 0, but top-k or nucleus truncation does, so perplexity must be computed on the full untruncated distribution.</p>
+      </div>
+    </div>
+
+    <div class="check">
+      <div class="q">Two LMs with different tokenizers report validation loss 2.30 and 2.10 nats per token on the same text. Which one predicts the text better?</div>
+      <div class="opts">
+        <button class="opt">The 2.10 one</button>
+        <button class="opt">The 2.30 one, since longer tokens are harder</button>
+        <button class="opt" data-correct>You can't tell from these numbers</button>
+      </div>
+      <div class="answer">
+        <p>Per-token cross-entropy averages over different outcome spaces and different numbers of tokens. Convert to total surprise for the same text: multiply by the token count, then divide by bytes or characters. A tokenizer with coarser tokens has fewer, individually harder predictions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────── -->
+  <section class="step" id="implement">
+    <div class="kicker">8 · Implement, unaided</div>
+    <h2>Write it without a framework</h2>
+    <p>Plain editor, no completion, real Python with numpy, hidden tests. Treat it like a screen: state shapes and edge cases out loud before running. Tab indents, Shift+Tab dedents, ⌘/Ctrl+Enter runs. Your code is saved in this browser.</p>
+    <h3>Exercise 1: stable cross-entropy and its gradient</h3>
+    <div id="ex-ce"></div>
+    <h3>Exercise 2: KL divergence with the zero conventions</h3>
+    <div id="ex-kl"></div>
+  </section>
+
+  <!-- 9 ─────────────────────────────────────────── -->
+  <section class="step" id="followups">
+    <div class="kicker">9 · Staff-level follow-ups</div>
+    <h2>Answer out loud, then check</h2>
+    <p>Give yourself about a minute per question. Short answer first, then the reason. Reveal only after you've answered.</p>
+
+    <div class="followup"><div class="q">Why is minimizing cross-entropy the same as maximum likelihood?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>For i.i.d. data the likelihood is \(\prod_n q(y_n)\); its log is \(\sum_n \log q(y_n)\).</li>
+        <li>Mean cross-entropy is \(-\frac1N \sum_n \log q(y_n)\): negative log-likelihood per example.</li>
+        <li>Equivalently it is \(H(\hat p) + \mathrm{KL}(\hat p\|q)\) for the empirical distribution \(\hat p\), so MLE minimizes forward KL from data to model.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Validation loss plateaued at 1.9 nats/token. Is the model done?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Loss \(= H(p) + \mathrm{KL}\). You don't know \(H(p)\), so the plateau could be the entropy floor, or capacity, optimization, or data limits.</li>
+        <li>Evidence: does loss still fall with more parameters or data (scaling trend)? Train-val gap? Loss by slice (rare tokens, domains, long contexts)? Does the plateau move with LR schedule changes?</li>
+        <li>Decide with downstream evals too: equal loss can hide very different behavior on the slices you care about.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Which KL direction does SFT minimize, which one is the RLHF/GRPO penalty, and what behavior does each produce?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>SFT/MLE: forward \(\mathrm{KL}(p_{\text{data}}\|\pi_\theta)\), an expectation over data. Mode-covering: \(\pi_\theta\) must put mass on everything in the data.</li>
+        <li>RL penalty: reverse \(\mathrm{KL}(\pi_\theta\|\pi_{\text{ref}})\), estimated on the policy's own samples. It punishes going where \(\pi_{\text{ref}}\) has little mass and barely punishes dropping some of \(\pi_{\text{ref}}\)'s modes.</li>
+        <li>The KL-regularized objective \(\mathbb{E}_{\pi}[r] - \beta\,\mathrm{KL}(\pi\|\pi_{\text{ref}})\) has optimum \(\pi^* \propto \pi_{\text{ref}}\, e^{r/\beta}\). DPO starts from this closed form.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">How is the KL term computed in GRPO? Be specific about which variant.</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>In DeepSeekMath's GRPO the KL term is subtracted in the objective as \(\beta\,\mathrm{KL}\), not folded into the reward as in InstructGPT-style PPO, where a per-token KL penalty is part of the reward.</li>
+        <li>It's estimated per token on sampled completions with \(\frac{\pi_{\text{ref}}}{\pi_\theta} - \ln\frac{\pi_{\text{ref}}}{\pi_\theta} - 1\) (Schulman's "k3"). It's unbiased for \(\mathrm{KL}(\pi_\theta\|\pi_{\text{ref}})\) under samples from \(\pi_\theta\), and every sample is non-negative.</li>
+        <li>Implementations differ: some later variants (e.g. DAPO) drop the KL term entirely. Name the variant before arguing about behavior.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">For a CTR model, when do you insist on log loss rather than AUC?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>Log loss is a strictly proper scoring rule: in expectation it is minimized only by the true probability (section 3). It measures calibration and ranking together.</li>
+        <li>AUC is unchanged by any monotone transform of the scores, so it measures ranking only.</li>
+        <li>Insist on calibration when the <em>value</em> is used downstream: auctions (pCTR × bid), blending multiple objectives, thresholds, budget pacing. Check with reliability plots or ECE by slice.</li>
+      </ul></div></div>
+
+    <div class="followup"><div class="q">Why does distillation train on the teacher's full distribution instead of its argmax?</div>
+      <button class="btn">Reveal key points</button>
+      <div class="keys"><ul>
+        <li>The loss is cross-entropy to soft targets \(p_T\), which is \(\mathrm{KL}(p_T\|q) + H(p_T)\). The gradient on the logits is \(q - p_T\), so every class gets a signal about how plausible it is, not just the top one.</li>
+        <li>Temperature \(T\) raises the teacher's entropy so small probabilities carry signal. The loss is typically scaled by \(T^2\) to keep gradient magnitudes comparable.</li>
+        <li>Forward KL makes the student cover the teacher's modes; on-policy or reverse-KL distillation makes it mode-seeking, which can suit a small student that can't cover everything.</li>
+      </ul></div></div>
+  </section>
+
+  <section class="step">
+    <p class="small muted">Sources: C. E. Shannon, <em>A Mathematical Theory of Communication</em> (1948); Cover &amp; Thomas, <em>Elements of Information Theory</em>, ch. 2; Shao et al., <a href="https://arxiv.org/abs/2402.03300">DeepSeekMath</a> (2024), for GRPO; J. Schulman, <a href="http://joschu.net/blog/kl-approx.html">Approximating KL divergence</a> (2020); Hinton, Vinyals &amp; Dean, <a href="https://arxiv.org/abs/1503.02531">Distilling the Knowledge in a Neural Network</a> (2015).</p>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js"></script>
+<script src="../assets/core.js"></script>
+<script src="../assets/pyrunner.js"></script>
+<script src="exercises.js"></script>
+<script src="lesson.js"></script>
+</body>
+</html>
